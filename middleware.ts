@@ -77,9 +77,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Not authenticated → login
+  // Not authenticated → onboarding (canonical entry point for new visitors)
   if (!user) {
-    return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
+    return NextResponse.redirect(new URL(`/${locale}/onboarding`, request.url))
   }
 
   // Check subscription
@@ -110,7 +110,7 @@ export async function middleware(request: NextRequest) {
   const { data: onboardingSession } = await supabase
     .from('onboarding_sessions')
     .select('status')
-    .eq('user_id', user.id)
+    .eq('converted_to_user_id', user.id)
     .eq('status', 'completed')
     .single()
 
