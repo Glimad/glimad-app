@@ -18,11 +18,11 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false)
 
   const question = ONBOARDING_QUESTIONS[step]
-  const questionT = t(`questions.${question.key}`) as unknown as Record<string, string | string[]>
+  const questionT = t.raw(`questions.${question.key}`) as Record<string, string | string[]>
   const questionText = questionT.text as string
   const questionOptions = questionT.options as string[] | undefined
-  const questionHint = (questionT as Record<string, string>).hint as string | undefined
-  const questionPlaceholder = (questionT as Record<string, string>).placeholder as string | undefined
+  const questionHint = questionT.hint as string | undefined
+  const questionPlaceholder = questionT.placeholder as string | undefined
 
   // Start session on mount
   useEffect(() => {
