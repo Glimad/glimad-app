@@ -1,8 +1,60 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import createIntlMiddleware from 'next-intl/middleware'
+import { locales, defaultLocale } from './i18n.config'
+
+const intlMiddleware = createIntlMiddleware({
+  locales,
+  defaultLocale,
+  localePrefix: 'always',
+})
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request })
+  const { pathname } = request.nextUrl
+
+  // Skip Stripe webhook entirely
+  if (pathname.startsWith('/api/stripe/webhook')) {
+    return NextResponse.next()
+  }
+
+  // Skip Next.js internals and static files
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon.ico')
+  ) {
+    return NextResponse.next()
+  }
+
+  // API routes: skip locale + auth middleware (except webhook already handled)
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
+  // Auth callback: skip locale handling
+  if (pathname.includes('/auth/callback')) {
+    return NextResponse.next()
+  }
+
+  // Run next-intl middleware first (handles locale detection + redirect)
+  const intlResponse = intlMiddleware(request)
+
+  // Extract locale from pathname (e.g. /es/login → es)
+  const localeMatch = pathname.match(/^\/(es|en)(\/|$)/)
+  const locale = localeMatch ? localeMatch[1] : defaultLocale
+
+  // Public auth routes — allow through after locale handling
+  const authPaths = [`/${locale}/login`, `/${locale}/signup`, `/${locale}/verify`]
+  if (authPaths.some(p => pathname.startsWith(p))) {
+    return intlResponse
+  }
+
+  // If intl redirected (e.g. / → /es), let it through
+  if (intlResponse.status === 307 || intlResponse.status === 308) {
+    return intlResponse
+  }
+
+  // Auth check
+  let supabaseResponse = intlResponse
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,20 +77,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-
-  // Public routes — always accessible
-  const publicRoutes = ['/login', '/signup', '/verify', '/auth/callback']
-  if (publicRoutes.some(r => pathname.startsWith(r))) {
-    return supabaseResponse
-  }
-
   // Not authenticated → login
   if (!user) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL(`/${locale}/login`, request.url))
   }
 
-  // Check subscription status
+  // Check subscription
   const { data: project } = await supabase
     .from('projects')
     .select('id, status')
@@ -47,8 +91,8 @@ export async function middleware(request: NextRequest) {
     .single()
 
   if (!project) {
-    if (pathname.startsWith('/onboarding')) return supabaseResponse
-    return NextResponse.redirect(new URL('/subscribe', request.url))
+    if (pathname.startsWith(`/${locale}/subscribe`)) return supabaseResponse
+    return NextResponse.redirect(new URL(`/${locale}/subscribe`, request.url))
   }
 
   const { data: subscription } = await supabase
@@ -57,13 +101,12 @@ export async function middleware(request: NextRequest) {
     .eq('project_id', project.id)
     .single()
 
-  // No active subscription → subscribe
   if (!subscription || subscription.status !== 'active') {
-    if (pathname.startsWith('/subscribe')) return supabaseResponse
-    return NextResponse.redirect(new URL('/subscribe', request.url))
+    if (pathname.startsWith(`/${locale}/subscribe`)) return supabaseResponse
+    return NextResponse.redirect(new URL(`/${locale}/subscribe`, request.url))
   }
 
-  // Subscribed but onboarding not done → onboarding
+  // Check onboarding
   const { data: onboardingSession } = await supabase
     .from('onboarding_sessions')
     .select('status')
@@ -72,13 +115,13 @@ export async function middleware(request: NextRequest) {
     .single()
 
   if (!onboardingSession) {
-    if (pathname.startsWith('/onboarding')) return supabaseResponse
-    return NextResponse.redirect(new URL('/onboarding', request.url))
+    if (pathname.startsWith(`/${locale}/onboarding`)) return supabaseResponse
+    return NextResponse.redirect(new URL(`/${locale}/onboarding`, request.url))
   }
 
   return supabaseResponse
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }

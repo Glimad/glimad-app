@@ -1,0 +1,72 @@
+{
+  "auth": {
+    "signup": {
+      "title": "Create your account",
+      "subtitle": "Start your Glimad journey",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Create account",
+      "login_link": "Already have an account?",
+      "login_cta": "Log in"
+    },
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Log in to your Glimad account",
+      "email": "Email",
+      "password": "Password",
+      "submit": "Log in",
+      "signup_link": "Don't have an account?",
+      "signup_cta": "Sign up"
+    },
+    "verify": {
+      "title": "Check your email",
+      "body": "We sent a verification link to your email address. Click it to activate your account.",
+      "hint": "You can close this tab."
+    }
+  },
+  "subscribe": {
+    "title": "Choose your plan",
+    "subtitle": "Full access from day one. No free trial.",
+    "per_month": "/ month",
+    "cta": "Subscribe",
+    "plans": {
+      "base": {
+        "name": "Base",
+        "description": "For creators starting to structure their growth"
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "For creators in active growth phase"
+      },
+      "elite": {
+        "name": "Elite",
+        "description": "For creators in monetization and scale phase"
+      }
+    }
+  },
+  "dashboard": {
+    "welcome": "Welcome",
+    "phase": "Current phase",
+    "active_mission": "Active mission",
+    "xp": "XP",
+    "energy": "Energy",
+    "streak": "Streak",
+    "credits": "Credits",
+    "recent_missions": "Recent missions"
+  },
+  "missions": {
+    "start": "Start mission",
+    "continue": "Continue",
+    "completed": "Completed",
+    "xp_earned": "XP earned",
+    "step": "Step"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "days": "days"
+  }
+}

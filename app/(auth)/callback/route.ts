@@ -31,5 +31,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/subscribe`)
+  return NextResponse.redirect(`${origin}/es/subscribe`)
 }
