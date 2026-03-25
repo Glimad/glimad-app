@@ -1,20 +1,44 @@
 {
   "title": "Elige tu plan",
-  "subtitle": "Acceso completo desde el primer día. Sin prueba gratuita.",
+  "subtitle": "Acceso completo desde el primer día. Sin período de prueba.",
   "per_month": "/ mes",
   "cta": "Suscribirme",
+  "processing": "Redirigiendo...",
   "plans": {
-    "base": {
+    "BASE": {
       "name": "Base",
-      "description": "Para creadores que están empezando a estructurar su crecimiento"
+      "description": "Para creadores que están comenzando",
+      "features": [
+        "2.000 llamadas IA / mes",
+        "500 créditos premium / mes",
+        "Misiones core + estrategia",
+        "Scrape Light semanal",
+        "Calendario de contenido"
+      ]
     },
-    "pro": {
+    "PRO": {
       "name": "Pro",
-      "description": "Para creadores en fase de crecimiento activo"
+      "description": "Para creadores en crecimiento activo",
+      "features": [
+        "5.000 llamadas IA / mes",
+        "1.250 créditos premium / mes",
+        "Todo lo de Base",
+        "Scrape Light diario",
+        "Batch de 7 días",
+        "Generación de imágenes"
+      ]
     },
-    "elite": {
+    "ELITE": {
       "name": "Elite",
-      "description": "Para creadores en fase de monetización y escala"
+      "description": "Para creadores en monetización y escala",
+      "features": [
+        "12.500 llamadas IA / mes",
+        "3.125 créditos premium / mes",
+        "Todo lo de Pro",
+        "Batch de 14 días",
+        "Generación de video",
+        "Jobs prioritarios"
+      ]
     }
   }
 }

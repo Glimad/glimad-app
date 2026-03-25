@@ -1,0 +1,217 @@
+import { createAdminClient } from '@/lib/supabase/admin'
+import { NextResponse } from 'next/server'
+import Stripe from 'stripe'
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+const CREDITS_BY_PLAN: Record<string, { allowance: number; premium: number }> = {
+  BASE:  { allowance: 2000,  premium: 500  },
+  PRO:   { allowance: 5000,  premium: 1250 },
+  ELITE: { allowance: 12500, premium: 3125 },
+}
+
+export async function POST(request: Request) {
+  const body = await request.text()
+  const sig = request.headers.get('stripe-signature')!
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+
+  const event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+
+  const admin = createAdminClient()
+
+  // Idempotency: skip already-processed events
+  const { data: existing } = await admin
+    .from('stripe_events')
+    .select('id, processed')
+    .eq('stripe_event_id', event.id)
+    .single()
+
+  if (existing?.processed) {
+    return NextResponse.json({ received: true })
+  }
+
+  // Save raw event
+  await admin.from('stripe_events').upsert({
+    stripe_event_id: event.id,
+    event_type: event.type,
+    data: event.data,
+    processed: false,
+  }, { onConflict: 'stripe_event_id' })
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object as Stripe.Checkout.Session
+    if (session.mode !== 'subscription') {
+      await admin.from('stripe_events').update({ processed: true }).eq('stripe_event_id', event.id)
+      return NextResponse.json({ received: true })
+    }
+    await handleSubscriptionActivated(admin, event.id, session)
+  }
+
+  if (event.type === 'invoice.paid') {
+    const invoice = event.data.object as Stripe.Invoice
+    await handleInvoicePaid(admin, event.id, invoice)
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const sub = event.data.object as Stripe.Subscription
+    await handleSubscriptionDeleted(admin, sub)
+  }
+
+  await admin.from('stripe_events').update({ processed: true }).eq('stripe_event_id', event.id)
+  return NextResponse.json({ received: true })
+}
+
+async function handleSubscriptionActivated(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string,
+  session: Stripe.Checkout.Session
+) {
+  const userId = session.metadata?.user_id ?? session.client_reference_id
+  const planCode = session.metadata?.plan_code ?? 'BASE'
+  if (!userId) return
+
+  // Retrieve full subscription
+  const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string)
+  const item = stripeSub.items.data[0]
+
+  // Upsert core_subscriptions
+  await admin.from('core_subscriptions').upsert({
+    project_id: await getProjectId(admin, userId),
+    user_id: userId,
+    stripe_customer_id: session.customer as string,
+    stripe_subscription_id: stripeSub.id,
+    plan_code: planCode,
+    status: 'active',
+    current_period_start: new Date(item.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(item.current_period_end * 1000).toISOString(),
+    cancel_at_period_end: stripeSub.cancel_at_period_end,
+  }, { onConflict: 'stripe_subscription_id' })
+
+  // Upsert access grant
+  await admin.from('core_access_grants').upsert({
+    user_id: userId,
+    project_id: await getProjectId(admin, userId),
+    source: 'subscription',
+    status: 'active',
+    reference_id: stripeSub.id,
+  }, { onConflict: 'reference_id' })
+
+  // Initialize wallet + grant credits
+  await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end)
+}
+
+async function handleInvoicePaid(
+  admin: ReturnType<typeof createAdminClient>,
+  eventId: string,
+  invoice: Stripe.Invoice
+) {
+  const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
+    ? invoice.parent.subscription_details.subscription
+    : invoice.parent?.subscription_details?.subscription?.id
+
+  if (!subscriptionId) return
+
+  const { data: sub } = await admin
+    .from('core_subscriptions')
+    .select('user_id, plan_code, project_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .single()
+
+  if (!sub) return
+
+  // Update period
+  const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+  const periodItem = stripeSub.items.data[0]
+  await admin.from('core_subscriptions').update({
+    status: 'active',
+    current_period_start: new Date(periodItem.current_period_start * 1000).toISOString(),
+    current_period_end: new Date(periodItem.current_period_end * 1000).toISOString(),
+  }).eq('stripe_subscription_id', subscriptionId)
+
+  // Grant renewal credits (idempotency key uses invoice ID)
+  const idempKey = `invoice_${invoice.id}_grant`
+  const { data: alreadyGranted } = await admin
+    .from('core_ledger')
+    .select('ledger_id')
+    .eq('idempotency_key', idempKey)
+    .single()
+
+  if (alreadyGranted) return
+
+  await grantMonthlyCredits(
+    admin, sub.user_id, sub.plan_code,
+    subscriptionId,
+    periodItem.current_period_end,
+    invoice.id
+  )
+}
+
+async function handleSubscriptionDeleted(
+  admin: ReturnType<typeof createAdminClient>,
+  sub: Stripe.Subscription
+) {
+  await admin.from('core_subscriptions')
+    .update({ status: 'canceled', cancel_at_period_end: false })
+    .eq('stripe_subscription_id', sub.id)
+
+  await admin.from('core_access_grants')
+    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+    .eq('reference_id', sub.id)
+    .eq('status', 'active')
+}
+
+async function grantMonthlyCredits(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string,
+  planCode: string,
+  subscriptionId: string,
+  periodEnd: number,
+  invoiceId?: string
+) {
+  const credits = CREDITS_BY_PLAN[planCode] ?? CREDITS_BY_PLAN.BASE
+  const projectId = await getProjectId(admin, userId)
+  const resetAt = new Date(periodEnd * 1000).toISOString()
+  const idempKey = invoiceId
+    ? `invoice_${invoiceId}_grant`
+    : `subscription_grant_${subscriptionId}_${periodEnd}`
+
+  // Upsert wallet
+  await admin.from('core_wallets').upsert({
+    project_id: projectId,
+    plan_code: planCode,
+    allowance_llm_balance: credits.allowance,
+    credits_allowance: credits.allowance,
+    premium_credits_balance: credits.premium,
+    premium_daily_cap_remaining: credits.premium,
+    allowance_reset_at: resetAt,
+    premium_reset_at: resetAt,
+    status: 'active',
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'project_id' })
+
+  // Ledger credit entry
+  await admin.from('core_ledger').insert({
+    project_id: projectId,
+    kind: 'credit',
+    amount_allowance: credits.allowance,
+    amount_premium: credits.premium,
+    reason_key: 'PLAN_MONTHLY_GRANT',
+    ref_type: 'payment',
+    ref_id: subscriptionId,
+    idempotency_key: idempKey,
+    metadata_json: { plan_code: planCode, period_end: periodEnd },
+  })
+}
+
+async function getProjectId(
+  admin: ReturnType<typeof createAdminClient>,
+  userId: string
+): Promise<string> {
+  const { data } = await admin
+    .from('projects')
+    .select('id')
+    .eq('user_id', userId)
+    .neq('status', 'archived')
+    .single()
+  return data!.id
+}

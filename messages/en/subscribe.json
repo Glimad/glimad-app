@@ -3,18 +3,42 @@
   "subtitle": "Full access from day one. No free trial.",
   "per_month": "/ month",
   "cta": "Subscribe",
+  "processing": "Redirecting...",
   "plans": {
-    "base": {
+    "BASE": {
       "name": "Base",
-      "description": "For creators starting to structure their growth"
+      "description": "For creators just getting started",
+      "features": [
+        "2,000 AI calls / month",
+        "500 premium credits / month",
+        "Core missions + strategy",
+        "Weekly Scrape Light",
+        "Content calendar"
+      ]
     },
-    "pro": {
+    "PRO": {
       "name": "Pro",
-      "description": "For creators in active growth phase"
+      "description": "For creators in active growth",
+      "features": [
+        "5,000 AI calls / month",
+        "1,250 premium credits / month",
+        "Everything in Base",
+        "Daily Scrape Light",
+        "7-day batch",
+        "Image generation"
+      ]
     },
-    "elite": {
+    "ELITE": {
       "name": "Elite",
-      "description": "For creators in monetization and scale phase"
+      "description": "For creators in monetization and scale",
+      "features": [
+        "12,500 AI calls / month",
+        "3,125 premium credits / month",
+        "Everything in Pro",
+        "14-day batch",
+        "Video generation",
+        "Priority jobs"
+      ]
     }
   }
 }
