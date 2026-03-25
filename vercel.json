@@ -1,8 +1,12 @@
 {
   "crons": [
     {
-      "path": "/api/pulse/cron",
+      "path": "/api/scrape/run",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/pulse/cron",
+      "schedule": "0 9 * * *"
     }
   ]
 }

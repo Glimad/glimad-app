@@ -1,10 +1,36 @@
 {
-  "welcome": "Welcome",
-  "phase": "Current phase",
-  "active_mission": "Active mission",
-  "xp": "XP",
-  "energy": "Energy",
-  "streak": "Streak",
+  "welcome": "Welcome back",
+  "phase": "Phase",
+  "capability_score": "Score",
+  "next_mission": "Next mission",
+  "start_mission": "Start mission",
+  "resume_mission": "Resume mission",
+  "no_mission": "All caught up",
+  "no_mission_sub": "The system will compute your next mission soon",
+  "mode": "Mode",
+  "mode_test": "Exploration",
+  "mode_scale": "Scale",
+  "mode_monetize": "Monetize",
   "credits": "Credits",
-  "recent_missions": "Recent missions"
+  "premium_credits": "Premium credits",
+  "allowance": "Plan allowance",
+  "phase_label": "F{phase} — {name}",
+  "phases": {
+    "F0": "Orientation",
+    "F1": "Setup",
+    "F2": "Validation",
+    "F3": "Consistency",
+    "F4": "Product",
+    "F5": "Influence",
+    "F6": "Authority",
+    "F7": "Star"
+  },
+  "computing": "Computing your phase...",
+  "mission_types": {
+    "discovery": "Discovery",
+    "planning": "Planning",
+    "execution": "Execution",
+    "analysis": "Analysis",
+    "rescue": "Rescue"
+  }
 }

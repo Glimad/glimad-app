@@ -1,0 +1,178 @@
+// Inflexion Engine — detects significant events requiring strategy change
+// Pure function: reads Brain signals from last 72h, returns detected inflexion or null
+
+import { createAdminClient } from '@/lib/supabase/admin'
+import { readSignals, readFact, appendSignal } from '@/lib/brain'
+
+type AdminClient = ReturnType<typeof createAdminClient>
+
+export type InflexionType =
+  | 'viral_spike'
+  | 'engagement_plateau'
+  | 'burnout_risk'
+  | 'monetization_ready'
+  | 'crisis'
+
+export interface InflexionResult {
+  type: InflexionType
+  confidence: number
+  evidence: Record<string, unknown>
+}
+
+export async function detectInflexion(
+  admin: AdminClient,
+  projectId: string
+): Promise<InflexionResult | null> {
+  const signals72h = await readSignals(admin, projectId, 72)
+  const signals14d = await readSignals(admin, projectId, 14 * 24)
+  const signals30d = await readSignals(admin, projectId, 30 * 24)
+  const signals90d = await readSignals(admin, projectId, 90 * 24)
+
+  const followers = (await readFact(admin, projectId, 'followers_total') as number | null) ?? 0
+  const avgEr = (await readFact(admin, projectId, 'avg_engagement_rate') as number | null) ?? 0
+
+  // ── viral_spike detection ─────────────────────────────────────────────────
+  // Look for scrape-detected viral spike or follower growth 3x above average
+  const viralSpikeSignals = signals72h.filter(s => s.signal_key === 'content_perf.viral_spike')
+  const growthSignals30d = signals30d
+    .filter(s => s.signal_key === 'growth.followers_total')
+    .map(s => (s.value as { value: number }).value ?? 0)
+
+  if (viralSpikeSignals.length > 0) {
+    const spike = viralSpikeSignals[0].value as { multiplier: number; video_id?: string }
+    return {
+      type: 'viral_spike',
+      confidence: Math.min(0.95, 0.5 + spike.multiplier * 0.1),
+      evidence: { multiplier: spike.multiplier, detected_at: viralSpikeSignals[0].observed_at },
+    }
+  }
+
+  // Follower surge: current vs 30d ago
+  if (growthSignals30d.length >= 2) {
+    const oldest = growthSignals30d[growthSignals30d.length - 1]
+    const newest = growthSignals30d[0]
+    const dailyAvg = oldest > 0 ? (newest - oldest) / 30 : 0
+    const recent7dGrowth = signals72h
+      .filter(s => s.signal_key === 'growth.followers_total')
+      .map(s => (s.value as { value: number }).value ?? 0)
+
+    if (recent7dGrowth.length >= 2) {
+      const recentGrowth = recent7dGrowth[0] - recent7dGrowth[recent7dGrowth.length - 1]
+      if (dailyAvg > 0 && recentGrowth > dailyAvg * 3 * 3) {
+        return {
+          type: 'viral_spike',
+          confidence: 0.75,
+          evidence: { follower_surge: recentGrowth, daily_baseline: dailyAvg },
+        }
+      }
+    }
+  }
+
+  // ── monetization_ready detection ──────────────────────────────────────────
+  const hasMonetizationReady = signals90d.some(s => {
+    const age = Date.now() - new Date(s.observed_at).getTime()
+    return s.signal_key === 'monetization_ready' && age < 90 * 24 * 3600 * 1000
+  })
+
+  if (!hasMonetizationReady && followers >= 5000 && avgEr >= 0.03) {
+    return {
+      type: 'monetization_ready',
+      confidence: 0.8,
+      evidence: { followers, avg_engagement_rate: avgEr },
+    }
+  }
+
+  // ── engagement_plateau detection ──────────────────────────────────────────
+  const erSignals14d = signals14d.filter(s => s.signal_key === 'engagement.avg_er_7d')
+  const hasPositiveGrowth14d = signals14d.some(s => {
+    const val = s.value as { value: number }
+    return s.signal_key === 'growth.followers_total' && (val.value ?? 0) > 0
+  })
+
+  if (erSignals14d.length > 0 && !hasPositiveGrowth14d) {
+    const latestEr = (erSignals14d[0].value as { value: number }).value ?? 0
+    if (latestEr < 0.02) {
+      return {
+        type: 'engagement_plateau',
+        confidence: 0.7,
+        evidence: { avg_er: latestEr, days_without_growth: 14 },
+      }
+    }
+  }
+
+  // ── burnout_risk detection ────────────────────────────────────────────────
+  const hasConsistencyGap = signals14d.some(s => s.signal_key === 'consistency_gap')
+  const postsLast30d = signals30d
+    .filter(s => s.signal_key === 'consistency.posts_published_30d')
+    .map(s => (s.value as { value: number }).value ?? 0)
+  const postsLast7d = signals14d
+    .filter(s => s.signal_key === 'consistency.posts_published_7d')
+    .map(s => (s.value as { value: number }).value ?? 0)
+
+  if (hasConsistencyGap && postsLast30d.length >= 2 && postsLast7d.length > 0) {
+    const avgMonthly = postsLast30d.reduce((a, b) => a + b, 0) / postsLast30d.length
+    const recentWeekly = postsLast7d[0]
+    if (recentWeekly < avgMonthly / 4) {
+      return {
+        type: 'burnout_risk',
+        confidence: 0.65,
+        evidence: { posts_this_week: recentWeekly, avg_monthly_pace: avgMonthly },
+      }
+    }
+  }
+
+  return null
+}
+
+export async function runInflexionEngine(
+  admin: AdminClient,
+  projectId: string
+): Promise<InflexionResult | null> {
+  const result = await detectInflexion(admin, projectId)
+  if (!result) return null
+
+  // Write inflexion signal
+  await appendSignal(admin, projectId, 'inflexion_detected', {
+    type: result.type,
+    confidence: result.confidence,
+    evidence: result.evidence,
+  }, 'inflexion_engine')
+
+  // Persist inflexion event
+  const missionMap: Record<InflexionType, string> = {
+    viral_spike: 'VIRAL_RESPONSE_V1',
+    engagement_plateau: 'ENGAGEMENT_RECOVERY_V1',
+    burnout_risk: 'RESCUE_CONSISTENCY_V1',
+    monetization_ready: 'DEFINE_OFFER_V1',
+    crisis: 'CRISIS_RESPONSE_V1',
+  }
+
+  const typeMap: Record<InflexionType, 'alert' | 'upgrade' | 'downgrade' | 'mode_change'> = {
+    viral_spike: 'alert',
+    engagement_plateau: 'alert',
+    burnout_risk: 'downgrade',
+    monetization_ready: 'upgrade',
+    crisis: 'downgrade',
+  }
+
+  const severityMap: Record<InflexionType, 'low' | 'med' | 'high'> = {
+    viral_spike: 'high',
+    engagement_plateau: 'med',
+    burnout_risk: 'high',
+    monetization_ready: 'med',
+    crisis: 'high',
+  }
+
+  await admin.from('core_inflexion_events').insert({
+    project_id: projectId,
+    event_key: result.type,
+    type: typeMap[result.type],
+    severity: severityMap[result.type],
+    confidence: result.confidence,
+    recommended_actions: [missionMap[result.type]],
+    evidence_bundle: result.evidence,
+    cooldown_hours: 168, // 7 days
+  })
+
+  return result
+}

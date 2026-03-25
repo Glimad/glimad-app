@@ -1,10 +1,36 @@
 {
-  "welcome": "Bienvenido",
-  "phase": "Fase actual",
-  "active_mission": "Misión activa",
-  "xp": "XP",
-  "energy": "Energía",
-  "streak": "Racha",
+  "welcome": "Bienvenido de vuelta",
+  "phase": "Fase",
+  "capability_score": "Puntuación",
+  "next_mission": "Próxima misión",
+  "start_mission": "Comenzar misión",
+  "resume_mission": "Continuar misión",
+  "no_mission": "Todo al día",
+  "no_mission_sub": "El sistema calculará tu próxima misión pronto",
+  "mode": "Modo",
+  "mode_test": "Exploración",
+  "mode_scale": "Escala",
+  "mode_monetize": "Monetización",
   "credits": "Créditos",
-  "recent_missions": "Últimas misiones"
+  "premium_credits": "Créditos premium",
+  "allowance": "Incluido en plan",
+  "phase_label": "F{phase} — {name}",
+  "phases": {
+    "F0": "Orientación",
+    "F1": "Preparación",
+    "F2": "Validación",
+    "F3": "Consistencia",
+    "F4": "Producto",
+    "F5": "Influencia",
+    "F6": "Autoridad",
+    "F7": "Estrella"
+  },
+  "computing": "Calculando tu fase...",
+  "mission_types": {
+    "discovery": "Exploración",
+    "planning": "Planificación",
+    "execution": "Ejecución",
+    "analysis": "Análisis",
+    "rescue": "Rescate"
+  }
 }
