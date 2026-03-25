@@ -1,14 +1,14 @@
 'use client'
 
 import { useLocale, useTranslations } from 'next-intl'
-import { usePathname, useRouter } from '@/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
 import { locales } from '@/i18n.config'
 
 export default function LanguageSwitcher() {
   const locale = useLocale()
   const t = useTranslations('common.lang')
-  const pathname = usePathname()
+  const pathname = usePathname() // e.g. '/es/onboarding'
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -22,7 +22,9 @@ export default function LanguageSwitcher() {
   }, [])
 
   function switchLocale(next: string) {
-    router.replace(pathname, { locale: next })
+    // Replace the leading locale segment: /es/onboarding → /en/onboarding
+    const newPath = pathname.replace(new RegExp(`^/${locale}`), `/${next}`) || `/${next}`
+    router.push(newPath)
     setOpen(false)
   }
 
