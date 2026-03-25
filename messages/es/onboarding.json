@@ -1,0 +1,35 @@
+{
+  "title": "Cuéntanos sobre ti",
+  "subtitle": "Personalizamos tu experiencia según tus respuestas",
+  "next": "Siguiente",
+  "back": "Atrás",
+  "finish": "Crear mi cuenta",
+  "step_of": "Paso {step} de {total}",
+  "questions": {
+    "interests": {
+      "text": "¿Qué temas te apasionan?",
+      "hint": "Puedes elegir varios",
+      "options": ["Psicología", "Fitness", "Negocios", "Tech", "Arte", "Moda", "Gastronomía", "Viajes", "Otro"]
+    },
+    "goal_90d": {
+      "text": "¿Cuál es tu objetivo a 90 días?",
+      "placeholder": "Ej: Crecer en Instagram y conseguir mis primeros 1000 seguidores"
+    },
+    "blocker_1": {
+      "text": "¿Cuál es tu mayor obstáculo ahora mismo?",
+      "options": ["No sé qué publicar", "No tengo tiempo", "No sé editar video", "Miedo a exponerme", "No tengo audiencia", "Otro"]
+    },
+    "face_pref": {
+      "text": "¿Te sientes cómodo mostrando tu cara en el contenido?",
+      "options": ["Sí, sin problema", "No, prefiero no salir", "Depende del contenido"]
+    },
+    "time_budget_week": {
+      "text": "¿Cuánto tiempo puedes dedicar por semana a crear contenido?",
+      "options": ["Menos de 1h", "1-2h", "3-5h", "6-10h", "Más de 10h"]
+    },
+    "platform_current": {
+      "text": "¿En qué plataforma estás ahora (o quieres enfocarte)?",
+      "options": ["Instagram", "TikTok", "YouTube", "Twitter / X", "Spotify", "Ninguna por ahora"]
+    }
+  }
+}

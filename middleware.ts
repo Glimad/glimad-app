@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
   const locale = localeMatch ? localeMatch[1] : defaultLocale
 
   // Public auth routes — allow through after locale handling
-  const authPaths = [`/${locale}/login`, `/${locale}/signup`, `/${locale}/verify`]
+  const authPaths = [`/${locale}/login`, `/${locale}/signup`, `/${locale}/verify`, `/${locale}/onboarding`]
   if (authPaths.some(p => pathname.startsWith(p))) {
     return intlResponse
   }

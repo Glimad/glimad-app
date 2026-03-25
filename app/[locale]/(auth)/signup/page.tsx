@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -10,9 +10,12 @@ export default function SignupPage() {
   const t = useTranslations('auth.signup')
   const locale = useLocale()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+
+  const sessionId = searchParams.get('sid')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -20,7 +23,10 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback${sessionId ? `?sid=${sessionId}` : ''}`,
+        data: {
+          onboarding_session_id: sessionId ?? null,
+        },
       },
     })
     router.push(`/${locale}/verify`)

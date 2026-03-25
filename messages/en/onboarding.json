@@ -1,0 +1,35 @@
+{
+  "title": "Tell us about yourself",
+  "subtitle": "We personalize your experience based on your answers",
+  "next": "Next",
+  "back": "Back",
+  "finish": "Create my account",
+  "step_of": "Step {step} of {total}",
+  "questions": {
+    "interests": {
+      "text": "What topics are you passionate about?",
+      "hint": "You can pick several",
+      "options": ["Psychology", "Fitness", "Business", "Tech", "Art", "Fashion", "Food", "Travel", "Other"]
+    },
+    "goal_90d": {
+      "text": "What is your goal for the next 90 days?",
+      "placeholder": "E.g. Grow on Instagram and reach my first 1000 followers"
+    },
+    "blocker_1": {
+      "text": "What is your biggest obstacle right now?",
+      "options": ["I don't know what to post", "I don't have time", "I can't edit video", "Fear of being on camera", "I have no audience", "Other"]
+    },
+    "face_pref": {
+      "text": "Are you comfortable showing your face in content?",
+      "options": ["Yes, no problem", "No, I prefer not to", "Depends on the content"]
+    },
+    "time_budget_week": {
+      "text": "How much time can you dedicate to content creation per week?",
+      "options": ["Less than 1h", "1-2h", "3-5h", "6-10h", "More than 10h"]
+    },
+    "platform_current": {
+      "text": "Which platform are you on (or want to focus on)?",
+      "options": ["Instagram", "TikTok", "YouTube", "Twitter / X", "Spotify", "None yet"]
+    }
+  }
+}

@@ -5,12 +5,13 @@ export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale
   const locale = requested ?? 'es'
 
-  const [auth, subscribe, dashboard, missions, common] = await Promise.all([
+  const [auth, subscribe, dashboard, missions, common, onboarding] = await Promise.all([
     import(`./messages/${locale}/auth.json`),
     import(`./messages/${locale}/subscribe.json`),
     import(`./messages/${locale}/dashboard.json`),
     import(`./messages/${locale}/missions.json`),
     import(`./messages/${locale}/common.json`),
+    import(`./messages/${locale}/onboarding.json`),
   ])
 
   return {
@@ -21,6 +22,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
       dashboard: dashboard.default,
       missions: missions.default,
       common: common.default,
+      onboarding: onboarding.default,
     },
   }
 })
