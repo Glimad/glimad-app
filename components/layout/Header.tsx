@@ -12,9 +12,16 @@ export default async function Header({ locale }: { locale: string }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Logo */}
-        <a href={`/${locale}/onboarding`} className="flex items-center bg-white rounded-md px-2 py-1">
-          <Image src={LOGO_FULL} alt="Glimad" width={100} height={28} priority />
+        {/* Logo — white on transparent, shown on dark header */}
+        <a href={`/${locale}/onboarding`} className="flex items-center overflow-hidden" style={{ height: '36px', width: '200px' }}>
+          <Image
+            src={LOGO_FULL}
+            alt="Glimad"
+            width={200}
+            height={113}
+            priority
+            style={{ marginTop: '-39px' }}
+          />
         </a>
 
         {/* Right side */}
