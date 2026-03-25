@@ -4,5 +4,22 @@
   "cancel": "Cancel",
   "back": "Back",
   "next": "Next",
-  "days": "days"
+  "days": "days",
+  "header": {
+    "login": "Log in",
+    "signup": "Sign up",
+    "logout": "Log out",
+    "dashboard": "Dashboard",
+    "account": "My account"
+  },
+  "footer": {
+    "tagline": "Your content strategy, powered by AI.",
+    "terms": "Terms",
+    "privacy": "Privacy",
+    "copyright": "© 2025 Glimad. All rights reserved."
+  },
+  "lang": {
+    "es": "Español",
+    "en": "English"
+  }
 }
