@@ -13,7 +13,7 @@ export default async function Header({ locale }: { locale: string }) {
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
-        <a href={`/${locale}/onboarding`} className="flex items-center">
+        <a href={`/${locale}/onboarding`} className="flex items-center bg-white rounded-md px-2 py-1">
           <Image src={LOGO_FULL} alt="Glimad" width={100} height={28} priority />
         </a>
 
