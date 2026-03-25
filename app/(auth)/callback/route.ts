@@ -1,0 +1,35 @@
+import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { NextResponse } from 'next/server'
+
+export async function GET(request: Request) {
+  const { searchParams, origin } = new URL(request.url)
+  const code = searchParams.get('code')
+
+  if (code) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (user) {
+      // Create project row if it doesn't exist yet
+      const admin = createAdminClient()
+      const { data: existing } = await admin
+        .from('projects')
+        .select('id')
+        .eq('user_id', user.id)
+        .neq('status', 'archived')
+        .single()
+
+      if (!existing) {
+        await admin.from('projects').insert({
+          user_id: user.id,
+          name: user.email ?? 'My Project',
+          status: 'created',
+          phase_code: 'F0',
+        })
+      }
+    }
+  }
+
+  return NextResponse.redirect(`${origin}/subscribe`)
+}
