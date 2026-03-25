@@ -1,0 +1,20 @@
+{
+  "title": "Elige tu plan",
+  "subtitle": "Acceso completo desde el primer día. Sin prueba gratuita.",
+  "per_month": "/ mes",
+  "cta": "Suscribirme",
+  "plans": {
+    "base": {
+      "name": "Base",
+      "description": "Para creadores que están empezando a estructurar su crecimiento"
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "Para creadores en fase de crecimiento activo"
+    },
+    "elite": {
+      "name": "Elite",
+      "description": "Para creadores en fase de monetización y escala"
+    }
+  }
+}

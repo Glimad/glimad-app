@@ -4,8 +4,23 @@ export { locales, defaultLocale } from './i18n.config'
 export default getRequestConfig(async ({ requestLocale }) => {
   const requested = await requestLocale
   const locale = requested ?? 'es'
+
+  const [auth, subscribe, dashboard, missions, common] = await Promise.all([
+    import(`./messages/${locale}/auth.json`),
+    import(`./messages/${locale}/subscribe.json`),
+    import(`./messages/${locale}/dashboard.json`),
+    import(`./messages/${locale}/missions.json`),
+    import(`./messages/${locale}/common.json`),
+  ])
+
   return {
     locale,
-    messages: (await import(`./messages/${locale}.json`)).default,
+    messages: {
+      auth: auth.default,
+      subscribe: subscribe.default,
+      dashboard: dashboard.default,
+      missions: missions.default,
+      common: common.default,
+    },
   }
 })

@@ -1,0 +1,20 @@
+{
+  "title": "Choose your plan",
+  "subtitle": "Full access from day one. No free trial.",
+  "per_month": "/ month",
+  "cta": "Subscribe",
+  "plans": {
+    "base": {
+      "name": "Base",
+      "description": "For creators starting to structure their growth"
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "For creators in active growth phase"
+    },
+    "elite": {
+      "name": "Elite",
+      "description": "For creators in monetization and scale phase"
+    }
+  }
+}
