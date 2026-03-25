@@ -3,7 +3,7 @@ import Image from 'next/image'
 import LanguageSwitcher from './LanguageSwitcher'
 import AuthMenu from './AuthMenu'
 
-const LOGO_FULL = 'https://awaakurvnngazmnnmwza.supabase.co/storage/v1/object/public/public-assets/logo-full.png'
+const LOGO = 'https://awaakurvnngazmnnmwza.supabase.co/storage/v1/object/public/public-assets/logo-g-fondoblanco.png'
 
 export default async function Header({ locale }: { locale: string }) {
   const supabase = createClient()
@@ -12,16 +12,9 @@ export default async function Header({ locale }: { locale: string }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        {/* Logo — white on transparent, shown on dark header */}
-        <a href={`/${locale}/onboarding`} className="flex items-center overflow-hidden" style={{ height: '36px', width: '200px' }}>
-          <Image
-            src={LOGO_FULL}
-            alt="Glimad"
-            width={200}
-            height={113}
-            priority
-            style={{ marginTop: '-39px' }}
-          />
+        {/* Logo */}
+        <a href={`/${locale}/onboarding`} className="flex items-center bg-white rounded-lg p-1">
+          <Image src={LOGO} alt="Glimad" width={36} height={36} priority />
         </a>
 
         {/* Right side */}
