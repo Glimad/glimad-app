@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -98,6 +99,10 @@ async function handleSubscriptionActivated(
 
   // Initialize wallet + grant credits
   await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end)
+
+  // Seed Brain Facts from onboarding answers + compute initial phase
+  const projectId = await getProjectId(admin, userId)
+  await seedBrainFromOnboarding(admin, userId, projectId)
 }
 
 async function handleInvoicePaid(
