@@ -23,7 +23,6 @@ export default function SignupPage() {
       email,
       password,
       options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
         data: {
           onboarding_session_id: sessionId ?? null,
         },
