@@ -12,9 +12,10 @@ const PRICE_MAP: Record<string, string> = {
 }
 
 export async function POST(request: Request) {
+  const { plan_code } = await request.json()
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const { plan_code } = await request.json()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const priceId = PRICE_MAP[plan_code]
   const origin = new URL(request.url).origin
