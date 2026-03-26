@@ -14,12 +14,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) { setError(error.message); return }
+    if (error) { setError(error.message); setLoading(false); return }
     router.push(`/${locale}/dashboard`)
     router.refresh()
   }
@@ -53,9 +55,10 @@ export default function LoginPage() {
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <button
             type="submit"
-            className="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold transition-colors"
+            disabled={loading}
+            className="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >
-            {t('submit')}
+            {loading ? t('loading') : t('submit')}
           </button>
         </form>
         <p className="text-center text-zinc-400 text-sm">

@@ -194,7 +194,7 @@ export default function OnboardingPage() {
             disabled={!canAdvance || loading || !sessionId}
             className="flex-1 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >
-            {loading ? '...' : isLast ? t('finish') : t('next')}
+            {loading ? t('loading') : isLast ? t('finish') : t('next')}
           </button>
         </div>
       </div>

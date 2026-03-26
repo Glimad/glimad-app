@@ -4,6 +4,7 @@
   "next": "Next",
   "back": "Back",
   "finish": "Create my account",
+  "loading": "Saving...",
   "step_of": "Step {step} of {total}",
   "questions": {
     "interests": {

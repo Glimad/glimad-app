@@ -4,6 +4,7 @@
   "next": "Siguiente",
   "back": "Atrás",
   "finish": "Crear mi cuenta",
+  "loading": "Guardando...",
   "step_of": "Paso {step} de {total}",
   "questions": {
     "interests": {
