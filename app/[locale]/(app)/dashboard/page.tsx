@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { getLocale, getTranslations } from 'next-intl/server'
@@ -19,14 +19,22 @@ const PHASE_COLORS: Record<string, string> = {
 }
 
 export default async function DashboardPage() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
   const locale = await getLocale()
   const t = await getTranslations('dashboard')
 
-  if (!user) redirect(`/${locale}/login`)
-
+  const cookieStore = cookies()
+  const authCookie = cookieStore.get('sb-awaakurvnngazmnnmwza-auth-token')
   const admin = createAdminClient()
+  let user = null
+  if (authCookie?.value?.startsWith('base64-')) {
+    const session = JSON.parse(Buffer.from(authCookie.value.slice(7), 'base64').toString('utf-8'))
+    if (session.access_token) {
+      const { data } = await admin.auth.getUser(session.access_token)
+      user = data.user
+    }
+  }
+
+  if (!user) redirect(`/${locale}/login`)
 
   const { data: project } = await admin
     .from('projects')
