@@ -95,13 +95,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/${locale}/subscribe`, request.url))
   }
 
-  const { data: subscription } = await supabase
+  const { data: subscriptions } = await supabase
     .from('core_subscriptions')
     .select('status')
     .eq('project_id', project.id)
-    .single()
+    .eq('status', 'active')
+    .limit(1)
 
-  if (!subscription || subscription.status !== 'active') {
+  const subscription = subscriptions?.[0] ?? null
+
+  if (!subscription) {
     if (pathname.startsWith(`/${locale}/subscribe`)) return supabaseResponse
     return NextResponse.redirect(new URL(`/${locale}/subscribe`, request.url))
   }
