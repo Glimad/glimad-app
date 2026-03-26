@@ -3,15 +3,15 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
-
-const PRICE_MAP: Record<string, string> = {
-  BASE:  process.env.STRIPE_PRICE_BASE!,
-  PRO:   process.env.STRIPE_PRICE_PRO!,
-  ELITE: process.env.STRIPE_PRICE_ELITE!,
-}
-
 export async function POST(request: Request) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+  const PRICE_MAP: Record<string, string> = {
+    BASE:  process.env.STRIPE_PRICE_BASE!,
+    PRO:   process.env.STRIPE_PRICE_PRO!,
+    ELITE: process.env.STRIPE_PRICE_ELITE!,
+  }
+
   const { plan_code } = await request.json()
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
