@@ -28,3 +28,10 @@ CREATE POLICY "Users can view own ledger"
       SELECT id FROM projects WHERE user_id = auth.uid()
     )
   );
+
+-- RLS for onboarding_sessions
+ALTER TABLE onboarding_sessions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own onboarding session"
+  ON onboarding_sessions FOR SELECT
+  USING (converted_to_user_id = auth.uid() OR converted_to_user_id IS NULL);
