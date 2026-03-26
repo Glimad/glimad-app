@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import Image from 'next/image'
 import LanguageSwitcher from './LanguageSwitcher'
 import AuthMenu from './AuthMenu'
 
@@ -12,7 +11,8 @@ export default async function Header({ locale }: { locale: string }) {
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
         <a href={`/${locale}/onboarding`} className="flex items-center">
-          <Image src="/logo.png" alt="Glimad" width={40} height={40} priority />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Glimad" width={40} height={40} />
         </a>
 
         {/* Right side */}
