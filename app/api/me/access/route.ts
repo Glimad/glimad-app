@@ -6,6 +6,8 @@ export async function GET(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ access_state: 'unauthenticated' }, { status: 401 })
 
+  const admin = createAdminClient()
+
   // Check active access grant
   const { data: grant } = await admin
     .from('core_access_grants')
