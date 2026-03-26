@@ -3,8 +3,6 @@ import Image from 'next/image'
 import LanguageSwitcher from './LanguageSwitcher'
 import AuthMenu from './AuthMenu'
 
-const LOGO = 'https://awaakurvnngazmnnmwza.supabase.co/storage/v1/object/public/public-assets/logo-g-fondoblanco.png'
-
 export default async function Header({ locale }: { locale: string }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -13,8 +11,8 @@ export default async function Header({ locale }: { locale: string }) {
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         {/* Logo */}
-        <a href={`/${locale}/onboarding`} className="flex items-center bg-white rounded-lg p-1">
-          <Image src={LOGO} alt="Glimad" width={36} height={36} priority />
+        <a href={`/${locale}/onboarding`} className="flex items-center">
+          <Image src="/logo.png" alt="Glimad" width={120} height={36} priority />
         </a>
 
         {/* Right side */}
