@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Glimad',
   description: 'AI-powered growth operating system for digital creators',
+  icons: {
+    icon: 'https://awaakurvnngazmnnmwza.supabase.co/storage/v1/object/public/public-assets/favicon.png',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

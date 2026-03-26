@@ -12,7 +12,7 @@ export default async function Header({ locale }: { locale: string }) {
         {/* Logo */}
         <a href={`/${locale}/onboarding`} className="flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Glimad" width={40} height={40} />
+          <img src="https://www.glimad.com/assets/5214dd55518a7c14c563198b177e58a9471a0f73-DFAXz9bY.png" alt="Glimad" width={40} height={40} />
         </a>
 
         {/* Right side */}
