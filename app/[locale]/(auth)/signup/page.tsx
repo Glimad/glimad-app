@@ -14,12 +14,14 @@ export default function SignupPage() {
   const supabase = createClient()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
 
   const sessionId = searchParams.get('sid')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    await supabase.auth.signUp({
+    setError('')
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -29,6 +31,7 @@ export default function SignupPage() {
         },
       },
     })
+    if (error) { setError(error.message); return }
     router.push(`/${locale}/verify`)
   }
 
@@ -56,8 +59,10 @@ export default function SignupPage() {
               onChange={e => setPassword(e.target.value)}
               className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:border-violet-500"
               required
+              minLength={6}
             />
           </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
           <button
             type="submit"
             className="w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-semibold transition-colors"
