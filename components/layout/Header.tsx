@@ -1,10 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
+import { cookies } from 'next/headers'
+import { createAdminClient } from '@/lib/supabase/admin'
 import LanguageSwitcher from './LanguageSwitcher'
 import AuthMenu from './AuthMenu'
 
 export default async function Header({ locale }: { locale: string }) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieStore = cookies()
+  const authCookie = cookieStore.get('sb-awaakurvnngazmnnmwza-auth-token')
+  let user = null
+  if (authCookie?.value?.startsWith('base64-')) {
+    const session = JSON.parse(Buffer.from(authCookie.value.slice(7), 'base64').toString('utf-8'))
+    if (session.access_token) {
+      const admin = createAdminClient()
+      const { data } = await admin.auth.getUser(session.access_token)
+      user = data.user
+    }
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
