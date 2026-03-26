@@ -1,27 +1,15 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAuthUser } from '@/lib/supabase/extract-token'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
-
-function extractToken(request: Request): string | null {
-  const cookie = request.headers.get('cookie') ?? ''
-  // Supabase SSR stores as: sb-<ref>-auth-token=base64-<json>
-  const match = cookie.match(/sb-awaakurvnngazmnnmwza-auth-token=base64-([^;]+)/)
-  if (!match) return null
-  const decoded = Buffer.from(match[1], 'base64').toString('utf-8')
-  const parsed = JSON.parse(decoded)
-  return parsed.access_token ?? null
-}
 
 export async function POST(request: Request) {
   const { plan_code } = await request.json()
 
-  const token = extractToken(request)
-  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const admin = createAdminClient()
-  const { data: { user } } = await admin.auth.getUser(token)
+  const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const admin = createAdminClient()
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
   const PRICE_MAP: Record<string, string> = {

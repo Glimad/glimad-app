@@ -1,15 +1,14 @@
 // POST /api/engines — runs Phase Engine + Inflexion Engine + Policy Engine
 // Returns: phase, capability score, recommended mission, active mode
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAuthUser } from '@/lib/supabase/extract-token'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
 import { runInflexionEngine } from '@/lib/engines/inflexion-engine'
 import { runPolicyEngine } from '@/lib/engines/policy-engine'
 
-export async function POST() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function POST(request: Request) {
+  const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()

@@ -1,13 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getAuthUser } from '@/lib/supabase/extract-token'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function GET(request: Request) {
+  const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ access_state: 'unauthenticated' }, { status: 401 })
-
-  const admin = createAdminClient()
 
   // Check active access grant
   const { data: grant } = await admin
