@@ -1,6 +1,8 @@
 import { NextIntlClientProvider } from 'next-intl'
 import { getMessages } from 'next-intl/server'
 import { locales } from '@/i18n'
+import Header from '@/components/layout/Header'
+import Footer from '@/components/layout/Footer'
 
 export function generateStaticParams() {
   return locales.map(locale => ({ locale }))
@@ -17,7 +19,13 @@ export default async function LocaleLayout({
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
-      {children}
+      <div className="min-h-screen flex flex-col bg-black">
+        <Header locale={locale} />
+        <main className="flex-1 pt-14">
+          {children}
+        </main>
+        <Footer locale={locale} />
+      </div>
     </NextIntlClientProvider>
   )
 }

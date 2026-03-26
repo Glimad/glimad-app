@@ -89,8 +89,8 @@ export default async function DashboardPage() {
   const modeKey = `mode_${policy.activeMode}` as 'mode_test' | 'mode_scale' | 'mode_monetize'
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-6xl mx-auto px-4 pt-20 pb-12">
+    <div className="text-white">
+      <div className="max-w-6xl mx-auto px-4 pt-8 pb-12">
 
         {/* Welcome */}
         <div className="mb-8">
@@ -196,3 +196,4 @@ export default async function DashboardPage() {
     </div>
   )
 }
+
