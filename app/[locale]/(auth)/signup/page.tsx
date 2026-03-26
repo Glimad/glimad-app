@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,10 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
 
   const sessionId = searchParams.get('sid')
+
+  useEffect(() => {
+    if (!sessionId) router.replace(`/${locale}/onboarding`)
+  }, [sessionId, locale, router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
