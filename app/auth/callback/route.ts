@@ -14,7 +14,6 @@ export async function GET(request: Request) {
     if (user) {
       const admin = createAdminClient()
 
-      // Create project row if it doesn't exist yet
       const { data: existing } = await admin
         .from('projects')
         .select('id')
@@ -32,7 +31,6 @@ export async function GET(request: Request) {
         })
       }
 
-      // Link onboarding session to user
       const sid = sessionId ?? user.user_metadata?.onboarding_session_id
       if (sid) {
         await admin
@@ -43,5 +41,5 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/es/subscribe`)
+  return NextResponse.redirect(`${origin}/subscribe`)
 }

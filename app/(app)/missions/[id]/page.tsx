@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useLocale } from 'next-intl'
 
 interface MissionStep {
   id: string
@@ -34,7 +33,6 @@ interface MissionInstance {
 export default function MissionPage() {
   const params = useParams()
   const router = useRouter()
-  const locale = useLocale()
   const instanceId = params.id as string
 
   const [instance, setInstance] = useState<MissionInstance | null>(null)
@@ -53,7 +51,6 @@ export default function MissionPage() {
       setLoading(false)
     }
     load()
-    // Poll while running
     const interval = setInterval(async () => {
       const res = await fetch(`/api/missions/${instanceId}`)
       const data = await res.json()
@@ -98,10 +95,8 @@ export default function MissionPage() {
 
   const template = instance.mission_templates
 
-  // Find the waiting_input step data
   const waitingStep = template.steps_json.find(s => s.step_type === 'user_input' && s.step_number === instance.current_step)
 
-  // Get the LLM output from the previous step
   const llmStepData = steps.find(s => s.step_type === 'llm_text' && s.status === 'completed')
   const llmOutput = llmStepData?.output ?? {}
 
@@ -112,14 +107,13 @@ export default function MissionPage() {
 
   function goToDashboard() {
     setNavigating(true)
-    router.push(`/${locale}/dashboard`)
+    router.push('/dashboard')
   }
 
   return (
     <div className="text-white pb-12">
       <div className="max-w-2xl mx-auto px-4 pt-8">
 
-        {/* Header */}
         <div className="mb-8">
           <button
             onClick={goToDashboard}
@@ -132,7 +126,6 @@ export default function MissionPage() {
           <p className="text-zinc-400 text-sm mt-1">{template.description}</p>
         </div>
 
-        {/* Status */}
         <div className="mb-6">
           {isRunning && (
             <div className="flex items-center gap-3 bg-zinc-900 rounded-xl p-4 border border-zinc-800">
@@ -163,7 +156,6 @@ export default function MissionPage() {
           )}
         </div>
 
-        {/* LLM Output Display + User Input Form */}
         {isWaiting && llmOutput && (
           <div className="space-y-6">
             <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
@@ -206,7 +198,6 @@ export default function MissionPage() {
           </div>
         )}
 
-        {/* Steps progress */}
         <div className="mt-8 space-y-2">
           {template.steps_json.map(step => {
             const execStep = steps.find(s => s.step_number === step.step_number)

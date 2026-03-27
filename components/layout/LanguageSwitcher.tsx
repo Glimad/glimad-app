@@ -1,15 +1,13 @@
 'use client'
 
-import { useLocale, useTranslations } from 'next-intl'
-import { usePathname, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { useState, useRef, useEffect } from 'react'
 import { locales } from '@/i18n.config'
+import { useLocaleSwitch } from './ClientLocaleProvider'
 
 export default function LanguageSwitcher() {
-  const locale = useLocale()
+  const { locale, switchLocale } = useLocaleSwitch()
   const t = useTranslations('common.lang')
-  const pathname = usePathname() // e.g. '/es/onboarding'
-  const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -21,10 +19,8 @@ export default function LanguageSwitcher() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  function switchLocale(next: string) {
-    // Replace the leading locale segment: /es/onboarding → /en/onboarding
-    const newPath = pathname.replace(new RegExp(`^/${locale}`), `/${next}`) || `/${next}`
-    router.push(newPath)
+  function handleSwitch(next: string) {
+    switchLocale(next)
     setOpen(false)
   }
 
@@ -45,7 +41,7 @@ export default function LanguageSwitcher() {
           {locales.map(l => (
             <button
               key={l}
-              onClick={() => switchLocale(l)}
+              onClick={() => handleSwitch(l)}
               className={`w-full text-left px-3 py-2 text-sm transition hover:bg-zinc-800 ${
                 l === locale ? 'text-white font-medium' : 'text-zinc-400'
               }`}

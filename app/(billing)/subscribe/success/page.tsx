@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 export default function SubscribeSuccessPage() {
   const router = useRouter()
-  const params = useParams()
-  const locale = params.locale as string
 
   useEffect(() => {
     let attempts = 0
@@ -17,7 +15,7 @@ export default function SubscribeSuccessPage() {
       const data = await res.json()
 
       if (data.access_state === 'active') {
-        router.replace(`/${locale}/dashboard`)
+        router.replace('/dashboard')
         return
       }
 
@@ -27,7 +25,7 @@ export default function SubscribeSuccessPage() {
     }
 
     poll()
-  }, [locale, router])
+  }, [router])
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">

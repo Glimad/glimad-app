@@ -7,10 +7,9 @@ import { createClient } from '@/lib/supabase/client'
 
 type Props = {
   user: { email: string } | null
-  locale: string
 }
 
-export default function AuthMenu({ user, locale }: Props) {
+export default function AuthMenu({ user }: Props) {
   const t = useTranslations('common.header')
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -27,7 +26,7 @@ export default function AuthMenu({ user, locale }: Props) {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push(`/${locale}/onboarding`)
+    router.push('/onboarding')
     router.refresh()
   }
 
@@ -35,13 +34,13 @@ export default function AuthMenu({ user, locale }: Props) {
     return (
       <div className="flex items-center gap-2">
         <a
-          href={`/${locale}/login`}
+          href="/login"
           className="px-3 py-1.5 text-sm text-zinc-300 hover:text-white transition"
         >
           {t('login')}
         </a>
         <a
-          href={`/${locale}/signup`}
+          href="/signup"
           className="px-4 py-1.5 text-sm rounded-lg bg-white text-black font-medium hover:bg-zinc-200 transition"
         >
           {t('signup')}
@@ -70,7 +69,7 @@ export default function AuthMenu({ user, locale }: Props) {
       {open && (
         <div className="absolute right-0 mt-1 w-44 rounded-lg bg-zinc-900 border border-zinc-700 shadow-xl py-1 z-50">
           <a
-            href={`/${locale}/dashboard`}
+            href="/dashboard"
             className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
             onClick={() => setOpen(false)}
           >

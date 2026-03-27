@@ -18,7 +18,6 @@ interface ActiveInstance {
 interface Props {
   template: MissionTemplate
   activeInstance: ActiveInstance | null
-  locale: string
   t: {
     start: string
     resume: string
@@ -34,7 +33,7 @@ const TYPE_ICONS: Record<string, string> = {
   rescue: '🚑',
 }
 
-export default function MissionCard({ template, activeInstance, locale, t }: Props) {
+export default function MissionCard({ template, activeInstance, t }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -42,7 +41,7 @@ export default function MissionCard({ template, activeInstance, locale, t }: Pro
     setLoading(true)
 
     if (activeInstance) {
-      router.push(`/${locale}/missions/${activeInstance.id}`)
+      router.push(`/missions/${activeInstance.id}`)
       return
     }
 
@@ -54,7 +53,7 @@ export default function MissionCard({ template, activeInstance, locale, t }: Pro
     const data = await res.json()
 
     if (data.instance_id) {
-      router.push(`/${locale}/missions/${data.instance_id}`)
+      router.push(`/missions/${data.instance_id}`)
     }
     setLoading(false)
   }
@@ -81,7 +80,6 @@ export default function MissionCard({ template, activeInstance, locale, t }: Pro
             className="shrink-0 px-5 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-semibold transition-colors"
           >
             {loading ? '...' : activeInstance ? t.resume : t.start}
-
           </button>
         </div>
 

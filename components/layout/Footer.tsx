@@ -3,7 +3,7 @@ import Image from 'next/image'
 
 const LOGO_ICON = 'https://awaakurvnngazmnnmwza.supabase.co/storage/v1/object/public/public-assets/logo-icon.png'
 
-export default async function Footer({ locale }: { locale: string }) {
+export default async function Footer() {
   const t = await getTranslations('common.footer')
 
   return (
@@ -15,8 +15,8 @@ export default async function Footer({ locale }: { locale: string }) {
         </div>
 
         <div className="flex items-center gap-6 text-sm text-zinc-500">
-          <a href={`/${locale}/terms`} className="hover:text-zinc-300 transition">{t('terms')}</a>
-          <a href={`/${locale}/privacy`} className="hover:text-zinc-300 transition">{t('privacy')}</a>
+          <a href="/terms" className="hover:text-zinc-300 transition">{t('terms')}</a>
+          <a href="/privacy" className="hover:text-zinc-300 transition">{t('privacy')}</a>
           <span>{t('copyright')}</span>
         </div>
       </div>

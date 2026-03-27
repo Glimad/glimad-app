@@ -2,18 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations, useLocale } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { ONBOARDING_QUESTIONS, TOTAL_STEPS } from '@/lib/onboarding/config'
 
 type Answers = Record<string, string | string[]>
 
 export default function OnboardingPage() {
   const t = useTranslations('onboarding')
-  const locale = useLocale()
   const router = useRouter()
 
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [step, setStep] = useState(0) // 0-indexed
+  const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
   const [loading, setLoading] = useState(false)
 
@@ -24,7 +23,6 @@ export default function OnboardingPage() {
   const questionHint = questionT.hint as string | undefined
   const questionPlaceholder = questionT.placeholder as string | undefined
 
-  // Start session on mount
   useEffect(() => {
     const visitorId = localStorage.getItem('glimad_visitor_id') ?? crypto.randomUUID()
     localStorage.setItem('glimad_visitor_id', visitorId)
@@ -68,7 +66,7 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ final_responses: { [question.key]: currentAnswer } }),
       })
-      router.push(`/${locale}/signup?sid=${sessionId}`)
+      router.push(`/signup?sid=${sessionId}`)
     } else {
       await fetch(`/api/onboarding/${sessionId}`, {
         method: 'PATCH',
@@ -99,13 +97,11 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-lg space-y-8">
 
-        {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-white">{t('title')}</h1>
           <p className="text-zinc-400">{t('subtitle')}</p>
         </div>
 
-        {/* Progress bar */}
         <div className="space-y-2">
           <p className="text-xs text-zinc-500 text-right">
             {t('step_of', { step: step + 1, total: TOTAL_STEPS })}
@@ -118,12 +114,10 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {/* Question */}
         <div className="space-y-6">
           <h2 className="text-xl font-semibold text-white">{questionText}</h2>
           {questionHint && <p className="text-sm text-zinc-400">{questionHint}</p>}
 
-          {/* Multi-select */}
           {question.type === 'multi_select' && questionOptions && (
             <div className="grid grid-cols-2 gap-3">
               {questionOptions.map(option => {
@@ -145,7 +139,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Text input */}
           {question.type === 'text' && (
             <textarea
               value={(currentAnswer as string) ?? ''}
@@ -156,7 +149,6 @@ export default function OnboardingPage() {
             />
           )}
 
-          {/* Single select */}
           {question.type === 'select' && questionOptions && (
             <div className="space-y-3">
               {questionOptions.map(option => {
@@ -179,7 +171,6 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        {/* Navigation */}
         <div className="flex gap-3">
           {step > 0 && (
             <button
