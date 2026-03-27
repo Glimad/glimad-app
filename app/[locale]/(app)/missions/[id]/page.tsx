@@ -41,6 +41,7 @@ export default function MissionPage() {
   const [steps, setSteps] = useState<MissionStep[]>([])
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [navigating, setNavigating] = useState(false)
   const [userInputs, setUserInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function MissionPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="flex items-center justify-center py-32">
         <div className="text-zinc-400">Cargando misión...</div>
       </div>
     )
@@ -89,7 +90,7 @@ export default function MissionPage() {
 
   if (!instance) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="flex items-center justify-center py-32">
         <div className="text-zinc-400">Misión no encontrada</div>
       </div>
     )
@@ -109,17 +110,23 @@ export default function MissionPage() {
   const isWaiting = instance.status === 'waiting_input'
   const isRunning = instance.status === 'running' || instance.status === 'queued'
 
+  function goToDashboard() {
+    setNavigating(true)
+    router.push(`/${locale}/dashboard`)
+  }
+
   return (
-    <div className="min-h-screen bg-black text-white pt-20 pb-12">
-      <div className="max-w-2xl mx-auto px-4">
+    <div className="text-white pb-12">
+      <div className="max-w-2xl mx-auto px-4 pt-8">
 
         {/* Header */}
         <div className="mb-8">
           <button
-            onClick={() => router.push(`/${locale}/dashboard`)}
-            className="text-zinc-500 hover:text-zinc-300 text-sm mb-4 flex items-center gap-1 transition-colors"
+            onClick={goToDashboard}
+            disabled={navigating}
+            className="text-zinc-500 hover:text-zinc-300 disabled:opacity-40 text-sm mb-4 flex items-center gap-1 transition-colors"
           >
-            ← Volver al Dashboard
+            {navigating ? '...' : '← Volver al Dashboard'}
           </button>
           <h1 className="text-2xl font-bold">{template.name}</h1>
           <p className="text-zinc-400 text-sm mt-1">{template.description}</p>
@@ -146,10 +153,11 @@ export default function MissionPage() {
               <p className="text-green-300 font-semibold">¡Misión completada!</p>
               <p className="text-zinc-400 text-sm mt-1">Tu Brain ha sido actualizado con los resultados.</p>
               <button
-                onClick={() => router.push(`/${locale}/dashboard`)}
-                className="mt-4 px-6 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium transition-colors"
+                onClick={goToDashboard}
+                disabled={navigating}
+                className="mt-4 px-6 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm font-medium transition-colors"
               >
-                Volver al Dashboard
+                {navigating ? 'Cargando...' : 'Volver al Dashboard'}
               </button>
             </div>
           )}
