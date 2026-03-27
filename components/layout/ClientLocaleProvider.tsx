@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { NextIntlClientProvider } from 'next-intl'
 
 type Messages = Record<string, unknown>
@@ -29,11 +30,13 @@ export default function ClientLocaleProvider({
   children: React.ReactNode
 }) {
   const [locale, setLocale] = useState(initialLocale)
+  const router = useRouter()
 
   function switchLocale(next: string) {
     if (next === locale) return
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000`
     setLocale(next)
+    router.refresh()
   }
 
   return (
