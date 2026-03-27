@@ -1,9 +1,14 @@
 import { getRequestConfig } from 'next-intl/server'
+import { cookies } from 'next/headers'
+import { locales, defaultLocale } from './i18n.config'
 export { locales, defaultLocale } from './i18n.config'
 
-export default getRequestConfig(async ({ requestLocale }) => {
-  const requested = await requestLocale
-  const locale = requested ?? 'es'
+export type Locale = typeof locales[number]
+
+export default getRequestConfig(async () => {
+  const cookieStore = cookies()
+  const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value
+  const locale = locales.includes(cookieLocale as Locale) ? (cookieLocale as Locale) : defaultLocale
 
   const [auth, subscribe, dashboard, missions, common, onboarding] = await Promise.all([
     import(`./messages/${locale}/auth.json`),

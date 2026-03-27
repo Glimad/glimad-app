@@ -1,13 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import createIntlMiddleware from 'next-intl/middleware'
-import { locales, defaultLocale } from './i18n.config'
-
-const intlMiddleware = createIntlMiddleware({
-  locales,
-  defaultLocale,
-  localePrefix: 'never',
-})
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -17,13 +9,10 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/api/')) return NextResponse.next()
   if (pathname.includes('/auth/callback')) return NextResponse.next()
 
-  const intlResponse = intlMiddleware(request)
-  if (intlResponse.status === 307 || intlResponse.status === 308) return intlResponse
-
   const authPaths = ['/login', '/signup', '/verify', '/onboarding']
-  if (authPaths.some(p => pathname.startsWith(p))) return intlResponse
+  if (authPaths.some(p => pathname.startsWith(p))) return NextResponse.next()
 
-  let supabaseResponse = intlResponse
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
