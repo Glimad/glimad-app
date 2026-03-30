@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: project } = await supabase
     .from('projects')
-    .select('id, status')
+    .select('id, status, is_admin')
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
@@ -59,6 +59,10 @@ export async function middleware(request: NextRequest) {
   if (!subscription) {
     if (pathname.startsWith('/subscribe')) return supabaseResponse
     return NextResponse.redirect(new URL('/subscribe', request.url))
+  }
+
+  if (pathname.startsWith('/admin') && !project.is_admin) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 
   return supabaseResponse

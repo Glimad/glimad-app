@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function SubscribeSuccessPage() {
   const router = useRouter()
+  const [timedOut, setTimedOut] = useState(false)
 
   useEffect(() => {
     let attempts = 0
@@ -21,11 +22,36 @@ export default function SubscribeSuccessPage() {
 
       if (attempts < 20) {
         setTimeout(poll, 3000)
+      } else {
+        setTimedOut(true)
       }
     }
 
     poll()
   }, [router])
+
+  if (timedOut) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-white text-lg font-medium mb-2">Taking longer than expected...</p>
+          <p className="text-zinc-400 text-sm mb-6">Your payment was received. It may take a minute to activate.</p>
+          <button
+            onClick={() => router.replace('/dashboard')}
+            className="px-6 py-2 bg-white text-black rounded-lg font-medium mr-3"
+          >
+            Go to Dashboard
+          </button>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 border border-zinc-600 text-white rounded-lg font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center">

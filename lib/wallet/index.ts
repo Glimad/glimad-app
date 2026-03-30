@@ -19,13 +19,22 @@ export async function hasPremiumCredits(admin: SupabaseClient, projectId: string
   return (wallet?.premium_credits_balance ?? 0) >= amount
 }
 
-export async function debitLlmCall(admin: SupabaseClient, projectId: string) {
+export async function debitLlmCall(admin: SupabaseClient, projectId: string, idempotencyKey: string) {
   const { data: wallet } = await admin
     .from('core_wallets')
     .select('wallet_id, allowance_llm_balance')
     .eq('project_id', projectId)
     .single()
   if (!wallet) return
+
+  // Check if this exact request was already debited
+  const { data: existing } = await admin
+    .from('core_ledger')
+    .select('id')
+    .eq('idempotency_key', idempotencyKey)
+    .single()
+  if (existing) return
+
   await admin
     .from('core_wallets')
     .update({ allowance_llm_balance: wallet.allowance_llm_balance - 1 })
@@ -35,6 +44,6 @@ export async function debitLlmCall(admin: SupabaseClient, projectId: string) {
     kind: 'debit',
     amount_allowance: -1,
     reason_key: 'LLM_CALL_STUDIO',
-    idempotency_key: `llm_call_studio_${wallet.wallet_id}_${Date.now()}`,
+    idempotency_key: idempotencyKey,
   })
 }

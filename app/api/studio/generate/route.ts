@@ -65,7 +65,8 @@ Generate a complete ${content_type} content piece. Return ONLY valid JSON with t
     }],
   })
 
-  await debitLlmCall(admin, project!.id)
+  const idempotencyKey = `studio:${project!.id}:${content_type}:${Buffer.from(topic).toString('base64').slice(0, 32)}`
+  await debitLlmCall(admin, project!.id, idempotencyKey)
 
   const text = (message.content[0] as { type: string; text: string }).text
   const start = text.indexOf('{')

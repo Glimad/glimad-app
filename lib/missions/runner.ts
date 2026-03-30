@@ -37,12 +37,15 @@ export async function createMissionInstance(
   const today = new Date().toISOString().slice(0, 10)
   const uniqueKey = `${projectId}:${templateCode}:${today}`
 
-  // Idempotency: return existing open instance if any
+  // Idempotency: return any open instance for this template regardless of date
   const { data: existing } = await admin
     .from('mission_instances')
     .select('id, status')
-    .eq('unique_key', uniqueKey)
+    .eq('project_id', projectId)
+    .eq('template_code', templateCode)
     .in('status', ['queued', 'running', 'waiting_input'])
+    .order('created_at', { ascending: false })
+    .limit(1)
     .single()
 
   if (existing) return existing.id
@@ -80,6 +83,23 @@ export async function executeMission(
   const template = instance.mission_templates as { steps_json: MissionStep[]; credit_cost_allowance: number; credit_cost_premium: number }
   const steps: MissionStep[] = template.steps_json
 
+  // Check wallet has sufficient allowance before starting
+  if (template.credit_cost_allowance > 0) {
+    const { data: wallet } = await admin
+      .from('core_wallets')
+      .select('allowance_llm_balance')
+      .eq('project_id', instance.project_id)
+      .single()
+
+    if (!wallet || wallet.allowance_llm_balance < template.credit_cost_allowance) {
+      await admin
+        .from('mission_instances')
+        .update({ status: 'failed', completed_at: new Date().toISOString() })
+        .eq('id', instanceId)
+      return
+    }
+  }
+
   // Mark as running
   await admin
     .from('mission_instances')
@@ -89,7 +109,28 @@ export async function executeMission(
   let brainContext: Record<string, unknown> = {}
 
   for (const step of steps) {
-    if (step.step_number <= (instance.current_step ?? 0)) continue
+    if (step.step_number <= (instance.current_step ?? 0)) {
+      // Reconstruct brainContext from previously completed steps so resumed missions have full context
+      const { data: completedStep } = await admin
+        .from('mission_steps')
+        .select('output')
+        .eq('mission_instance_id', instanceId)
+        .eq('step_number', step.step_number)
+        .single()
+
+      if (completedStep?.output) {
+        if (step.step_type === 'brain_read') {
+          brainContext = completedStep.output as Record<string, unknown>
+        }
+        if (step.step_type === 'llm_text') {
+          brainContext['__llm_output'] = completedStep.output
+        }
+        if (step.step_type === 'user_input') {
+          Object.assign(brainContext, completedStep.output)
+        }
+      }
+      continue
+    }
 
     // Mark step as running
     await admin.from('mission_steps').upsert({
@@ -112,6 +153,9 @@ export async function executeMission(
 
     if (step.step_type === 'brain_read') {
       brainContext = stepOutput as Record<string, unknown>
+    }
+    if (step.step_type === 'llm_text') {
+      brainContext['__llm_output'] = stepOutput
     }
 
     await admin.from('mission_steps').upsert({
@@ -217,15 +261,14 @@ async function executeStep(
     }
 
     case 'brain_update': {
-      const completedLlmStep = brainContext['__llm_output'] as Record<string, unknown> | null
+      const llmOutput = (brainContext['__llm_output'] ?? {}) as Record<string, unknown>
 
-      // Find the most recent LLM output from the instance
       if (step.config.facts) {
         for (const factKey of step.config.facts) {
-          // The user-approved output comes from the waiting_input step outputs
-          const userOutput = brainContext[factKey] ?? completedLlmStep?.[factKey]
-          if (userOutput !== undefined) {
-            await writeFact(admin, projectId, factKey, userOutput, 'mission')
+          // Prefer user-edited value from brainContext (user_input step), fall back to LLM output
+          const value = brainContext[factKey] ?? llmOutput[factKey]
+          if (value !== undefined) {
+            await writeFact(admin, projectId, factKey, value, 'mission')
           }
         }
       }
@@ -266,17 +309,15 @@ export async function resumeMissionAfterInput(
 ): Promise<void> {
   const { data: instance } = await admin
     .from('mission_instances')
-    .select('*, mission_templates(steps_json)')
+    .select('id, status, current_step, project_id')
     .eq('id', instanceId)
     .single()
 
   if (!instance || instance.status !== 'waiting_input') return
 
-  const template = instance.mission_templates as { steps_json: MissionStep[] }
-  const steps: MissionStep[] = template.steps_json
   const currentStep = instance.current_step ?? 0
 
-  // Save user input to step
+  // Save user inputs to the waiting step's output
   await admin.from('mission_steps').upsert({
     mission_instance_id: instanceId,
     step_number: currentStep,
@@ -286,61 +327,13 @@ export async function resumeMissionAfterInput(
     completed_at: new Date().toISOString(),
   }, { onConflict: 'mission_instance_id,step_number' })
 
-  // Get the LLM output from the previous step
-  const { data: llmStep } = await admin
-    .from('mission_steps')
-    .select('output')
-    .eq('mission_instance_id', instanceId)
-    .eq('step_type', 'llm_text')
-    .order('step_number', { ascending: false })
-    .limit(1)
-    .single()
-
-  const llmOutput = (llmStep?.output ?? {}) as Record<string, unknown>
-
-  // Apply brain update for all facts from user inputs + llm output
-  const mergedOutput = { ...llmOutput, ...userInputs }
-
-  // Find brain_update step and apply it
-  const brainUpdateStep = steps.find(s => s.step_type === 'brain_update' && s.step_number > currentStep)
-  if (brainUpdateStep?.config.facts) {
-    for (const factKey of brainUpdateStep.config.facts) {
-      const value = mergedOutput[factKey]
-      if (value !== undefined) {
-        await writeFact(admin, instance.project_id, factKey, value, 'mission')
-      }
-    }
-    if (brainUpdateStep.config.signals) {
-      for (const signalKey of brainUpdateStep.config.signals) {
-        await appendSignal(admin, instance.project_id, signalKey, { source: 'mission' }, 'mission')
-      }
-    }
-    await admin.from('mission_steps').upsert({
-      mission_instance_id: instanceId,
-      step_number: brainUpdateStep.step_number,
-      step_type: 'brain_update',
-      status: 'completed',
-      output: { updated: true },
-      completed_at: new Date().toISOString(),
-    }, { onConflict: 'mission_instance_id,step_number' })
-  }
-
-  // Mark mission complete
+  // Re-queue the mission so executeMission continues from the next step
   await admin
     .from('mission_instances')
-    .update({
-      status: 'completed',
-      completed_at: new Date().toISOString(),
-      outputs: mergedOutput,
-    })
+    .update({ status: 'queued' })
     .eq('id', instanceId)
 
-  // Write mission_completed signal
-  await appendSignal(admin, instance.project_id, 'mission_completed', {
-    template_code: instance.template_code,
-    instance_id: instanceId,
-  }, 'mission_runner')
-
-  // Gamification: award XP, update streak, restore energy
-  await onMissionComplete(admin, instance.project_id, instance.template_code)
+  // Continue execution — this will skip completed steps (including user_input),
+  // reconstruct brainContext from their DB outputs, and run remaining steps
+  await executeMission(admin, instanceId)
 }
