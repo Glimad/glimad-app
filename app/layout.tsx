@@ -6,6 +6,7 @@ import { locales, defaultLocale } from '@/i18n.config'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import ClientLocaleProvider from '@/components/layout/ClientLocaleProvider'
+import OfflineBanner from '@/components/layout/OfflineBanner'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -62,6 +63,7 @@ export default async function RootLayout({
         <ClientLocaleProvider locale={locale} allMessages={allMessages}>
           <div className="min-h-screen flex flex-col">
             <Header />
+            <OfflineBanner />
             <main className="flex-1 pt-14">
               {children}
             </main>
