@@ -50,8 +50,6 @@ export default function MissionMap({ missions, t }: Props) {
   const [starting, setStarting] = useState<string | null>(null)
   const router = useRouter()
 
-  const selectedMission = missions.find(m => m.template_code === selected)
-
   async function startMission(templateCode: string) {
     setStarting(templateCode)
     const resp = await fetch('/api/missions/start', {
@@ -73,7 +71,7 @@ export default function MissionMap({ missions, t }: Props) {
       <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-zinc-800" />
 
       <div className="space-y-3">
-        {missions.map((mission, i) => (
+        {missions.map((mission) => (
           <div key={mission.template_code} className="relative flex gap-4">
             {/* Node dot */}
             <div className={`relative z-10 flex-shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center text-sm font-bold

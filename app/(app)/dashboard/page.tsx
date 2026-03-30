@@ -361,7 +361,7 @@ export default async function DashboardPage() {
         </div>
 
       </div>
+      <AdminTrigger />
     </div>
-    <AdminTrigger />
   )
 }

@@ -104,11 +104,11 @@ export async function GET(request: Request) {
 
   const { data: onboardingSessions } = await admin
     .from('onboarding_sessions')
-    .select('flow_variant, status, converted_to_user_id')
+    .select('experiment_variant, status, converted_to_user_id')
 
   const variantStats: Record<string, { total: number; converted: number }> = {}
   for (const s of onboardingSessions ?? []) {
-    const v = s.flow_variant ?? 'unknown'
+    const v = s.experiment_variant ?? 'unknown'
     if (!variantStats[v]) variantStats[v] = { total: 0, converted: 0 }
     variantStats[v].total++
     if (s.converted_to_user_id) variantStats[v].converted++
