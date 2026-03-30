@@ -61,18 +61,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/subscribe', request.url))
   }
 
-  const { data: onboardingSession } = await supabase
-    .from('onboarding_sessions')
-    .select('status')
-    .eq('converted_to_user_id', user.id)
-    .eq('status', 'completed')
-    .single()
-
-  if (!onboardingSession) {
-    if (pathname.startsWith('/onboarding')) return supabaseResponse
-    return NextResponse.redirect(new URL('/onboarding', request.url))
-  }
-
   return supabaseResponse
 }
 
