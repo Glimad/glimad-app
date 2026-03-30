@@ -10,6 +10,8 @@
     "signup": "Sign up",
     "logout": "Log out",
     "dashboard": "Dashboard",
+    "studio": "Studio",
+    "calendar": "Calendar",
     "account": "My account"
   },
   "footer": {

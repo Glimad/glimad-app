@@ -75,6 +75,20 @@ export default function AuthMenu({ user }: Props) {
           >
             {t('dashboard')}
           </a>
+          <a
+            href="/studio"
+            className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+            onClick={() => setOpen(false)}
+          >
+            {t('studio')}
+          </a>
+          <a
+            href="/calendar"
+            className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+            onClick={() => setOpen(false)}
+          >
+            {t('calendar')}
+          </a>
           <div className="my-1 border-t border-zinc-800" />
           <button
             onClick={handleLogout}

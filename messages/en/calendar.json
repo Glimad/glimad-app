@@ -1,0 +1,15 @@
+{
+  "title": "Content Calendar",
+  "subtitle": "All your scheduled content in one place.",
+  "create_content": "Create Content",
+  "loading": "Loading...",
+  "hook": "Hook",
+  "mark_published": "Mark as Published",
+  "pause": "Pause",
+  "resume": "Resume",
+  "retry": "Retry",
+  "delete": "Delete",
+  "select_item": "Click a day to see your content.",
+  "empty_calendar": "No content scheduled this month.",
+  "create_first": "Create your first post"
+}

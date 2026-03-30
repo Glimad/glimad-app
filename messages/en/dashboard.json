@@ -25,6 +25,8 @@
     "F6": "Authority",
     "F7": "Star"
   },
+  "create_content": "Create Content",
+  "calendar": "Calendar",
   "computing": "Computing your phase...",
   "mission_types": {
     "discovery": "Discovery",

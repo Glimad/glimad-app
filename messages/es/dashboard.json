@@ -25,6 +25,8 @@
     "F6": "Autoridad",
     "F7": "Estrella"
   },
+  "create_content": "Crear Contenido",
+  "calendar": "Calendario",
   "computing": "Calculando tu fase...",
   "mission_types": {
     "discovery": "Exploración",

@@ -160,6 +160,21 @@ export default async function DashboardPage() {
           )}
         </div>
 
+        <div className="mt-8 flex gap-3">
+          <a
+            href="/studio"
+            className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors"
+          >
+            {t('create_content')}
+          </a>
+          <a
+            href="/calendar"
+            className="px-5 py-3 rounded-xl border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-semibold text-sm transition-colors"
+          >
+            {t('calendar')}
+          </a>
+        </div>
+
         <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
           {Object.entries(phaseResult.dimensionScores).map(([key, score]) => (
             <div key={key} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800">

@@ -10,13 +10,15 @@ export default getRequestConfig(async () => {
   const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value
   const locale = locales.includes(cookieLocale as Locale) ? (cookieLocale as Locale) : defaultLocale
 
-  const [auth, subscribe, dashboard, missions, common, onboarding] = await Promise.all([
+  const [auth, subscribe, dashboard, missions, common, onboarding, studio, calendar] = await Promise.all([
     import(`./messages/${locale}/auth.json`),
     import(`./messages/${locale}/subscribe.json`),
     import(`./messages/${locale}/dashboard.json`),
     import(`./messages/${locale}/missions.json`),
     import(`./messages/${locale}/common.json`),
     import(`./messages/${locale}/onboarding.json`),
+    import(`./messages/${locale}/studio.json`),
+    import(`./messages/${locale}/calendar.json`),
   ])
 
   return {
@@ -28,6 +30,8 @@ export default getRequestConfig(async () => {
       missions: missions.default,
       common: common.default,
       onboarding: onboarding.default,
+      studio: studio.default,
+      calendar: calendar.default,
     },
   }
 })

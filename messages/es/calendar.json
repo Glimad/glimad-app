@@ -1,0 +1,15 @@
+{
+  "title": "Calendario de Contenido",
+  "subtitle": "Todo tu contenido programado en un lugar.",
+  "create_content": "Crear Contenido",
+  "loading": "Cargando...",
+  "hook": "Hook",
+  "mark_published": "Marcar como publicado",
+  "pause": "Pausar",
+  "resume": "Reanudar",
+  "retry": "Reintentar",
+  "delete": "Eliminar",
+  "select_item": "Haz clic en un día para ver tu contenido.",
+  "empty_calendar": "No hay contenido programado este mes.",
+  "create_first": "Crea tu primera publicación"
+}
