@@ -53,6 +53,16 @@ export async function POST(request: Request) {
     await handleInvoicePaid(admin, event.id, invoice)
   }
 
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice
+    await handlePaymentFailed(admin, invoice)
+  }
+
+  if (event.type === 'charge.refunded') {
+    const charge = event.data.object as Stripe.Charge
+    await handleChargeRefunded(admin, charge)
+  }
+
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object as Stripe.Subscription
     await handleSubscriptionDeleted(admin, sub)
@@ -71,13 +81,15 @@ async function handleSubscriptionActivated(
   const planCode = session.metadata?.plan_code ?? 'BASE'
   if (!userId) return
 
+  const projectId = await getProjectId(admin, userId)
+
   // Retrieve full subscription
   const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string)
   const item = stripeSub.items.data[0]
 
   // Upsert core_subscriptions
   await admin.from('core_subscriptions').upsert({
-    project_id: await getProjectId(admin, userId),
+    project_id: projectId,
     user_id: userId,
     stripe_customer_id: session.customer as string,
     stripe_subscription_id: stripeSub.id,
@@ -91,7 +103,7 @@ async function handleSubscriptionActivated(
   // Upsert access grant
   await admin.from('core_access_grants').upsert({
     user_id: userId,
-    project_id: await getProjectId(admin, userId),
+    project_id: projectId,
     source: 'subscription',
     status: 'active',
     reference_id: stripeSub.id,
@@ -101,7 +113,6 @@ async function handleSubscriptionActivated(
   await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end)
 
   // Seed Brain Facts from onboarding answers + compute initial phase
-  const projectId = await getProjectId(admin, userId)
   await seedBrainFromOnboarding(admin, userId, projectId)
 }
 
@@ -149,6 +160,81 @@ async function handleInvoicePaid(
     periodItem.current_period_end,
     invoice.id
   )
+}
+
+async function handlePaymentFailed(
+  admin: ReturnType<typeof createAdminClient>,
+  invoice: Stripe.Invoice
+) {
+  const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
+    ? invoice.parent.subscription_details.subscription
+    : invoice.parent?.subscription_details?.subscription?.id
+
+  if (!subscriptionId) return
+
+  await admin.from('core_subscriptions')
+    .update({ status: 'past_due' })
+    .eq('stripe_subscription_id', subscriptionId)
+
+  // Suspend wallet so write operations are blocked after 7-day grace period
+  // The wallet status 'past_due' signals the app to show the grace period banner
+  const { data: sub } = await admin
+    .from('core_subscriptions')
+    .select('project_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .single()
+
+  if (sub?.project_id) {
+    await admin.from('core_wallets')
+      .update({ status: 'past_due' })
+      .eq('project_id', sub.project_id)
+  }
+}
+
+async function handleChargeRefunded(
+  admin: ReturnType<typeof createAdminClient>,
+  charge: Stripe.Charge
+) {
+  const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id
+  if (!customerId) return
+
+  // Find subscription via customer
+  const { data: sub } = await admin
+    .from('core_subscriptions')
+    .select('id, project_id, stripe_subscription_id')
+    .eq('stripe_customer_id', customerId)
+    .eq('status', 'active')
+    .single()
+
+  if (!sub) return
+
+  await admin.from('core_subscriptions')
+    .update({ status: 'canceled', cancel_at_period_end: false })
+    .eq('id', sub.id)
+
+  // Revoke access grant
+  await admin.from('core_access_grants')
+    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+    .eq('reference_id', sub.stripe_subscription_id)
+    .eq('status', 'active')
+
+  // Lock wallet — blocks all write operations
+  await admin.from('core_wallets')
+    .update({ status: 'locked' })
+    .eq('project_id', sub.project_id)
+
+  // Log refund in ledger
+  await admin.from('core_ledger').insert({
+    project_id: sub.project_id,
+    kind: 'adjustment',
+    amount_allowance: 0,
+    amount_premium: 0,
+    reason_key: 'REFUND_CREDIT',
+    ref_type: 'refund',
+    ref_id: charge.id,
+    idempotency_key: `refund_${charge.id}`,
+    metadata_json: { charge_id: charge.id, amount_refunded: charge.amount_refunded },
+  })
 }
 
 async function handleSubscriptionDeleted(

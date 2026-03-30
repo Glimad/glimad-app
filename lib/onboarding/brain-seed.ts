@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeFact, appendSignal, createSnapshot, readAllFacts } from '@/lib/brain/index'
-import { computeInitialPhase } from '@/lib/brain/phase'
+import { runPhaseEngine } from '@/lib/engines/phase-engine'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -21,9 +21,9 @@ function normalizePlatform(raw: string): string | null {
 
 function parseFaceVisibility(raw: string): string {
   const lower = raw.toLowerCase()
-  if (lower.includes('no') || lower.includes('prefiero no')) return 'never'
-  if (lower.includes('depende') || lower.includes('depends')) return 'sometimes'
-  return 'always'
+  if (lower.includes('no') || lower.includes('prefiero no')) return 'no'
+  if (lower.includes('depende') || lower.includes('depends')) return 'maybe'
+  return 'yes'
 }
 
 function parseAvailabilityHours(raw: string): number {
@@ -90,36 +90,34 @@ export async function seedBrainFromOnboarding(
     updated_at: new Date().toISOString(),
   }).eq('id', projectId)
 
-  // 5. Compute initial phase
-  const factsMap: Record<string, unknown> = {
-    niche_raw: interestsRaw,
-    primary_goal: goal90d,
-    main_blocker: blocker1,
-    on_camera_comfort: facePref,
-    hours_per_week: timeBudget,
-    current_platforms: platformRaw,
-  }
-  const phase = computeInitialPhase(factsMap)
-  await writeFact(admin, projectId, 'current_phase', phase, 'phase_engine')
-  await admin.from('projects').update({ phase_code: phase }).eq('id', projectId)
-
-  // 6. Write Brain Signal + Snapshot
+  // 5. Write signals
+  // platform_declared: informational — user selected a platform
+  // missing_evidence: always written — handle was never collected in onboarding,
+  //                   so scrape cannot run until user provides it
   if (focusPlatform) {
     await appendSignal(admin, projectId, 'platform_declared', {
       platform: focusPlatform,
       raw: platformRaw,
     }, 'onboarding')
-  } else {
-    await appendSignal(admin, projectId, 'missing_evidence', {
-      reason: 'scrape_skipped — no platform handle provided at onboarding',
-    }, 'onboarding')
   }
+
+  // Handle not collected at onboarding — scrape cannot run yet
+  await appendSignal(admin, projectId, 'missing_evidence', {
+    reason: focusPlatform
+      ? 'scrape_skipped — handle not yet provided (platform known)'
+      : 'scrape_skipped — no platform selected at onboarding',
+  }, 'onboarding')
 
   await appendSignal(admin, projectId, 'onboarding_completed', {
     session_id: session.id,
-    phase_assigned: phase,
   }, 'onboarding')
 
+  // 6. Trigger full Phase Engine — writes current_phase fact, stores core_phase_runs record,
+  //    updates projects.phase_code
+  const phaseResult = await runPhaseEngine(admin, projectId)
+
+  // 7. Create initial Brain Snapshot — always written for new users after onboarding
+  //    (runPhaseEngine only snapshots on phase CHANGE; this is the first-ever phase assignment)
   const allFacts = await readAllFacts(admin, projectId)
-  await createSnapshot(admin, projectId, 'onboarding_completed', phase, allFacts)
+  await createSnapshot(admin, projectId, 'onboarding_completed', phaseResult.phase, allFacts)
 }

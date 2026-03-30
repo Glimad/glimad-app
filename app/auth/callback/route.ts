@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const sessionId = searchParams.get('sid')
 
   if (code) {
     const supabase = createClient()
@@ -13,6 +12,7 @@ export async function GET(request: Request) {
 
     if (user) {
       const admin = createAdminClient()
+      const sid = user.user_metadata?.onboarding_session_id ?? null
 
       const { data: existing } = await admin
         .from('projects')
@@ -27,11 +27,10 @@ export async function GET(request: Request) {
           name: user.email ?? 'My Project',
           status: 'created',
           phase_code: 'F0',
-          onboarding_session_id: sessionId ?? user.user_metadata?.onboarding_session_id ?? null,
+          onboarding_session_id: sid,
         })
       }
 
-      const sid = sessionId ?? user.user_metadata?.onboarding_session_id
       if (sid) {
         await admin
           .from('onboarding_sessions')

@@ -19,9 +19,30 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
-    router.push('/dashboard')
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('user_id', data.user.id)
+      .neq('status', 'archived')
+      .single()
+
+    if (!project) { router.push('/subscribe'); router.refresh(); return }
+
+    const { data: subs } = await supabase
+      .from('core_subscriptions')
+      .select('status')
+      .eq('project_id', project.id)
+      .eq('status', 'active')
+      .limit(1)
+
+    if (subs && subs.length > 0) {
+      router.push('/dashboard')
+    } else {
+      router.push('/subscribe')
+    }
     router.refresh()
   }
 

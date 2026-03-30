@@ -2,7 +2,7 @@
 // Pure function: reads data, returns result. Caller writes to Brain.
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { readAllFacts, readSignals, readLatestSignal } from '@/lib/brain'
+import { writeFact, appendSignal, createSnapshot, readAllFacts, readSignals, readLatestSignal } from '@/lib/brain'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -336,7 +336,6 @@ export async function runPhaseEngine(
   })
 
   // Write brain fact
-  const { writeFact, appendSignal, createSnapshot, readAllFacts } = await import('@/lib/brain')
   await writeFact(admin, projectId, 'current_phase', result.phase, 'phase_engine')
   await writeFact(admin, projectId, 'phase_scores', result.dimensionScores, 'phase_engine')
   await writeFact(admin, projectId, 'capability_score', result.capabilityScore, 'phase_engine')

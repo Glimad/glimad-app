@@ -27,13 +27,29 @@ export default function OnboardingPage() {
     const visitorId = localStorage.getItem('glimad_visitor_id') ?? crypto.randomUUID()
     localStorage.setItem('glimad_visitor_id', visitorId)
 
+    // Resume existing session from cookie if present
+    const existingSid = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('glimad_onboarding_sid='))
+      ?.split('=')[1]
+
+    if (existingSid) {
+      setSessionId(existingSid)
+      return
+    }
+
     fetch('/api/onboarding/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visitor_id: visitorId }),
     })
       .then(r => r.json())
-      .then(data => setSessionId(data.onboarding_session_id))
+      .then(data => {
+        const sid = data.onboarding_session_id
+        setSessionId(sid)
+        // Persist session ID in cookie so page refresh doesn't lose it
+        document.cookie = `glimad_onboarding_sid=${sid}; path=/; max-age=86400; SameSite=Lax`
+      })
   }, [])
 
   const currentAnswer = answers[question.key]
@@ -66,6 +82,8 @@ export default function OnboardingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ final_responses: { [question.key]: currentAnswer } }),
       })
+      // Clear the onboarding cookie — session is now completed
+      document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
       router.push(`/signup?sid=${sessionId}`)
     } else {
       await fetch(`/api/onboarding/${sessionId}`, {

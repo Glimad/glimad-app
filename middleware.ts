@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) return NextResponse.redirect(new URL('/onboarding', request.url))
+  if (!user) return NextResponse.redirect(new URL('/login', request.url))
 
   const { data: project } = await supabase
     .from('projects')

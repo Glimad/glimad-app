@@ -46,8 +46,8 @@ export async function POST(request: Request) {
     mode: 'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
     metadata: { user_id: user.id, plan_code },
-    success_url: `${origin}/en/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${origin}/en/subscribe`,
+    success_url: `${origin}/subscribe/success?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${origin}/subscribe`,
   })
 
   return NextResponse.json({ url: session.url })

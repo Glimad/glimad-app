@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createHash } from 'crypto'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -127,13 +128,18 @@ export async function createSnapshot(
   factsSnapshot: Record<string, unknown>,
   signalsSummary: unknown = null
 ) {
+  const snapshotHash = createHash('sha256')
+    .update(JSON.stringify({ projectId, trigger, phaseCode, factsSnapshot }))
+    .digest('hex')
+
   await admin.from('brain_snapshots').insert({
     project_id: projectId,
-    snapshot_type: 'phase_assigned',
+    snapshot_type: trigger === 'phase_changed' ? 'phase_assigned' : 'onboarding_completed',
     phase_code: phaseCode,
     facts_snapshot: factsSnapshot,
     signals_summary: signalsSummary,
     trigger_source: trigger,
+    snapshot_hash: snapshotHash,
   })
 }
 
