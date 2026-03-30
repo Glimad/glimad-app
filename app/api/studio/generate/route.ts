@@ -4,12 +4,20 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Anthropic from '@anthropic-ai/sdk'
 import { readAllFacts } from '@/lib/brain'
 import { debitLlmCall } from '@/lib/wallet'
+import { checkLlmRateLimit } from '@/lib/security/rate-limit'
+import { sanitizeText } from '@/lib/security/sanitize'
 
 export async function POST(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { content_type, topic } = await request.json()
+  if (!checkLlmRateLimit(user.id)) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
+  const body = await request.json()
+  const content_type = sanitizeText(body.content_type, 50)
+  const topic = sanitizeText(body.topic, 300)
   const admin = createAdminClient()
 
   const { data: project } = await admin

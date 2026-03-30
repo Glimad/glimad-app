@@ -1,8 +1,13 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { TOTAL_STEPS } from '@/lib/onboarding/config'
+import { checkAuthRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 export async function POST(request: Request) {
+  if (!checkAuthRateLimit(getClientIp(request))) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
+
   const body = await request.json()
   const { visitor_id } = body
 

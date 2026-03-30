@@ -1,11 +1,25 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
+import { sanitizeText, sanitizeHandle } from '@/lib/security/sanitize'
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const { final_responses } = await request.json()
+  const body = await request.json()
+  const raw = body.final_responses ?? {}
+
+  // Sanitize all string fields in responses
+  const final_responses: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (key.includes('handle') || key.includes('url') || key.includes('platform')) {
+      final_responses[key] = sanitizeHandle(value)
+    } else if (typeof value === 'string') {
+      final_responses[key] = sanitizeText(value, 500)
+    } else {
+      final_responses[key] = value
+    }
+  }
   const admin = createAdminClient()
 
   const { data: session } = await admin

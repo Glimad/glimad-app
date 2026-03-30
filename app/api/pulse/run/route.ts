@@ -2,10 +2,15 @@ import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runPulse } from '@/lib/pulse'
+import { checkLlmRateLimit } from '@/lib/security/rate-limit'
 
 export async function POST(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  if (!checkLlmRateLimit(user.id)) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const admin = createAdminClient()
 
