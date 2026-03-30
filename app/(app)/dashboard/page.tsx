@@ -5,7 +5,10 @@ import { getTranslations } from 'next-intl/server'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
 import { runInflexionEngine } from '@/lib/engines/inflexion-engine'
 import { runPolicyEngine } from '@/lib/engines/policy-engine'
+import { getLatestPulse } from '@/lib/pulse'
+import { getGamificationState } from '@/lib/gamification'
 import MissionCard from './MissionCard'
+import DailyPulseCard from './DailyPulseCard'
 
 const PHASE_COLORS: Record<string, string> = {
   F0: 'bg-zinc-700 text-zinc-200',
@@ -44,15 +47,19 @@ export default async function DashboardPage() {
 
   if (!project) redirect('/onboarding')
 
-  const phaseResult = await runPhaseEngine(admin, project.id)
-  const inflexion = await runInflexionEngine(admin, project.id)
-  const policy = await runPolicyEngine(admin, project.id, phaseResult, inflexion)
+  const [phaseResult, inflexion, wallet, latestPulse, gamification] = await Promise.all([
+    runPhaseEngine(admin, project.id),
+    runInflexionEngine(admin, project.id),
+    admin.from('core_wallets')
+      .select('allowance_llm_balance, premium_credits_balance, plan_code')
+      .eq('project_id', project.id)
+      .single()
+      .then(r => r.data),
+    getLatestPulse(admin, project.id),
+    getGamificationState(admin, project.id),
+  ])
 
-  const { data: wallet } = await admin
-    .from('core_wallets')
-    .select('allowance_llm_balance, premium_credits_balance, plan_code')
-    .eq('project_id', project.id)
-    .single()
+  const policy = await runPolicyEngine(admin, project.id, phaseResult, inflexion)
 
   let topMissionTemplate: { template_code: string; name: string; description: string; type: string } | null = null
   let activeMissionInstance: { id: string; status: string } | null = null
@@ -91,6 +98,41 @@ export default async function DashboardPage() {
           <h1 className="text-2xl font-bold">{t('welcome')}</h1>
           <p className="text-zinc-500 text-sm mt-1">{user.email}</p>
         </div>
+
+        {/* Gamification strip */}
+        {gamification && (
+          <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="bg-zinc-900 rounded-xl p-3 border border-zinc-800 text-center">
+              <p className="text-xs text-zinc-500 mb-1">{t('level')}</p>
+              <span className="text-xl font-bold text-violet-400">{gamification.level}</span>
+              <p className="text-xs text-zinc-600 mt-0.5">{gamification.xpInLevel}/{gamification.xpForNext} {t('xp')}</p>
+            </div>
+            <div className="bg-zinc-900 rounded-xl p-3 border border-zinc-800 text-center">
+              <p className="text-xs text-zinc-500 mb-1">{t('energy')}</p>
+              <div className="flex flex-col items-center gap-1">
+                <span className={`text-xl font-bold ${gamification.energy >= 50 ? 'text-green-400' : gamification.energy >= 20 ? 'text-amber-400' : 'text-red-400'}`}>
+                  {gamification.energy}
+                </span>
+                <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${gamification.energy >= 50 ? 'bg-green-500' : gamification.energy >= 20 ? 'bg-amber-500' : 'bg-red-500'}`}
+                    style={{ width: `${gamification.energy}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="bg-zinc-900 rounded-xl p-3 border border-zinc-800 text-center">
+              <p className="text-xs text-zinc-500 mb-1">{t('streak')}</p>
+              <span className="text-xl font-bold text-orange-400">
+                {gamification.streak > 0 ? '🔥' : '—'} {gamification.streak}
+              </span>
+            </div>
+            <div className="bg-zinc-900 rounded-xl p-3 border border-zinc-800 text-center">
+              <p className="text-xs text-zinc-500 mb-1">{t('xp')}</p>
+              <span className="text-xl font-bold text-white">{gamification.xp}</span>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
@@ -139,7 +181,7 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        <div>
+        <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4">{t('next_mission')}</h2>
 
           {topMissionTemplate ? (
@@ -160,7 +202,7 @@ export default async function DashboardPage() {
           )}
         </div>
 
-        <div className="mt-8 flex gap-3">
+        <div className="flex gap-3 mb-8">
           <a
             href="/studio"
             className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm transition-colors"
@@ -175,7 +217,26 @@ export default async function DashboardPage() {
           </a>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">{t('growth_pulse')}</h2>
+          <DailyPulseCard
+            pulse={latestPulse}
+            t={{
+              title: t('growth_pulse'),
+              refreshing: t('pulse_refreshing'),
+              noData: t('pulse_no_data'),
+              noDataSub: t('pulse_no_data_sub'),
+              updated: t('pulse_updated'),
+              priorityLabels: {
+                high: t('pulse_priority_high'),
+                medium: t('pulse_priority_medium'),
+                low: t('pulse_priority_low'),
+              },
+            }}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {Object.entries(phaseResult.dimensionScores).map(([key, score]) => (
             <div key={key} className="bg-zinc-900 rounded-lg p-3 border border-zinc-800">
               <p className="text-xs text-zinc-500 capitalize mb-1">{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</p>

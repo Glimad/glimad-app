@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createMissionInstance, executeMission } from '@/lib/missions/runner'
+import { onMissionStart } from '@/lib/gamification'
 
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req)
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
 
   if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
+  await onMissionStart(admin, project.id)
   const instanceId = await createMissionInstance(admin, project.id, template_code)
 
   // Execute mission asynchronously (non-blocking for this request)

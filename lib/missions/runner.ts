@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readAllFacts, writeFact, appendSignal, createSnapshot } from '@/lib/brain'
 import { buildPrompt, type PromptKey } from './prompts'
+import { onMissionComplete } from '@/lib/gamification'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -140,6 +141,9 @@ export async function executeMission(
     template_code: instance.template_code,
     instance_id: instanceId,
   }, 'mission_runner')
+
+  // Gamification: award XP, update streak, restore energy
+  await onMissionComplete(admin, instance.project_id, instance.template_code)
 
   // Debit allowance credits
   if (template.credit_cost_allowance > 0) {
@@ -336,4 +340,7 @@ export async function resumeMissionAfterInput(
     template_code: instance.template_code,
     instance_id: instanceId,
   }, 'mission_runner')
+
+  // Gamification: award XP, update streak, restore energy
+  await onMissionComplete(admin, instance.project_id, instance.template_code)
 }
