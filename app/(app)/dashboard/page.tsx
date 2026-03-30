@@ -11,6 +11,7 @@ import MissionMap from './MissionMap'
 import DailyPulseCard from './DailyPulseCard'
 import CalendarPreview from './CalendarPreview'
 import QuickStats from './QuickStats'
+import AdminTrigger from './AdminTrigger'
 
 const PHASE_COLORS: Record<string, string> = {
   F0: 'bg-zinc-700 text-zinc-200',
@@ -361,5 +362,6 @@ export default async function DashboardPage() {
 
       </div>
     </div>
+    <AdminTrigger />
   )
 }
