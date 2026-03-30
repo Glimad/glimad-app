@@ -9,8 +9,8 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith('/api/')) return NextResponse.next()
   if (pathname.includes('/auth/callback')) return NextResponse.next()
 
-  const authPaths = ['/login', '/signup', '/verify', '/onboarding']
-  if (authPaths.some(p => pathname.startsWith(p))) return NextResponse.next()
+  const publicPaths = ['/login', '/signup', '/verify', '/onboarding', '/terms', '/privacy']
+  if (publicPaths.some(p => pathname.startsWith(p))) return NextResponse.next()
 
   let supabaseResponse = NextResponse.next({ request })
 

@@ -4,16 +4,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import Anthropic from '@anthropic-ai/sdk'
 import { readAllFacts } from '@/lib/brain'
 import { debitLlmCall } from '@/lib/wallet'
-import { checkLlmRateLimit } from '@/lib/security/rate-limit'
+import { checkLlmRateLimitDb } from '@/lib/security/rate-limit'
 import { sanitizeText } from '@/lib/security/sanitize'
 
 export async function POST(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  if (!checkLlmRateLimit(user.id)) {
-    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
-  }
 
   const body = await request.json()
   const content_type = sanitizeText(body.content_type, 50)
@@ -26,6 +22,10 @@ export async function POST(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+
+  if (!await checkLlmRateLimitDb(admin, project!.id)) {
+    return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+  }
 
   const facts = await readAllFacts(admin, project!.id)
   const niche = facts['niche_raw'] ?? facts['niche'] ?? 'content creator'

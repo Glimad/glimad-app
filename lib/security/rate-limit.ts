@@ -1,27 +1,26 @@
-// In-memory rate limiter (per process, reset on restart — Redis later)
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// In-memory fallback (single-instance only — used for non-critical limits)
 const counters = new Map<string, { count: number; resetAt: number }>()
 
-export function rateLimit(key: string, limit: number, windowMs: number): boolean {
+function memoryRateLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now()
   const entry = counters.get(key)
 
   if (!entry || now > entry.resetAt) {
     counters.set(key, { count: 1, resetAt: now + windowMs })
-    return true // allowed
+    return true
   }
 
-  if (entry.count >= limit) return false // blocked
-
+  if (entry.count >= limit) return false
   entry.count++
-  return true // allowed
+  return true
 }
 
-// Clean up expired entries every 5 minutes
 setInterval(() => {
   const now = Date.now()
   Array.from(counters.keys()).forEach(key => {
-    const entry = counters.get(key)!
-    if (now > entry.resetAt) counters.delete(key)
+    if (now > counters.get(key)!.resetAt) counters.delete(key)
   })
 }, 5 * 60 * 1000)
 
@@ -31,15 +30,32 @@ export function getClientIp(request: Request): string {
   return 'unknown'
 }
 
-// Rate limit presets
 export function checkAuthRateLimit(ip: string): boolean {
-  return rateLimit(`auth:${ip}`, 5, 60 * 1000) // 5 req/min per IP
+  // Supabase Auth has its own rate limiting on sign-in attempts
+  return memoryRateLimit(`auth:${ip}`, 5, 60 * 1000)
+}
+
+// DB-backed LLM rate limit: counts ledger debits in the last minute
+export async function checkLlmRateLimitDb(
+  admin: SupabaseClient,
+  projectId: string,
+  limitPerMinute = 10
+): Promise<boolean> {
+  const since = new Date(Date.now() - 60 * 1000).toISOString()
+  const { count } = await admin
+    .from('core_ledger')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('reason_key', 'LLM_CALL_STUDIO')
+    .gte('created_at', since)
+
+  return (count ?? 0) < limitPerMinute
 }
 
 export function checkLlmRateLimit(userId: string): boolean {
-  return rateLimit(`llm:${userId}`, 10, 60 * 1000) // 10 req/min per user
+  return memoryRateLimit(`llm:${userId}`, 10, 60 * 1000)
 }
 
 export function checkApiRateLimit(userId: string): boolean {
-  return rateLimit(`api:${userId}`, 100, 60 * 1000) // 100 req/min per user
+  return memoryRateLimit(`api:${userId}`, 100, 60 * 1000)
 }
