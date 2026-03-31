@@ -143,9 +143,9 @@ async function countInflexionSignals(projectId: string) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 async function testViralSpike(projectId: string, token: string) {
-  console.log('\n[1] viral_spike — content_perf.viral_spike signal in 72h')
+  console.log('\n[1a] viral_spike — explicit content_perf.viral_spike signal in 72h')
   await resetBrain(projectId)
-  await seedFact(projectId, 'followers_total', 1000)
+  await seedFact(projectId, 'current_followers', 1000)
   await seedFact(projectId, 'avg_engagement_rate', 0.04)
   await seedSignal(projectId, 'content_perf.viral_spike', { multiplier: 8, video_id: 'vid_123' }, 2)
 
@@ -162,8 +162,19 @@ async function testViralSpike(projectId: string, token: string) {
 
   const sigCount = await countInflexionSignals(projectId)
   ok('inflexion_detected signal written', sigCount >= 1, `count=${sigCount}`)
-
   ok('policy topMission influenced by inflexion', !!result?.policy?.topMission, `topMission=${result?.policy?.topMission}`)
+
+  console.log('\n[1b] viral_spike — post reach 3x above 30d average')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'current_followers', 1000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  await seedSignal(projectId, 'engagement.avg_post_reach', { value: 500 }, 20 * 24)
+  await seedSignal(projectId, 'engagement.post_reach', { value: 1800 }, 3) // 3.6x average
+
+  const result2 = await runEngines(token)
+  ok('engines returns 200', !!result2, 'null response')
+  ok('reach-based viral_spike detected', result2?.inflexion?.type === 'viral_spike', `got ${result2?.inflexion?.type}`)
+  ok('confidence >= 0.8', (result2?.inflexion?.confidence ?? 0) >= 0.8, `got ${result2?.inflexion?.confidence}`)
 }
 
 async function testCrisis(projectId: string, token: string) {
@@ -186,9 +197,9 @@ async function testCrisis(projectId: string, token: string) {
 }
 
 async function testMonetizationReady(projectId: string, token: string) {
-  console.log('\n[3] monetization_ready — followers >= 5000 + avg_er >= 3%')
+  console.log('\n[3] monetization_ready — current_followers >= 5000 + avg_er >= 3%')
   await resetBrain(projectId)
-  await seedFact(projectId, 'followers_total', 7500)
+  await seedFact(projectId, 'current_followers', 7500)
   await seedFact(projectId, 'avg_engagement_rate', 0.045)
 
   const result = await runEngines(token)

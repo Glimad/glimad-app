@@ -28,7 +28,9 @@ export async function detectInflexion(
   const signals30d = await readSignals(admin, projectId, 30 * 24)
   const signals90d = await readSignals(admin, projectId, 90 * 24)
 
-  const followers = (await readFact(admin, projectId, 'followers_total') as number | null) ?? 0
+  // Spec uses current_followers; fall back to followers_total if not yet set
+  const currentFollowers = (await readFact(admin, projectId, 'current_followers') as number | null)
+  const followers = currentFollowers ?? (await readFact(admin, projectId, 'followers_total') as number | null) ?? 0
   const avgEr = (await readFact(admin, projectId, 'avg_engagement_rate') as number | null) ?? 0
 
   // ── crisis detection ──────────────────────────────────────────────────────
@@ -53,12 +55,8 @@ export async function detectInflexion(
   }
 
   // ── viral_spike detection ─────────────────────────────────────────────────
-  // Look for scrape-detected viral spike or follower growth 3x above average
+  // Condition 1: explicit viral spike signal (from scraper or content tracking)
   const viralSpikeSignals = signals72h.filter(s => s.signal_key === 'content_perf.viral_spike')
-  const growthSignals30d = signals30d
-    .filter(s => s.signal_key === 'growth.followers_total')
-    .map(s => (s.value as { value: number }).value ?? 0)
-
   if (viralSpikeSignals.length > 0) {
     const spike = viralSpikeSignals[0].value as { multiplier: number; video_id?: string }
     return {
@@ -68,7 +66,26 @@ export async function detectInflexion(
     }
   }
 
-  // Follower surge: current vs 30d ago — 3x daily average in last 72h
+  // Condition 2: engagement reach on a single post 3x higher than user's average post reach
+  const reachSignals72h = signals72h.filter(s => s.signal_key === 'engagement.post_reach')
+  const avgReachSignals30d = signals30d.filter(s => s.signal_key === 'engagement.avg_post_reach')
+  if (reachSignals72h.length > 0 && avgReachSignals30d.length > 0) {
+    const postReach = (reachSignals72h[0].value as { value: number }).value ?? 0
+    const avgReach = (avgReachSignals30d[0].value as { value: number }).value ?? 0
+    if (avgReach > 0 && postReach > avgReach * 3) {
+      return {
+        type: 'viral_spike',
+        confidence: 0.85,
+        evidence: { post_reach: postReach, avg_reach: avgReach, multiplier: postReach / avgReach },
+      }
+    }
+  }
+
+  // Condition 3: follower growth 3x above 30-day average daily growth
+  const growthSignals30d = signals30d
+    .filter(s => s.signal_key === 'growth.followers_total')
+    .map(s => (s.value as { value: number }).value ?? 0)
+
   if (growthSignals30d.length >= 2) {
     const oldest = growthSignals30d[growthSignals30d.length - 1]
     const newest = growthSignals30d[0]
