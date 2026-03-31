@@ -23,6 +23,7 @@ const INFLEXION_MISSIONS: Record<string, string> = {
   engagement_plateau: 'ENGAGEMENT_RESCUE_V1',
   burnout_risk: 'ENGAGEMENT_RESCUE_V1',
   monetization_ready: 'DEFINE_OFFER_V1',
+  crisis: 'ENGAGEMENT_RESCUE_V1',
 }
 
 // Phase → recommended missions
@@ -36,6 +37,9 @@ const PHASE_MISSIONS: Record<PhaseCode, string[]> = {
   F6: ['CONTENT_BATCH_3D_V1'],
   F7: ['CONTENT_BATCH_3D_V1'],
 }
+
+// P0=100, P1=80, P2=60, P3=40, P4=20, P5=10
+const PRIORITY_BASE: Record<number, number> = { 0: 100, 1: 80, 2: 60, 3: 40, 4: 20, 5: 10 }
 
 export interface MissionPriority {
   templateCode: string
@@ -57,16 +61,50 @@ export async function runPolicyEngine(
   inflexion: InflexionResult | null
 ): Promise<PolicyResult> {
   const facts = await readAllFacts(admin, projectId)
-  await readSignals(admin, projectId, 30 * 24) // reserved for future use
+  const signals30d = await readSignals(admin, projectId, 30 * 24)
 
-  // Get completed missions (last 30 days or ever)
+  // Get wallet state
+  const { data: wallet } = await admin
+    .from('core_wallets')
+    .select('allowance_llm_balance, premium_credits_balance')
+    .eq('project_id', projectId)
+    .single()
+
+  const premiumBalance = wallet?.premium_credits_balance ?? 0
+  const allowanceBalance = wallet?.allowance_llm_balance ?? 0
+
+  // Daily LLM usage (allowance debits today)
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const { data: todayLedger } = await admin
+    .from('core_ledger')
+    .select('amount_allowance')
+    .eq('project_id', projectId)
+    .eq('kind', 'debit')
+    .gte('created_at', todayStart.toISOString())
+  const dailyUsed = (todayLedger ?? []).reduce((sum, r) => sum + Math.abs(r.amount_allowance ?? 0), 0)
+
+  // Plan daily limit (BASE=2000 allowance/month → ~67/day as proxy; use wallet balance heuristic)
+  // Treat daily limit as reached if allowance balance is 0
+  const dailyLimitReached = allowanceBalance <= 0
+
+  // burnout_risk signal check
+  const hasBurnoutRisk = signals30d.some(s => s.signal_key === 'consistency_gap' || s.signal_key === 'burnout_risk')
+
+  // Get completed missions
   const { data: completedInstances } = await admin
     .from('mission_instances')
     .select('template_code, completed_at')
     .eq('project_id', projectId)
     .eq('status', 'completed')
 
-  const completedCodes = new Set((completedInstances ?? []).map(i => i.template_code))
+  const completedMap = new Map<string, string>() // code → last completed_at
+  for (const inst of completedInstances ?? []) {
+    const existing = completedMap.get(inst.template_code)
+    if (!existing || inst.completed_at > existing) {
+      completedMap.set(inst.template_code, inst.completed_at)
+    }
+  }
 
   // Get active (open) missions
   const { data: activeInstances } = await admin
@@ -94,9 +132,8 @@ export async function runPolicyEngine(
   // ── Core Flow Gate (F0 users) ──────────────────────────────────────────
   const isF0 = phaseResult.phase === 'F0'
   if (isF0) {
-    // Find next incomplete Core Flow mission
     for (const templateCode of CORE_FLOW) {
-      if (!completedCodes.has(templateCode)) {
+      if (!completedMap.has(templateCode)) {
         const isActive = activeCodes.has(templateCode)
         return {
           topMission: templateCode,
@@ -115,11 +152,12 @@ export async function runPolicyEngine(
   // ── Score available missions ───────────────────────────────────────────
   const { data: allTemplates } = await admin
     .from('mission_templates')
-    .select('template_code, type, phase_min, phase_max, cooldown_hours, credit_cost_allowance, credit_cost_premium')
+    .select('template_code, type, phase_min, phase_max, cooldown_hours, credit_cost_allowance, credit_cost_premium, priority_class')
     .eq('active', true)
 
   const phaseRank: Record<PhaseCode, number> = { F0: 0, F1: 1, F2: 2, F3: 3, F4: 4, F5: 5, F6: 6, F7: 7 }
   const currentRank = phaseRank[phaseResult.phase]
+  const now = Date.now()
 
   const scored: MissionPriority[] = []
 
@@ -138,15 +176,19 @@ export async function runPolicyEngine(
     if (currentRank < minRank || currentRank > maxRank) continue
 
     // Cooldown check
-    if (completedCodes.has(code)) {
-      const lastCompleted = completedInstances?.find(i => i.template_code === code)?.completed_at
-      if (lastCompleted && template.cooldown_hours > 0) {
-        const hoursAgo = (Date.now() - new Date(lastCompleted).getTime()) / 3600000
-        if (hoursAgo < template.cooldown_hours) continue
-      }
+    const lastCompletedAt = completedMap.get(code)
+    if (lastCompletedAt && template.cooldown_hours > 0) {
+      const hoursAgo = (now - new Date(lastCompletedAt).getTime()) / 3600000
+      if (hoursAgo < template.cooldown_hours) continue
     }
 
-    let score = 20 // base score
+    // Filter: premium missions require > 0 premium credits
+    const isPremium = template.credit_cost_premium > 0
+    if (isPremium && premiumBalance <= 0) continue
+
+    // Base score from priority class
+    const priorityClass = template.priority_class ?? 2
+    let score = PRIORITY_BASE[priorityClass] ?? 20
 
     // Inflexion bonus
     if (inflexion && INFLEXION_MISSIONS[inflexion.type] === code) score += 50
@@ -155,18 +197,31 @@ export async function runPolicyEngine(
     if (PHASE_MISSIONS[phaseResult.phase]?.includes(code)) score += 30
 
     // Never completed bonus
-    if (!completedCodes.has(code)) score += 20
+    if (!completedMap.has(code)) score += 20
 
-    // Credit penalty (if no premium credits and mission needs them)
-    // (We don't check balance here — just score lower)
+    // Completed > 30 days ago bonus
+    if (lastCompletedAt) {
+      const daysAgo = (now - new Date(lastCompletedAt).getTime()) / 86400000
+      if (daysAgo > 30) score += 10
+    }
 
-    const reason = [
-      inflexion && INFLEXION_MISSIONS[inflexion.type] === code ? `inflexion:${inflexion.type}` : null,
-      PHASE_MISSIONS[phaseResult.phase]?.includes(code) ? `phase:${phaseResult.phase}` : null,
-      !completedCodes.has(code) ? 'new' : null,
-    ].filter(Boolean).join(', ') || 'available'
+    // burnout_risk penalty: high-energy missions (cost > 10 allowance) −30
+    if (hasBurnoutRisk && template.credit_cost_allowance > 10) score -= 30
 
-    scored.push({ templateCode: code, priorityScore: score, reason })
+    // Low wallet credits penalty: if premium balance < 50, premium missions −40
+    if (isPremium && premiumBalance < 50) score -= 40
+
+    // Daily LLM limit reached: all LLM missions → 0
+    if (dailyLimitReached && template.credit_cost_allowance > 0) score = 0
+
+    const reasons: string[] = []
+    if (inflexion && INFLEXION_MISSIONS[inflexion.type] === code) reasons.push(`inflexion:${inflexion.type}`)
+    if (PHASE_MISSIONS[phaseResult.phase]?.includes(code)) reasons.push(`phase:${phaseResult.phase}`)
+    if (!completedMap.has(code)) reasons.push('new')
+    if (hasBurnoutRisk && template.credit_cost_allowance > 10) reasons.push('burnout_penalized')
+    if (dailyLimitReached) reasons.push('daily_limit')
+
+    scored.push({ templateCode: code, priorityScore: score, reason: reasons.join(', ') || 'available' })
   }
 
   scored.sort((a, b) => b.priorityScore - a.priorityScore)
