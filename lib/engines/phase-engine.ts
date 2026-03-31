@@ -277,14 +277,38 @@ export async function computePhase(
   monetization = clamp(monetization)
 
   // ── Team/Ops dimension ────────────────────────────────────────────────────
-  const completedMissions = signals90d.filter(s => s.signal_key === 'mission_completed').length
-  const hasCalendar = signals90d.some(s => s.signal_key === 'content_published')
+  // 4 Core Flow missions × 15 pts each = 60  |  batch_config = 20  |  calendar = 20
+  // Mission completion detected via mission_completed signal with matching mission_type,
+  // with fact-based fallback for missions that write known facts
+  const coreFlowMissions = [
+    'VISION_PURPOSE_MOODBOARD_V1',
+    'NICHE_CONFIRM_V1',
+    'PLATFORM_STRATEGY_PICKER_V1',
+    'PREFERENCES_CAPTURE_V1',
+  ] as const
+
+  const completedCoreFlow = new Set(
+    signals90d
+      .filter(s => s.signal_key === 'mission_completed')
+      .map(s => (s.value as { mission_type?: string })?.mission_type)
+      .filter(Boolean)
+  )
+
+  // Fact-based fallbacks — each mission writes a canonical fact on completion
+  if (!!facts['positioning_statement']) completedCoreFlow.add('VISION_PURPOSE_MOODBOARD_V1')
+  if (!!facts['niche'])                 completedCoreFlow.add('NICHE_CONFIRM_V1')
+  if (!!facts['focus_platform'])        completedCoreFlow.add('PLATFORM_STRATEGY_PICKER_V1')
+  if (!!facts['on_camera_comfort'] !== undefined || !!facts['weekly_hours'])
+                                        completedCoreFlow.add('PREFERENCES_CAPTURE_V1')
+
+  const coreFlowScore = coreFlowMissions.filter(m => completedCoreFlow.has(m)).length * 15
+
   const hasBatchConfig = !!facts['batch_config']
-  let teamOps = 0
-  teamOps += Math.min(completedMissions * 10, 40)
-  if (hasCalendar) teamOps += 20
+  const hasCalendar = signals90d.some(s => s.signal_key === 'content_published')
+
+  let teamOps = coreFlowScore
   if (hasBatchConfig) teamOps += 20
-  if (hasPlatform && hasHandle) teamOps += 20
+  if (hasCalendar) teamOps += 20
   teamOps = clamp(teamOps)
 
   const dimensions: DimensionScores = {
@@ -379,7 +403,7 @@ export async function computePhase(
   let confidence = 0.5
   if (hasEvidence) confidence += 0.2
   if (hasScrape) confidence += 0.2
-  if (completedMissions >= 2) confidence += 0.1
+  if (completedCoreFlow.size >= 2) confidence += 0.1
   confidence = Math.min(1, confidence)
 
   // ── Reason summary ────────────────────────────────────────────────────────
@@ -388,7 +412,7 @@ export async function computePhase(
   else if (!hasNicheConfirmed) reasonParts.push('niche not yet confirmed by AI')
   if (!hasEvidence) reasonParts.push(`only ${evidenceCount} signals (need 3+)`)
   if (!hasScrape) reasonParts.push('no scrape data yet')
-  if (completedMissions > 0) reasonParts.push(`${completedMissions} missions completed`)
+  if (completedCoreFlow.size > 0) reasonParts.push(`${completedCoreFlow.size}/4 core flow missions completed`)
   if (gates['viral_gate_applied']) reasonParts.push('viral gate applied')
   if (gates['cooldown_gate_applied']) reasonParts.push('cooldown gate applied')
   if (gates['f4_blocked_no_offer']) reasonParts.push('F4 blocked: no offer defined')
