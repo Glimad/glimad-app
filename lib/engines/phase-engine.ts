@@ -162,13 +162,19 @@ export async function computePhase(
   audience = clamp(audience)
 
   // ── Consistency dimension ─────────────────────────────────────────────────
+  // Spec anchors: 0→0, 1→30, 3→70, 5+→100 — linear interpolation between
   const posts30d = resolvedPosts30d
   const avgPostsPerWeek = posts30d / 4
-  let consistency = 0
-  if (avgPostsPerWeek >= 5) consistency = 100
-  else if (avgPostsPerWeek >= 3) consistency = 70
-  else if (avgPostsPerWeek >= 1) consistency = 30
-  else if (posts30d > 0) consistency = 10
+  let consistency: number
+  if (avgPostsPerWeek >= 5) {
+    consistency = 100
+  } else if (avgPostsPerWeek >= 3) {
+    consistency = Math.round(70 + ((avgPostsPerWeek - 3) / 2) * 30)  // 3→70, 5→100
+  } else if (avgPostsPerWeek >= 1) {
+    consistency = Math.round(30 + ((avgPostsPerWeek - 1) / 2) * 40)  // 1→30, 3→70
+  } else {
+    consistency = Math.round((avgPostsPerWeek / 1) * 30)              // 0→0, 1→30
+  }
 
   // Penalize for consistency_gap signal in last 14 days
   // OR if last scrape shows 0 posts in 7d and scrape date is current (within 2 days)
