@@ -63,18 +63,42 @@ function clamp(n: number, min = 0, max = 100): number {
 
 export async function computePhase(
   admin: AdminClient,
-  projectId: string
+  projectId: string,
+  now: Date = new Date()
 ): Promise<PhaseResult> {
-  const facts = await readAllFacts(admin, projectId)
-  const signals90d = await readSignals(admin, projectId, 90 * 24)
-  const signals30d = signals90d.filter(s => {
-    const age = Date.now() - new Date(s.observed_at).getTime()
-    return age < 30 * 24 * 3600 * 1000
-  })
-  const signals7d = signals30d.filter(s => {
-    const age = Date.now() - new Date(s.observed_at).getTime()
-    return age < 7 * 24 * 3600 * 1000
-  })
+  // ── Fetch all inputs ──────────────────────────────────────────────────────
+  const [facts, signals90d, latestMetrics] = await Promise.all([
+    readAllFacts(admin, projectId),
+    readSignals(admin, projectId, 90 * 24),
+    admin
+      .from('platform_metrics')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('fetched_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(r => r.data ?? null),
+  ])
+
+  const nowMs = now.getTime()
+  const signals30d = signals90d.filter(s => nowMs - new Date(s.observed_at).getTime() < 30 * 24 * 3600 * 1000)
+  const signals7d = signals30d.filter(s => nowMs - new Date(s.observed_at).getTime() < 7 * 24 * 3600 * 1000)
+
+  // ── Resolve metrics: platform_metrics preferred, Brain Facts as fallback ──
+  const resolvedFollowers: number =
+    latestMetrics?.followers_count ?? (facts['followers_total'] as number | null) ?? 0
+  const resolvedAvgEr: number =
+    latestMetrics?.avg_engagement_rate ?? (facts['avg_engagement_rate'] as number | null) ?? 0
+  const resolvedPosts30d: number =
+    latestMetrics?.recent_posts_7d != null
+      ? latestMetrics.recent_posts_7d * 4   // extrapolate 7d → 30d
+      : (facts['posts_last_30d'] as number | null)
+        ?? signals30d.filter(s => s.signal_key === 'consistency.posts_published_30d')
+              .map(s => (s.value as { value: number }).value ?? 0)
+              .slice(-1)[0] ?? 0
+  const resolvedAvgViews: number =
+    latestMetrics?.avg_views ?? (facts['avg_views_last10'] as number | null) ?? 0
+  const lastScrapeDate: Date | null = latestMetrics?.fetched_at ? new Date(latestMetrics.fetched_at) : null
 
   // ── Evidence gate ─────────────────────────────────────────────────────────
   const evidenceCount = signals30d.length
@@ -83,7 +107,7 @@ export async function computePhase(
   // ── Technology dimension ──────────────────────────────────────────────────
   // Spec: handle provided=30, scrape completed=40, satellites configured=30
   const hasPlatform = !!facts['focus_platform']
-  const hasHandle = !!facts['focus_platform_handle'] || !!facts['handle']
+  const hasHandle = !!facts['focus_platform_handle'] || !!facts['handle'] || !!latestMetrics?.handle
   const hasScrape = signals90d.some(s => s.signal_key === 'scrape_completed')
   const { data: satellitePlatforms } = await admin
     .from('projects_platforms')
@@ -109,7 +133,7 @@ export async function computePhase(
   discovery = clamp(discovery)
 
   // ── Audience dimension ────────────────────────────────────────────────────
-  const avgEr = (facts['avg_engagement_rate'] as number | null) ?? 0
+  const avgEr = resolvedAvgEr
   let audience = 0
   if (avgEr >= 0.04) audience = 90
   else if (avgEr >= 0.02) audience = 60
@@ -119,11 +143,7 @@ export async function computePhase(
   audience = clamp(audience)
 
   // ── Consistency dimension ─────────────────────────────────────────────────
-  const posts30d = (facts['posts_last_30d'] as number | null)
-    ?? signals30d.filter(s => s.signal_key === 'consistency.posts_published_30d')
-       .map(s => (s.value as { value: number }).value ?? 0)
-       .slice(-1)[0] ?? 0
-
+  const posts30d = resolvedPosts30d
   const avgPostsPerWeek = posts30d / 4
   let consistency = 0
   if (avgPostsPerWeek >= 5) consistency = 100
@@ -132,11 +152,15 @@ export async function computePhase(
   else if (posts30d > 0) consistency = 10
 
   // Penalize for consistency_gap signal in last 14 days
+  // OR if last scrape shows 0 posts in 7d and scrape date is current (within 2 days)
   const hasConsistencyGap = signals30d.some(s => {
-    const age = Date.now() - new Date(s.observed_at).getTime()
+    const age = nowMs - new Date(s.observed_at).getTime()
     return s.signal_key === 'consistency_gap' && age < 14 * 24 * 3600 * 1000
   })
-  if (hasConsistencyGap) consistency = clamp(consistency - 20)
+  const scrapeShowsNoRecent = lastScrapeDate !== null
+    && (nowMs - lastScrapeDate.getTime()) < 2 * 24 * 3600 * 1000
+    && (latestMetrics?.recent_posts_7d ?? 1) === 0
+  if (hasConsistencyGap || scrapeShowsNoRecent) consistency = clamp(consistency - 20)
   consistency = clamp(consistency)
 
   // ── Engagement dimension ──────────────────────────────────────────────────
@@ -155,7 +179,7 @@ export async function computePhase(
   engagement = clamp(engagement)
 
   // ── Growth dimension ──────────────────────────────────────────────────────
-  const followers = (facts['followers_total'] as number | null) ?? 0
+  const followers = resolvedFollowers
   const followersSignals = signals90d
     .filter(s => s.signal_key === 'growth.followers_total')
     .map(s => (s.value as { value: number }).value ?? 0)
