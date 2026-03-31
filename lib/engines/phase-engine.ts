@@ -256,10 +256,22 @@ export async function computePhase(
   growth = clamp(growth)
 
   // ── Monetization dimension ────────────────────────────────────────────────
-  const offerDefined = facts['offer_defined'] === true
+  // Gate: requires followers >= 5K AND ER >= 3% to start scoring (0 in F0-F3)
+  // Follower score (0-50): 5K→0, 10K→20, 50K→40, 100K+→50
+  // ER score (0-30): 3%→0, 10%+→30 (linear)
+  // monetization_ready signal → +20
+  const offerDefined = facts['offer_defined'] === true  // used only by F4 gate
   let monetization = 0
-  if (followers >= 5000 && avgEr >= 0.03) monetization = 30
-  if (offerDefined) monetization = clamp(monetization + 40)
+  if (followers >= 5000 && avgEr >= 0.03) {
+    const followerScore = followers >= 100000 ? 50
+      : followers >= 50000 ? 40
+      : followers >= 10000 ? Math.round(20 + ((followers - 10000) / 40000) * 20)  // 10K→20, 50K→40
+      : Math.round(((followers - 5000) / 5000) * 20)                               // 5K→0, 10K→20
+
+    const erScore = Math.round(Math.min(30, ((avgEr - 0.03) / 0.07) * 30))        // 3%→0, 10%→30
+
+    monetization = followerScore + erScore
+  }
   const hasMonetizationReady = signals90d.some(s => s.signal_key === 'monetization_ready')
   if (hasMonetizationReady) monetization = clamp(monetization + 20)
   monetization = clamp(monetization)
