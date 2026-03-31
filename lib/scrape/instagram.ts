@@ -1,5 +1,5 @@
 // Instagram public profile scraper — no OAuth required
-// Uses Instagram's internal web profile info API (public endpoint, no auth)
+// Single call to web_profile_info which returns profile stats AND last 12 posts inline
 // Rate-limited by Instagram — will fail if IP is blocked
 
 export interface InstagramRawData {
@@ -18,11 +18,11 @@ export interface InstagramRawData {
   }
   recent_media: Array<{
     id: string
-    taken_at: number // unix timestamp
+    taken_at: number // unix timestamp (taken_at_timestamp in GraphQL response)
     like_count: number
     comment_count: number
-    play_count: number | null // for reels/videos
-    media_type: number // 1=photo, 2=video, 8=carousel
+    play_count: number | null // video_view_count for videos/reels
+    is_video: boolean
   }>
 }
 
@@ -50,8 +50,8 @@ export interface InstagramNormalized {
 export async function scrapeInstagram(handle: string): Promise<{ raw: InstagramRawData; normalized: InstagramNormalized }> {
   const username = handle.startsWith('@') ? handle.slice(1) : handle
 
-  // Fetch profile info via Instagram's internal web API
-  const profileRes = await fetch(
+  // Single call — returns both profile stats AND last 12 posts in edge_owner_to_timeline_media.edges
+  const res = await fetch(
     `https://i.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`,
     {
       headers: {
@@ -64,38 +64,34 @@ export async function scrapeInstagram(handle: string): Promise<{ raw: InstagramR
       },
     }
   )
-  const profileJson = await profileRes.json()
-  const user = profileJson?.data?.user
+  const json = await res.json()
+  const user = json?.data?.user
   if (!user) throw new Error(`Instagram profile not found or blocked for: ${username}`)
 
-  // Fetch recent media via timeline feed
-  const mediaRes = await fetch(
-    `https://i.instagram.com/api/v1/feed/user/${user.id}/username/?count=12`,
-    {
-      headers: {
-        'x-ig-app-id': '936619743392459',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Referer': 'https://www.instagram.com/',
-        'Origin': 'https://www.instagram.com',
-      },
+  // Profile stats — GraphQL field names from web_profile_info response
+  const followerCount: number = user.edge_followed_by?.count ?? user.follower_count ?? 0
+  const followingCount: number = user.edge_follow?.count ?? user.following_count ?? 0
+  const mediaCount: number = user.edge_owner_to_timeline_media?.count ?? user.media_count ?? 0
+
+  // Last 12 posts — embedded in the same response under edge_owner_to_timeline_media.edges
+  type GraphEdge = {
+    node: {
+      id: string
+      taken_at_timestamp: number
+      edge_liked_by: { count: number }
+      edge_media_to_comment: { count: number }
+      video_view_count: number | null
+      is_video: boolean
     }
-  )
-  const mediaJson = await mediaRes.json()
-  const items: InstagramRawData['recent_media'] = (mediaJson?.items ?? []).map((item: {
-    id: string
-    taken_at: number
-    like_count?: number
-    comment_count?: number
-    play_count?: number
-    media_type: number
-  }) => ({
-    id: item.id,
-    taken_at: item.taken_at,
-    like_count: item.like_count ?? 0,
-    comment_count: item.comment_count ?? 0,
-    play_count: item.play_count ?? null,
-    media_type: item.media_type,
+  }
+  const edges: GraphEdge[] = user.edge_owner_to_timeline_media?.edges ?? []
+  const recentMedia: InstagramRawData['recent_media'] = edges.map(({ node }) => ({
+    id: node.id,
+    taken_at: node.taken_at_timestamp,
+    like_count: node.edge_liked_by?.count ?? 0,
+    comment_count: node.edge_media_to_comment?.count ?? 0,
+    play_count: node.video_view_count ?? null,
+    is_video: node.is_video ?? false,
   }))
 
   const raw: InstagramRawData = {
@@ -105,46 +101,48 @@ export async function scrapeInstagram(handle: string): Promise<{ raw: InstagramR
       full_name: user.full_name ?? '',
       biography: user.biography ?? '',
       category_name: user.category_name ?? null,
-      follower_count: user.edge_followed_by?.count ?? user.follower_count ?? 0,
-      following_count: user.edge_follow?.count ?? user.following_count ?? 0,
-      media_count: user.edge_owner_to_timeline_media?.count ?? user.media_count ?? 0,
+      follower_count: followerCount,
+      following_count: followingCount,
+      media_count: mediaCount,
       profile_pic_url: user.profile_pic_url ?? '',
       is_verified: user.is_verified ?? false,
       is_private: user.is_private ?? false,
     },
-    recent_media: items,
+    recent_media: recentMedia,
   }
 
-  // Normalize
+  // ── Normalize ─────────────────────────────────────────────────────────────
   const now = new Date()
-  const msPerDay = 86400000
 
-  const posts7d = items.filter(p => (now.getTime() / 1000 - p.taken_at) < 7 * 86400)
-  const posts30d = items.filter(p => (now.getTime() / 1000 - p.taken_at) < 30 * 86400)
+  const posts7d = recentMedia.filter(p => now.getTime() / 1000 - p.taken_at < 7 * 86400)
+  const posts30d = recentMedia.filter(p => now.getTime() / 1000 - p.taken_at < 30 * 86400)
 
-  const avgLikes = items.length > 0 ? items.reduce((s, p) => s + p.like_count, 0) / items.length : 0
-  const avgComments = items.length > 0 ? items.reduce((s, p) => s + p.comment_count, 0) / items.length : 0
-  const avgViews = items.length > 0 ? items.reduce((s, p) => s + (p.play_count ?? 0), 0) / items.length : 0
+  const avgLikes = recentMedia.length > 0
+    ? recentMedia.reduce((s, p) => s + p.like_count, 0) / recentMedia.length
+    : 0
+  const avgComments = recentMedia.length > 0
+    ? recentMedia.reduce((s, p) => s + p.comment_count, 0) / recentMedia.length
+    : 0
+  const avgViews = recentMedia.length > 0
+    ? recentMedia.reduce((s, p) => s + (p.play_count ?? 0), 0) / recentMedia.length
+    : 0
 
-  const followers = raw.user.follower_count
-  // ER = (likes + comments) / followers per post
-  const avgEr = followers > 0 ? (avgLikes + avgComments) / followers : 0
+  // Instagram ER = (avg likes + avg comments) / followers
+  const avgEr = followerCount > 0 ? (avgLikes + avgComments) / followerCount : 0
 
   // Viral spike: any post with likes > 3x average
-  const sortedByLikes = [...items].sort((a, b) => b.like_count - a.like_count)
+  const sortedByLikes = [...recentMedia].sort((a, b) => b.like_count - a.like_count)
   const bestPost = sortedByLikes[0] ?? null
   const viralSpike = bestPost && avgLikes > 0 && bestPost.like_count > avgLikes * 3
     ? { post_id: bestPost.id, multiplier: parseFloat((bestPost.like_count / avgLikes).toFixed(1)) }
     : null
 
-  const lastPostDate = items.length > 0
-    ? new Date(Math.max(...items.map(p => p.taken_at)) * 1000).toISOString()
+  const lastPostDate = recentMedia.length > 0
+    ? new Date(Math.max(...recentMedia.map(p => p.taken_at)) * 1000).toISOString()
     : null
 
-  void msPerDay // suppress unused warning
-
   const normalized: InstagramNormalized = {
-    followers_total: followers,
+    followers_total: followerCount,
     avg_er_estimated: parseFloat(avgEr.toFixed(4)),
     avg_views: Math.round(avgViews),
     avg_likes: Math.round(avgLikes),
@@ -155,8 +153,8 @@ export async function scrapeInstagram(handle: string): Promise<{ raw: InstagramR
     posts_per_week_average: parseFloat((posts30d.length / 4.3).toFixed(2)),
     monthly_listeners: null,
     viral_spike: viralSpike,
-    following_total: raw.user.following_count,
-    posts_total: raw.user.media_count,
+    following_total: followingCount,
+    posts_total: mediaCount,
     bio: raw.user.biography,
     category: raw.user.category_name,
     is_verified: raw.user.is_verified,
