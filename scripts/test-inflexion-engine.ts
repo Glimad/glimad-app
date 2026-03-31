@@ -5,7 +5,9 @@
 // then calling POST /api/engines and verifying the inflexion result.
 //
 // Inflexion types tested:
-//   1. viral_spike      — content_perf.viral_spike signal in last 72h
+//   1a. viral_spike     — content_perf.viral_spike signal in last 72h
+//   1b. viral_spike     — post reach 3x above 30d average
+//   1c. viral_spike     — follower growth 3x above 30d daily average
 //   2. crisis           — negative_sentiment signal in last 72h
 //   3. monetization_ready — followers >= 5000 + avg_er >= 3% + no prior signal
 //   4. engagement_plateau — no growth + avg_er < 2% for 14d
@@ -175,6 +177,25 @@ async function testViralSpike(projectId: string, token: string) {
   ok('engines returns 200', !!result2, 'null response')
   ok('reach-based viral_spike detected', result2?.inflexion?.type === 'viral_spike', `got ${result2?.inflexion?.type}`)
   ok('confidence >= 0.8', (result2?.inflexion?.confidence ?? 0) >= 0.8, `got ${result2?.inflexion?.confidence}`)
+
+  console.log('\n[1c] viral_spike — follower growth 3x above 30d daily average')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'current_followers', 1000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  // 30d baseline: grew from 1000 → 1300 (300 in 30d = 10/day average)
+  await seedSignal(projectId, 'growth.followers_total', { value: 1300 }, 1 * 24)   // 24h ago (in 72h window)
+  await seedSignal(projectId, 'growth.followers_total', { value: 1000 }, 3 * 24)   // 72h ago (edge of 72h window, also 30d)
+  await seedSignal(projectId, 'growth.followers_total', { value: 1000 }, 10 * 24)  // 10d ago (30d window, for baseline)
+  await seedSignal(projectId, 'growth.followers_total', { value: 700 }, 30 * 24)   // 30d ago (oldest, baseline start)
+  // dailyAvg = (1300 - 700) / 30 = 20/day
+  // recentGrowth (72h) = 1300 - 1000 = 300
+  // threshold = 20 * 9 = 180 → 300 > 180 ✓
+
+  const result3 = await runEngines(token)
+  ok('engines returns 200', !!result3, 'null response')
+  ok('growth-based viral_spike detected', result3?.inflexion?.type === 'viral_spike', `got ${result3?.inflexion?.type}`)
+  ok('confidence >= 0.7', (result3?.inflexion?.confidence ?? 0) >= 0.7, `got ${result3?.inflexion?.confidence}`)
+  ok('evidence has follower_surge', !!(result3?.inflexion?.evidence?.follower_surge), `evidence: ${JSON.stringify(result3?.inflexion?.evidence)}`)
 }
 
 async function testCrisis(projectId: string, token: string) {
