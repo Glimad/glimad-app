@@ -101,7 +101,24 @@ export async function computePhase(
   const lastScrapeDate: Date | null = latestMetrics?.fetched_at ? new Date(latestMetrics.fetched_at) : null
 
   // ── Evidence gate ─────────────────────────────────────────────────────────
-  const evidenceCount = signals30d.length
+  // Only signals that represent real observed creator activity count as evidence.
+  // Administrative/error signals (scrape_skipped, scrape_failed, user_notification,
+  // missing_evidence, rate_limited) are explicitly excluded.
+  const EVIDENCE_SIGNAL_KEYS = new Set([
+    'scrape_completed',
+    'mission_completed',
+    'growth.followers_total',
+    'engagement.avg_er_7d',
+    'consistency.posts_published_7d',
+    'consistency.posts_published_30d',
+    'content_perf.viral_spike',
+    'viral_spike',
+    'content_published',
+    'inflexion_detected',
+    'phase_changed',
+    'data_correction',
+  ])
+  const evidenceCount = signals30d.filter(s => EVIDENCE_SIGNAL_KEYS.has(s.signal_key)).length
   const hasEvidence = evidenceCount >= 3
 
   // ── Technology dimension ──────────────────────────────────────────────────
