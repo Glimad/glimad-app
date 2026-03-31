@@ -189,19 +189,37 @@ export async function computePhase(
   consistency = clamp(consistency)
 
   // ── Engagement dimension ──────────────────────────────────────────────────
+  // Base: absolute ER mapped through same bands as audience (0–100)
+  // Trend: compare most-recent vs oldest signal in window — up to ±20 pts
+  // Spec: "an improving engagement rate scores higher even if absolute rate is low"
+  let erBase: number
+  if (avgEr <= 0) {
+    erBase = 0
+  } else if (avgEr < 0.01) {
+    erBase = Math.round((avgEr / 0.01) * 25)
+  } else if (avgEr < 0.02) {
+    erBase = Math.round(25 + ((avgEr - 0.01) / 0.01) * 25)
+  } else if (avgEr < 0.04) {
+    erBase = Math.round(50 + ((avgEr - 0.02) / 0.02) * 25)
+  } else {
+    erBase = Math.round(Math.min(100, 75 + ((avgEr - 0.04) / 0.04) * 25))
+  }
+
   const erSignals = signals90d
     .filter(s => s.signal_key === 'engagement.avg_er_7d')
     .map(s => (s.value as { value: number }).value ?? 0)
-    .slice(0, 5)
 
-  let engagement = audience // base = audience score
+  let trendBonus = 0
   if (erSignals.length >= 2) {
-    // Trending up: add bonus
-    const trend = erSignals[0] - erSignals[erSignals.length - 1]
-    if (trend > 0) engagement = clamp(engagement + 15)
-    else if (trend < -0.01) engagement = clamp(engagement - 10)
+    const newest = erSignals[0]
+    const oldest = erSignals[erSignals.length - 1]
+    // Relative change so a small absolute ER that is improving still scores well
+    const relativeTrend = oldest > 0 ? (newest - oldest) / oldest : 0
+    // Cap trend bonus at ±20 pts
+    trendBonus = Math.round(Math.max(-20, Math.min(20, relativeTrend * 100)))
   }
-  engagement = clamp(engagement)
+
+  const engagement = clamp(erBase + trendBonus)
 
   // ── Growth dimension ──────────────────────────────────────────────────────
   const followers = resolvedFollowers
