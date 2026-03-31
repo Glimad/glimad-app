@@ -23,18 +23,23 @@ export interface YouTubeRawData {
 }
 
 export interface YouTubeNormalized {
+  // ── Common fields (shared across all platforms) ──────────────────────────
   followers_total: number
-  videos_total: number
-  views_total: number
-  avg_views_last10: number
-  avg_likes_last10: number
-  avg_comments_last10: number
   avg_er_estimated: number
+  avg_views: number
+  avg_likes: number
+  avg_comments: number
   posts_last_7d: number
   posts_last_30d: number
+  last_post_date: string | null
+  posts_per_week_average: number
+  monthly_listeners: null
+  viral_spike: { post_id: string; multiplier: number } | null
+  // ── YouTube-specific ──────────────────────────────────────────────────────
+  videos_total: number
+  views_total: number
   best_video_id: string | null
   best_video_views: number
-  viral_spike: { video_id: string; multiplier: number } | null
 }
 
 async function ytFetch(path: string) {
@@ -106,28 +111,40 @@ export async function scrapeYouTube(handle: string): Promise<{ raw: YouTubeRawDa
   const avgComments = videos.length > 0 ? videos.reduce((s, v) => s + v.commentCount, 0) / videos.length : 0
 
   // Estimated ER: (likes + comments) / views per video average
-  const avgEr = avgViews > 0 ? ((avgLikes + avgComments) / avgViews) : 0
+  const avgEr = avgViews > 0 ? (avgLikes + avgComments) / avgViews : 0
 
   // Viral spike: any video with views > 3x average
   const sortedByViews = [...videos].sort((a, b) => b.viewCount - a.viewCount)
   const bestVideo = sortedByViews[0] ?? null
   const viralSpike = bestVideo && avgViews > 0 && bestVideo.viewCount > avgViews * 3
-    ? { video_id: bestVideo.id, multiplier: parseFloat((bestVideo.viewCount / avgViews).toFixed(1)) }
+    ? { post_id: bestVideo.id, multiplier: parseFloat((bestVideo.viewCount / avgViews).toFixed(1)) }
     : null
+
+  // Most recent post date (videos sorted by publishedAt desc from API)
+  const lastPostDate = videos.length > 0
+    ? videos.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, videos[0].publishedAt)
+    : null
+
+  // Posts per week: based on last 30 days window
+  const postsPerWeek = parseFloat((videos30d.length / 4.3).toFixed(2))
 
   const normalized: YouTubeNormalized = {
     followers_total: channel.subscriberCount,
-    videos_total: channel.videoCount,
-    views_total: channel.viewCount,
-    avg_views_last10: Math.round(avgViews),
-    avg_likes_last10: Math.round(avgLikes),
-    avg_comments_last10: Math.round(avgComments),
     avg_er_estimated: parseFloat(avgEr.toFixed(4)),
+    avg_views: Math.round(avgViews),
+    avg_likes: Math.round(avgLikes),
+    avg_comments: Math.round(avgComments),
     posts_last_7d: videos7d.length,
     posts_last_30d: videos30d.length,
+    last_post_date: lastPostDate,
+    posts_per_week_average: postsPerWeek,
+    monthly_listeners: null,
+    viral_spike: viralSpike,
+    // YouTube-specific
+    videos_total: channel.videoCount,
+    views_total: channel.viewCount,
     best_video_id: bestVideo?.id ?? null,
     best_video_views: bestVideo?.viewCount ?? 0,
-    viral_spike: viralSpike,
   }
 
   return { raw: { channel, videos }, normalized }

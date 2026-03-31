@@ -1,35 +1,79 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { appendSignal, writeFact } from '@/lib/brain'
+import { appendSignal, writeFact, readFact } from '@/lib/brain'
+import { runPhaseEngine } from '@/lib/engines/phase-engine'
 import { scrapeYouTube } from './youtube'
+import { scrapeInstagram } from './instagram'
+import { scrapeTikTok } from './tiktok'
+import { scrapeSpotify } from './spotify'
 
 type AdminClient = ReturnType<typeof createAdminClient>
+
+// Common normalized shape every platform scraper must return
+interface ScrapeNormalized {
+  followers_total: number
+  avg_er_estimated: number
+  avg_views: number
+  avg_likes: number
+  avg_comments: number
+  posts_last_7d: number
+  posts_last_30d: number
+  last_post_date: string | null
+  posts_per_week_average: number
+  monthly_listeners: number | null
+  viral_spike: { post_id: string; multiplier: number } | null
+}
+
+// ── Platform dispatcher ────────────────────────────────────────────────────
+
+async function runPlatformScrape(
+  platform: string,
+  handle: string
+): Promise<{ raw: unknown; normalized: ScrapeNormalized }> {
+  switch (platform) {
+    case 'youtube':
+      return scrapeYouTube(handle)
+    case 'instagram':
+      return scrapeInstagram(handle)
+    case 'tiktok':
+      return scrapeTikTok(handle)
+    case 'spotify':
+      return scrapeSpotify(handle)
+    default:
+      throw new Error(`Platform not supported yet: ${platform}`)
+  }
+}
+
+// ── Job execution ──────────────────────────────────────────────────────────
 
 export async function executeScrapeLightJob(
   admin: AdminClient,
   jobId: string
 ) {
-  // Mark job as running
-  await admin
-    .from('core_jobs')
-    .update({ status: 'running', started_at: new Date().toISOString(), attempts: 1 })
-    .eq('job_id', jobId)
-
-  const { data: job } = await admin
+  // Read current job state before marking as running
+  const { data: jobBefore } = await admin
     .from('core_jobs')
     .select('*')
     .eq('job_id', jobId)
     .single()
 
-  if (!job) throw new Error('Job not found')
+  if (!jobBefore) throw new Error('Job not found')
 
-  const { project_id, payload_json } = job
+  // Increment attempt count correctly (not hardcoded to 1)
+  const newAttempts = (jobBefore.attempts ?? 0) + 1
+
+  await admin
+    .from('core_jobs')
+    .update({ status: 'running', started_at: new Date().toISOString(), attempts: newAttempts })
+    .eq('job_id', jobId)
+
+  const { project_id, payload_json } = jobBefore
   const platform = (payload_json as { platform: string; handle: string }).platform
   const handle = (payload_json as { platform: string; handle: string }).handle
 
   const today = new Date().toISOString().slice(0, 10)
   const scrapeIdempotencyKey = `${platform}:${handle}:${today}`
 
-  // Dedupe: skip if already ran today
+  // Dedupe: skip execution if already ran today for this handle+platform
   const { data: existingRun } = await admin
     .from('core_scrape_runs')
     .select('run_id')
@@ -37,71 +81,107 @@ export async function executeScrapeLightJob(
     .single()
 
   if (!existingRun) {
-    if (platform === 'youtube') {
-      const { raw, normalized } = await scrapeYouTube(handle)
+    const { raw, normalized } = await runPlatformScrape(platform, handle)
 
-      await admin.from('core_scrape_runs').insert({
-        project_id,
-        platform,
-        handle,
-        period_start: today,
-        period_end: today,
-        raw_json: raw,
-        normalized_json: normalized,
-        idempotency_key: scrapeIdempotencyKey,
-      })
+    // 1. Store raw + normalized in core_scrape_runs
+    await admin.from('core_scrape_runs').insert({
+      project_id,
+      platform,
+      handle,
+      period_start: today,
+      period_end: today,
+      raw_json: raw,
+      normalized_json: normalized,
+      idempotency_key: scrapeIdempotencyKey,
+    })
 
-      // Write brain facts
-      await writeFact(admin, project_id, 'followers_total', normalized.followers_total, 'scrape')
-      await writeFact(admin, project_id, 'avg_engagement_rate', normalized.avg_er_estimated, 'scrape')
-      await writeFact(admin, project_id, 'avg_views_last10', normalized.avg_views_last10, 'scrape')
-      await writeFact(admin, project_id, 'posts_last_30d', normalized.posts_last_30d, 'scrape')
+    // 2. Store structured metrics in platform_metrics
+    await admin.from('platform_metrics').insert({
+      project_id,
+      platform,
+      handle,
+      followers_count: normalized.followers_total,
+      avg_engagement_rate: normalized.avg_er_estimated,
+      avg_views: normalized.avg_views,
+      avg_likes: normalized.avg_likes,
+      avg_comments: normalized.avg_comments,
+      recent_posts_7d: normalized.posts_last_7d,
+      monthly_listeners: normalized.monthly_listeners,
+      fetched_at: new Date().toISOString(),
+    })
 
-      // Write brain signals
-      await appendSignal(admin, project_id, 'growth.followers_total', {
-        value: normalized.followers_total,
+    // 3. Write Brain Facts
+    await writeFact(admin, project_id, 'followers_total', normalized.followers_total, 'scrape')
+    await writeFact(admin, project_id, 'current_followers', normalized.followers_total, 'scrape')
+    await writeFact(admin, project_id, 'avg_engagement_rate', normalized.avg_er_estimated, 'scrape')
+    await writeFact(admin, project_id, 'posts_last_30d', normalized.posts_last_30d, 'scrape')
+    await writeFact(admin, project_id, 'last_post_date', normalized.last_post_date, 'scrape')
+    await writeFact(admin, project_id, 'posts_per_week_average', normalized.posts_per_week_average, 'scrape')
+    if (normalized.avg_views > 0) {
+      await writeFact(admin, project_id, 'avg_views_last10', normalized.avg_views, 'scrape')
+    }
+
+    // 4. Write Brain Signals
+    await appendSignal(admin, project_id, 'growth.followers_total', {
+      value: normalized.followers_total,
+      platform,
+    }, 'scrape')
+
+    await appendSignal(admin, project_id, 'engagement.avg_er_7d', {
+      value: normalized.avg_er_estimated,
+      platform,
+    }, 'scrape')
+
+    await appendSignal(admin, project_id, 'consistency.posts_published_7d', {
+      value: normalized.posts_last_7d,
+      platform,
+    }, 'scrape')
+
+    await appendSignal(admin, project_id, 'consistency.posts_published_30d', {
+      value: normalized.posts_last_30d,
+      platform,
+    }, 'scrape')
+
+    if (normalized.viral_spike) {
+      await appendSignal(admin, project_id, 'content_perf.viral_spike', {
+        ...normalized.viral_spike,
         platform,
       }, 'scrape')
+    }
 
-      await appendSignal(admin, project_id, 'engagement.avg_er_7d', {
-        value: normalized.avg_er_estimated,
-        platform,
-      }, 'scrape')
-
-      await appendSignal(admin, project_id, 'consistency.posts_published_7d', {
-        value: normalized.posts_last_7d,
-        platform,
-      }, 'scrape')
-
-      await appendSignal(admin, project_id, 'consistency.posts_published_30d', {
-        value: normalized.posts_last_30d,
-        platform,
-      }, 'scrape')
-
-      if (normalized.viral_spike) {
-        await appendSignal(admin, project_id, 'content_perf.viral_spike', {
-          ...normalized.viral_spike,
+    // 5. data_correction signal — if follower count differs ≥30% from self-reported
+    const selfReported = await readFact(admin, project_id, 'approximate_followers_self_reported')
+    if (selfReported !== null) {
+      const selfReportedNum = Number(selfReported)
+      const diff = Math.abs(normalized.followers_total - selfReportedNum)
+      const pctDiff = selfReportedNum > 0 ? diff / selfReportedNum : 0
+      if (pctDiff >= 0.30) {
+        await appendSignal(admin, project_id, 'data_correction', {
+          fact: 'followers',
+          self_reported: selfReportedNum,
+          actual: normalized.followers_total,
+          pct_diff: parseFloat((pctDiff * 100).toFixed(1)),
           platform,
         }, 'scrape')
       }
-
-      await appendSignal(admin, project_id, 'scrape_completed', {
-        platform,
-        followers: normalized.followers_total,
-        avg_er: normalized.avg_er_estimated,
-        posts_7d: normalized.posts_last_7d,
-      }, 'scrape')
-
-    } else {
-      // Platform not supported yet — write a signal
-      await appendSignal(admin, project_id, 'scrape_skipped', {
-        platform,
-        reason: 'platform_not_supported_yet',
-      }, 'scrape')
     }
+
+    await appendSignal(admin, project_id, 'scrape_completed', {
+      platform,
+      followers: normalized.followers_total,
+      avg_er: normalized.avg_er_estimated,
+      posts_7d: normalized.posts_last_7d,
+    }, 'scrape')
+
+  } else {
+    await appendSignal(admin, project_id, 'scrape_skipped', {
+      platform,
+      reason: 'already_ran_today',
+      idempotency_key: scrapeIdempotencyKey,
+    }, 'scrape')
   }
 
-  // Debit premium credits (5 per scrape)
+  // 6. Debit premium credits (5 per scrape) — idempotent
   const { data: wallet } = await admin
     .from('core_wallets')
     .select('wallet_id, premium_credits_balance')
@@ -133,12 +213,17 @@ export async function executeScrapeLightJob(
     }
   }
 
-  // Mark job done
+  // 7. Mark job done
   await admin
     .from('core_jobs')
     .update({ status: 'done', finished_at: new Date().toISOString() })
     .eq('job_id', jobId)
+
+  // 8. Trigger Phase Engine re-evaluation
+  await runPhaseEngine(admin, project_id)
 }
+
+// ── Job request ────────────────────────────────────────────────────────────
 
 export async function requestScrapeLight(
   admin: AdminClient,
@@ -147,10 +232,19 @@ export async function requestScrapeLight(
   platform: string,
   handle: string
 ): Promise<{ job_id: string; status: string }> {
+  // Handle missing handle — write signal, don't queue a job
+  if (!handle?.trim()) {
+    await appendSignal(admin, projectId, 'missing_evidence', {
+      reason: 'no_handle_provided',
+      platform,
+    }, 'scrape')
+    return { job_id: '', status: 'skipped_no_handle' }
+  }
+
   const today = new Date().toISOString().slice(0, 10)
   const idempotencyKey = `${projectId}:scrape_light:${platform}:${today}`
 
-  // Check for existing job today
+  // Rate limit: only one job per platform per user per day
   const { data: existing } = await admin
     .from('core_jobs')
     .select('job_id, status')
