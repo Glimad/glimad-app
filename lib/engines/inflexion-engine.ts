@@ -38,8 +38,8 @@ export async function detectInflexion(
   const negativeSentiment = signals72h.some(s => s.signal_key === 'negative_sentiment')
   const followerLoss = signals72h.some(s => {
     if (s.signal_key !== 'growth.followers_total') return false
-    const val = s.value as { delta?: number; value?: number }
-    return (val.delta ?? 0) < -100 || (val.value ?? 0) < 0
+    const val = s.value as { delta?: number }
+    return (val.delta ?? 0) < -100
   })
   const blockRateSignal = signals72h.find(s => s.signal_key === 'block_rate')
   const highBlockRate = blockRateSignal

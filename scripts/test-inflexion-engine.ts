@@ -199,7 +199,7 @@ async function testViralSpike(projectId: string, token: string) {
 }
 
 async function testCrisis(projectId: string, token: string) {
-  console.log('\n[2] crisis — negative_sentiment signal in 72h')
+  console.log('\n[2a] crisis — negative_sentiment signal in 72h')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 5000)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
@@ -208,13 +208,47 @@ async function testCrisis(projectId: string, token: string) {
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
   ok('inflexion type = crisis', result?.inflexion?.type === 'crisis', `got ${result?.inflexion?.type}`)
-  ok('confidence >= 0.7', (result?.inflexion?.confidence ?? 0) >= 0.7, `got ${result?.inflexion?.confidence}`)
+  ok('confidence = 0.85 (negative_sentiment)', result?.inflexion?.confidence === 0.85, `got ${result?.inflexion?.confidence}`)
 
   const event = await getLatestInflexionEvent(projectId)
   ok('core_inflexion_events row written', !!event, 'row missing')
   ok('event_key = crisis', event?.event_key === 'crisis', `got ${event?.event_key}`)
   ok('type = downgrade', event?.type === 'downgrade', `got ${event?.type}`)
   ok('recommended_actions contains CRISIS_RESPONSE_V1', event?.recommended_actions?.includes('CRISIS_RESPONSE_V1'), JSON.stringify(event?.recommended_actions))
+
+  console.log('\n[2b] crisis — rapid follower loss (delta < -100) in 72h')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'followers_total', 5000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.03)
+  await seedSignal(projectId, 'growth.followers_total', { value: 4800, delta: -200 }, 12)
+
+  const result2 = await runEngines(token)
+  ok('engines returns 200', !!result2, 'null response')
+  ok('inflexion type = crisis (follower loss)', result2?.inflexion?.type === 'crisis', `got ${result2?.inflexion?.type}`)
+  ok('confidence = 0.70 (follower_loss)', result2?.inflexion?.confidence === 0.70, `got ${result2?.inflexion?.confidence}`)
+  ok('evidence.follower_loss = true', result2?.inflexion?.evidence?.follower_loss === true, `got ${result2?.inflexion?.evidence?.follower_loss}`)
+
+  console.log('\n[2c] crisis — high block rate (> 5%) in 72h')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'followers_total', 5000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.03)
+  await seedSignal(projectId, 'block_rate', { rate: 0.08 }, 6)
+
+  const result3 = await runEngines(token)
+  ok('engines returns 200', !!result3, 'null response')
+  ok('inflexion type = crisis (block rate)', result3?.inflexion?.type === 'crisis', `got ${result3?.inflexion?.type}`)
+  ok('confidence = 0.80 (high block rate)', result3?.inflexion?.confidence === 0.80, `got ${result3?.inflexion?.confidence}`)
+  ok('evidence.high_block_rate = true', result3?.inflexion?.evidence?.high_block_rate === true, `got ${result3?.inflexion?.evidence?.high_block_rate}`)
+
+  console.log('\n[2d] crisis suppressed — follower loss delta = -50 (below threshold)')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'current_followers', 2000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.03)
+  await seedSignal(projectId, 'growth.followers_total', { value: 1950, delta: -50 }, 12)
+
+  const result4 = await runEngines(token)
+  ok('engines returns 200', !!result4, 'null response')
+  ok('crisis NOT triggered for delta=-50', result4?.inflexion?.type !== 'crisis', `got ${result4?.inflexion?.type}`)
 }
 
 async function testMonetizationReady(projectId: string, token: string) {
