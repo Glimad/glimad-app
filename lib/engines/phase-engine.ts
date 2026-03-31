@@ -222,22 +222,33 @@ export async function computePhase(
   const engagement = clamp(erBase + trendBonus)
 
   // ── Growth dimension ──────────────────────────────────────────────────────
+  // Spec: use signals from last 30 days
+  // Bands (linear interpolation): 0%→0, 0-1%→0-30, 1-5%→30-60, 5-10%→60-80, 10-20%→80-100
+  // viral_spike signal in last 7 days → +10 bonus
   const followers = resolvedFollowers
-  const followersSignals = signals90d
+  const followersSignals30d = signals30d
     .filter(s => s.signal_key === 'growth.followers_total')
     .map(s => (s.value as { value: number }).value ?? 0)
 
   let growth = 0
-  if (followersSignals.length >= 2) {
-    const oldest = followersSignals[followersSignals.length - 1]
-    const newest = followersSignals[0]
+  if (followersSignals30d.length >= 2) {
+    const oldest = followersSignals30d[followersSignals30d.length - 1]
+    const newest = followersSignals30d[0]
     const growthPct = oldest > 0 ? (newest - oldest) / oldest : 0
-    if (growthPct >= 0.10) growth = 90
-    else if (growthPct >= 0.05) growth = 70
-    else if (growthPct >= 0.01) growth = 40
-    else if (growthPct > 0) growth = 20
+
+    if (growthPct <= 0) {
+      growth = 0
+    } else if (growthPct < 0.01) {
+      growth = Math.round((growthPct / 0.01) * 30)                          // 0→0, 1%→30
+    } else if (growthPct < 0.05) {
+      growth = Math.round(30 + ((growthPct - 0.01) / 0.04) * 30)           // 1%→30, 5%→60
+    } else if (growthPct < 0.10) {
+      growth = Math.round(60 + ((growthPct - 0.05) / 0.05) * 20)           // 5%→60, 10%→80
+    } else {
+      growth = Math.round(Math.min(100, 80 + ((growthPct - 0.10) / 0.10) * 20)) // 10%→80, 20%→100
+    }
   } else if (followers > 0) {
-    growth = 15 // some data, no trend yet
+    growth = 15 // some follower data exists but no 30d trend yet
   }
 
   const hasViralSpike = signals7d.some(s => s.signal_key === 'content_perf.viral_spike')
