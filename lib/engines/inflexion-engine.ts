@@ -147,23 +147,30 @@ export async function detectInflexion(
   }
 
   // ── burnout_risk detection ────────────────────────────────────────────────
-  const hasConsistencyGap = signals14d.some(s => s.signal_key === 'consistency_gap')
-  const postsLast30d = signals30d
+  // Spec: consistency_gap signal (no post for 5+ days) AND posting frequency dropping over 30 days
+  const hasConsistencyGap = signals14d.some(s => {
+    if (s.signal_key !== 'consistency_gap') return false
+    const val = s.value as { days_since_last_post?: number }
+    return (val.days_since_last_post ?? 5) >= 5
+  })
+
+  // Frequency dropping: compare most recent posts_published_30d vs oldest in window
+  // Signals are ordered newest-first; if newest < oldest, frequency is in decline
+  const posts30dSignals = signals30d
     .filter(s => s.signal_key === 'consistency.posts_published_30d')
     .map(s => (s.value as { value: number }).value ?? 0)
-  const postsLast7d = signals14d
-    .filter(s => s.signal_key === 'consistency.posts_published_7d')
-    .map(s => (s.value as { value: number }).value ?? 0)
 
-  if (hasConsistencyGap && postsLast30d.length >= 2 && postsLast7d.length > 0) {
-    const avgMonthly = postsLast30d.reduce((a, b) => a + b, 0) / postsLast30d.length
-    const recentWeekly = postsLast7d[0]
-    if (recentWeekly < avgMonthly / 4) {
-      return {
-        type: 'burnout_risk',
-        confidence: 0.65,
-        evidence: { posts_this_week: recentWeekly, avg_monthly_pace: avgMonthly },
-      }
+  const isFrequencyDropping = posts30dSignals.length >= 2
+    && posts30dSignals[0] < posts30dSignals[posts30dSignals.length - 1]
+
+  if (hasConsistencyGap && isFrequencyDropping) {
+    return {
+      type: 'burnout_risk',
+      confidence: 0.65,
+      evidence: {
+        recent_posts_30d: posts30dSignals[0],
+        earlier_posts_30d: posts30dSignals[posts30dSignals.length - 1],
+      },
     }
   }
 

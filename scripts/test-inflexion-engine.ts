@@ -328,25 +328,54 @@ async function testEngagementPlateau(projectId: string, token: string) {
 }
 
 async function testBurnoutRisk(projectId: string, token: string) {
-  console.log('\n[5] burnout_risk — consistency_gap + declining posts')
+  console.log('\n[5a] burnout_risk — consistency_gap (6 days) + frequency dropping over 30d')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 800)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
+  // consistency_gap with days_since_last_post >= 5
   await seedSignal(projectId, 'consistency_gap', { days_since_last_post: 6 }, 2)
-  // Monthly pace was 12 posts, recent week only 1
-  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 12 }, 5 * 24)
-  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 11 }, 10 * 24)
-  await seedSignal(projectId, 'consistency.posts_published_7d', { value: 1 }, 3 * 24)
+  // Downward trend: earlier=14, more recent=8 (newest first after readSignals)
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 8 }, 3 * 24)   // newest (3d ago)
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 14 }, 20 * 24) // oldest (20d ago)
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
   ok('inflexion type = burnout_risk', result?.inflexion?.type === 'burnout_risk', `got ${result?.inflexion?.type}`)
   ok('confidence >= 0.6', (result?.inflexion?.confidence ?? 0) >= 0.6, `got ${result?.inflexion?.confidence}`)
+  ok('evidence has recent_posts_30d', result?.inflexion?.evidence?.recent_posts_30d === 8,
+    `got: ${result?.inflexion?.evidence?.recent_posts_30d}`)
 
   const event = await getLatestInflexionEvent(projectId)
   ok('core_inflexion_events row written', !!event, 'row missing')
   ok('event_key = burnout_risk', event?.event_key === 'burnout_risk', `got ${event?.event_key}`)
   ok('type = downgrade', event?.type === 'downgrade', `got ${event?.type}`)
+
+  console.log('\n[5b] burnout_risk suppressed — consistency_gap only 3 days (< 5)')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'followers_total', 800)
+  await seedFact(projectId, 'avg_engagement_rate', 0.03)
+  await seedSignal(projectId, 'consistency_gap', { days_since_last_post: 3 }, 2)
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 6 }, 3 * 24)
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 14 }, 20 * 24)
+
+  const result2 = await runEngines(token)
+  ok('engines returns 200', !!result2, 'null response')
+  ok('burnout_risk suppressed when gap < 5 days', result2?.inflexion?.type !== 'burnout_risk',
+    `got: ${result2?.inflexion?.type}`)
+
+  console.log('\n[5c] burnout_risk suppressed — frequency not dropping (stable or increasing)')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'followers_total', 800)
+  await seedFact(projectId, 'avg_engagement_rate', 0.03)
+  await seedSignal(projectId, 'consistency_gap', { days_since_last_post: 6 }, 2)
+  // Stable: newest >= oldest → not dropping
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 12 }, 3 * 24)
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 10 }, 20 * 24)
+
+  const result3 = await runEngines(token)
+  ok('engines returns 200', !!result3, 'null response')
+  ok('burnout_risk suppressed when frequency stable/increasing', result3?.inflexion?.type !== 'burnout_risk',
+    `got: ${result3?.inflexion?.type}`)
 }
 
 async function testNoInflexion(projectId: string, token: string) {
