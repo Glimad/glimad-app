@@ -250,24 +250,39 @@ async function testInflexionBonus(projectId: string, userId: string, token: stri
     `got: ${contentBatch?.priorityScore}`)
 }
 
+async function seedF3BrainState(projectId: string) {
+  // Seeds enough brain facts + signals to push phase engine score to F3 (≥45)
+  // discovery=100 (15 pts), audience=75 (7.5), consistency=70 (10.5), engagement=75 (15), technology=30 (1.5) = 49.5
+  await seedFact(projectId, 'niche_raw', 'fitness content creator')
+  await seedFact(projectId, 'niche', 'fitness and wellness')
+  await seedFact(projectId, 'audience_persona', 'health-conscious 25-35 year olds')
+  await seedFact(projectId, 'positioning_statement', 'Real fitness for real people')
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  await seedFact(projectId, 'posts_last_30d', 12) // 3/week → consistency=70
+  await seedFact(projectId, 'focus_platform_handle', 'testuser')
+  // 3 evidence signals so hasEvidence passes
+  await seedSignal(projectId, 'growth.followers_total', { value: 5000 }, 5)
+  await seedSignal(projectId, 'consistency.posts_published_30d', { value: 12 }, 3)
+  await seedSignal(projectId, 'engagement.avg_er_7d', { value: 0.04 }, 2)
+}
+
 async function testPhaseRecommendationBonus(projectId: string, userId: string, token: string) {
   console.log('\n[5] Priority scoring — phase recommendation adds +30')
   await resetState(projectId)
-  await setPhase(userId, 'F3')
   await seedWallet(projectId, 2000, 500)
-  await seedFact(projectId, 'current_followers', 5000)
-  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  await seedF3BrainState(projectId)
 
   const data = await runEngines(token)
   const policy = data.policy
 
-  // F3 recommended: CONTENT_BATCH_3D_V1 and DEFINE_OFFER_V1
+  // Phase must be F3+ so DEFINE_OFFER_V1 (phase_min=F3) is available
   const contentBatch = policy.missionQueue?.find((m: { templateCode: string }) => m.templateCode === 'CONTENT_BATCH_3D_V1')
   const defineOffer = policy.missionQueue?.find((m: { templateCode: string }) => m.templateCode === 'DEFINE_OFFER_V1')
 
+  ok('phase is F3 or above', ['F3', 'F4', 'F5', 'F6', 'F7'].includes(data.phaseResult?.phase),
+    `got: ${data.phaseResult?.phase} (score: ${data.phaseResult?.capabilityScore})`)
   ok('CONTENT_BATCH_3D_V1 in queue', !!contentBatch)
-  ok('DEFINE_OFFER_V1 in queue', !!defineOffer)
-  // Both phase-recommended, CONTENT_BATCH_3D_V1 also uses premium credits (50), so if wallet has plenty both score high
+  ok('DEFINE_OFFER_V1 in queue', !!defineOffer, `queue: ${JSON.stringify(policy.missionQueue?.map((m: { templateCode: string }) => m.templateCode))}`)
   ok('Phase-recommended missions have bonus score (≥90)', (contentBatch?.priorityScore ?? 0) >= 90,
     `CONTENT_BATCH score: ${contentBatch?.priorityScore}`)
 }
@@ -355,13 +370,15 @@ async function testActiveModeViralSpike(projectId: string, userId: string, token
 async function testActiveModeMonetization(projectId: string, userId: string, token: string) {
   console.log('\n[10] activeMode — monetization_ready inflexion → monetize')
   await resetState(projectId)
-  await setPhase(userId, 'F3')
   await seedWallet(projectId, 2000, 500)
-  // Seed conditions for monetization_ready: followers >= 5000, avg_er >= 3%
+  // Seed F3+ brain state so DEFINE_OFFER_V1 (phase_min=F3) passes the phase gate
+  await seedF3BrainState(projectId)
+  // Override followers to trigger monetization_ready (≥5000 + avg_er≥3%)
   await seedFact(projectId, 'current_followers', 8000)
-  await seedFact(projectId, 'avg_engagement_rate', 0.05)
 
   const data = await runEngines(token)
+  ok('phase is F3 or above', ['F3', 'F4', 'F5', 'F6', 'F7'].includes(data.phaseResult?.phase),
+    `got: ${data.phaseResult?.phase} (score: ${data.phaseResult?.capabilityScore})`)
   ok('activeMode is monetize', data.policy?.activeMode === 'monetize', `got: ${data.policy?.activeMode}`)
   ok('inflexion is monetization_ready', data.inflexion?.type === 'monetization_ready', `got: ${data.inflexion?.type}`)
   ok('topMission is DEFINE_OFFER_V1', data.policy?.topMission === 'DEFINE_OFFER_V1', `got: ${data.policy?.topMission}`)
