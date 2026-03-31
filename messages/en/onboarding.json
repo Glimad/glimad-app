@@ -31,6 +31,11 @@
     "platform_current": {
       "text": "Which platform are you on (or want to focus on)?",
       "options": ["Instagram", "TikTok", "YouTube", "Twitter / X", "Spotify", "None yet"]
+    },
+    "handle_current": {
+      "text": "What is your username on {platform}?",
+      "hint": "We'll use it to analyze your account and compute your growth phase.",
+      "placeholder": "@yourusername"
     }
   }
 }

@@ -5,7 +5,7 @@ import { runPhaseEngine } from '@/lib/engines/phase-engine'
 type AdminClient = ReturnType<typeof createAdminClient>
 
 // Platform options that mean "no platform"
-const NO_PLATFORM_VALUES = ['ninguna por ahora', 'none', 'no platforms yet']
+const NO_PLATFORM_VALUES = ['ninguna por ahora', 'none', 'none yet', 'no platforms yet']
 
 // Normalize platform string to our internal key
 function normalizePlatform(raw: string): string | null {
@@ -60,6 +60,7 @@ export async function seedBrainFromOnboarding(
   const facePref = String(r['face_pref'] ?? '')
   const timeBudget = String(r['time_budget_week'] ?? '')
   const platformRaw = String(r['platform_current'] ?? '')
+  const handleRaw = String(r['handle_current'] ?? '').trim()
 
   const focusPlatform = normalizePlatform(platformRaw)
 
@@ -70,6 +71,9 @@ export async function seedBrainFromOnboarding(
     writeFact(admin, projectId, 'on_camera_comfort', facePref, 'onboarding'),
     writeFact(admin, projectId, 'hours_per_week', timeBudget, 'onboarding'),
     writeFact(admin, projectId, 'current_platforms', platformRaw, 'onboarding'),
+    ...(handleRaw && focusPlatform
+      ? [writeFact(admin, projectId, 'focus_platform_handle', handleRaw, 'onboarding')]
+      : []),
   ])
 
   // 3. Write user_preferences
@@ -83,17 +87,15 @@ export async function seedBrainFromOnboarding(
     { onConflict: 'project_id' }
   )
 
-  // 4. Update project with focus platform + onboarding session link
+  // 4. Update project with focus platform + handle + onboarding session link
   await admin.from('projects').update({
     onboarding_session_id: session.id,
     focus_platform: focusPlatform,
+    ...(handleRaw && focusPlatform ? { focus_platform_handle: handleRaw } : {}),
     updated_at: new Date().toISOString(),
   }).eq('id', projectId)
 
   // 5. Write signals
-  // platform_declared: informational — user selected a platform
-  // missing_evidence: always written — handle was never collected in onboarding,
-  //                   so scrape cannot run until user provides it
   if (focusPlatform) {
     await appendSignal(admin, projectId, 'platform_declared', {
       platform: focusPlatform,
@@ -101,12 +103,14 @@ export async function seedBrainFromOnboarding(
     }, 'onboarding')
   }
 
-  // Handle not collected at onboarding — scrape cannot run yet
-  await appendSignal(admin, projectId, 'missing_evidence', {
-    reason: focusPlatform
-      ? 'scrape_skipped — handle not yet provided (platform known)'
-      : 'scrape_skipped — no platform selected at onboarding',
-  }, 'onboarding')
+  // missing_evidence: only when handle is not known — scrape cannot run without handle
+  if (!handleRaw) {
+    await appendSignal(admin, projectId, 'missing_evidence', {
+      reason: focusPlatform
+        ? 'scrape_skipped — handle not yet provided (platform known)'
+        : 'scrape_skipped — no platform selected at onboarding',
+    }, 'onboarding')
+  }
 
   await appendSignal(admin, projectId, 'onboarding_completed', {
     session_id: session.id,

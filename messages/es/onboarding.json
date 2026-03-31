@@ -31,6 +31,11 @@
     "platform_current": {
       "text": "¿En qué plataforma estás ahora (o quieres enfocarte)?",
       "options": ["Instagram", "TikTok", "YouTube", "Twitter / X", "Spotify", "Ninguna por ahora"]
+    },
+    "handle_current": {
+      "text": "¿Cuál es tu usuario en {platform}?",
+      "hint": "Lo usaremos para analizar tu cuenta y calcular tu fase de crecimiento.",
+      "placeholder": "@tuusuario"
     }
   }
 }

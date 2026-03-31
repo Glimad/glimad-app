@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { ONBOARDING_QUESTIONS, TOTAL_STEPS } from '@/lib/onboarding/config'
+import { ONBOARDING_QUESTIONS, TOTAL_STEPS, FLOW_A_VALUE, FLOW_A_VALUE_EN } from '@/lib/onboarding/config'
 
 type Answers = Record<string, string | string[]>
 
@@ -15,6 +15,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0)
   const [answers, setAnswers] = useState<Answers>({})
   const [loading, setLoading] = useState(false)
+  const [showHandleStep, setShowHandleStep] = useState(false)
+  const [handleValue, setHandleValue] = useState('')
 
   const question = ONBOARDING_QUESTIONS[step]
   const questionT = t.raw(`questions.${question.key}`) as Record<string, string | string[]>
@@ -74,18 +76,36 @@ export default function OnboardingPage() {
     if (!sessionId || !currentAnswer) return
     setLoading(true)
 
-    const isLast = step === TOTAL_STEPS - 1
+    const isOnPlatformStep = step === TOTAL_STEPS - 1
 
-    if (isLast) {
-      await fetch(`/api/onboarding/${sessionId}/complete`, {
-        method: 'POST',
+    if (isOnPlatformStep) {
+      // Save platform answer via PATCH
+      await fetch(`/api/onboarding/${sessionId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ final_responses: { [question.key]: currentAnswer } }),
+        body: JSON.stringify({ step: step + 1, responses: { [question.key]: currentAnswer } }),
       })
-      // Clear the onboarding cookie — session is now completed
-      document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
-      router.push(`/signup?sid=${sessionId}`)
+
+      const platformSelected = currentAnswer as string
+      const isNoPlatform =
+        platformSelected === FLOW_A_VALUE ||
+        platformSelected === FLOW_A_VALUE_EN
+
+      if (isNoPlatform) {
+        // Flow A: no platform → complete and go to signup
+        await fetch(`/api/onboarding/${sessionId}/complete`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ final_responses: {} }),
+        })
+        document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
+        router.push(`/signup?sid=${sessionId}`)
+      } else {
+        // Flow B: has a real platform → show handle collection step
+        setShowHandleStep(true)
+      }
     } else {
+      // Regular step: PATCH and advance
       await fetch(`/api/onboarding/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -95,6 +115,23 @@ export default function OnboardingPage() {
     }
 
     setLoading(false)
+  }
+
+  async function handleCompleteWithHandle() {
+    if (!sessionId || !handleValue.trim()) return
+    setLoading(true)
+    await fetch(`/api/onboarding/${sessionId}/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ final_responses: { handle_current: handleValue.trim() } }),
+    })
+    document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
+    router.push(`/signup?sid=${sessionId}`)
+    setLoading(false)
+  }
+
+  function handleBackFromHandle() {
+    setShowHandleStep(false)
   }
 
   function handleBack() {
@@ -109,8 +146,68 @@ export default function OnboardingPage() {
       : !!currentAnswer
 
   const progressPct = Math.round(((step + 1) / TOTAL_STEPS) * 100)
-  const isLast = step === TOTAL_STEPS - 1
 
+  // ── Handle step (Flow B) ──────────────────────────────────────────────────
+  if (showHandleStep) {
+    const platformSelected = answers['platform_current'] as string
+    const handleT = t.raw('questions.handle_current') as Record<string, string>
+    const handleText = (handleT.text as string).replace('{platform}', platformSelected)
+    const handleHint = handleT.hint as string
+    const handlePlaceholder = handleT.placeholder as string
+
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-lg space-y-8">
+
+          <div className="text-center space-y-2">
+            <h1 className="text-3xl font-bold text-white">{t('title')}</h1>
+            <p className="text-zinc-400">{t('subtitle')}</p>
+          </div>
+
+          {/* Progress: step 7 of 7 */}
+          <div className="space-y-2">
+            <p className="text-xs text-zinc-500 text-right">
+              {t('step_of', { step: TOTAL_STEPS + 1, total: TOTAL_STEPS + 1 })}
+            </p>
+            <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="h-full bg-violet-500 rounded-full transition-all duration-300" style={{ width: '100%' }} />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-white">{handleText}</h2>
+            <p className="text-sm text-zinc-400">{handleHint}</p>
+            <input
+              type="text"
+              value={handleValue}
+              onChange={e => setHandleValue(e.target.value)}
+              placeholder={handlePlaceholder}
+              className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleBackFromHandle}
+              className="px-6 py-3 rounded-lg border border-zinc-700 text-zinc-300 hover:border-zinc-500 transition-colors"
+            >
+              {t('back')}
+            </button>
+            <button
+              onClick={handleCompleteWithHandle}
+              disabled={!handleValue.trim() || loading || !sessionId}
+              className="flex-1 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
+            >
+              {loading ? t('loading') : t('finish')}
+            </button>
+          </div>
+
+        </div>
+      </div>
+    )
+  }
+
+  // ── Regular question steps ────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-lg space-y-8">
@@ -203,7 +300,7 @@ export default function OnboardingPage() {
             disabled={!canAdvance || loading || !sessionId}
             className="flex-1 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold transition-colors"
           >
-            {loading ? t('loading') : isLast ? t('finish') : t('next')}
+            {loading ? t('loading') : t('next')}
           </button>
         </div>
       </div>
