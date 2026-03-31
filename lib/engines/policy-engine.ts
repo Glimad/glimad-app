@@ -74,16 +74,6 @@ export async function runPolicyEngine(
   const allowanceBalance = wallet?.allowance_llm_balance ?? 0
 
   // Daily LLM usage (allowance debits today)
-  const todayStart = new Date()
-  todayStart.setHours(0, 0, 0, 0)
-  const { data: todayLedger } = await admin
-    .from('core_ledger')
-    .select('amount_allowance')
-    .eq('project_id', projectId)
-    .eq('kind', 'debit')
-    .gte('created_at', todayStart.toISOString())
-  const dailyUsed = (todayLedger ?? []).reduce((sum, r) => sum + Math.abs(r.amount_allowance ?? 0), 0)
-
   // Plan daily limit (BASE=2000 allowance/month → ~67/day as proxy; use wallet balance heuristic)
   // Treat daily limit as reached if allowance balance is 0
   const dailyLimitReached = allowanceBalance <= 0
