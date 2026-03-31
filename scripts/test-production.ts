@@ -2,7 +2,7 @@
 // Run: npx tsx --env-file=.env scripts/test-production.ts
 import { createClient } from '@supabase/supabase-js'
 
-const BASE = 'https://glimad-app.vercel.app'
+const BASE = 'https://glimad-app-six.vercel.app'
 const CRON_SECRET = process.env.CRON_SECRET!
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -144,6 +144,7 @@ async function testScrapeRunAuthorized(projectId: string) {
     status: 'queued',
     idempotency_key: idempKey,
     cost_premium_credits: 5,
+    max_attempts: 1,
     payload_json: { platform: 'instagram', handle: 'leomessi' },
   }).select('job_id').single()
 

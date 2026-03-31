@@ -29,19 +29,22 @@ export async function GET(req: NextRequest) {
   const results: Array<{ job_id: string; result: string }> = []
 
   for (const job of jobs) {
+    // Atomically claim the job — skip if another invocation already grabbed it
+    const { data: claimed } = await admin
+      .from('core_jobs')
+      .update({ status: 'running', started_at: new Date().toISOString() })
+      .eq('job_id', job.job_id)
+      .eq('status', 'queued')
+      .select('job_id, attempts, max_attempts')
+      .single()
+
+    if (!claimed) continue // Claimed by a concurrent invocation — skip
+
     const outcome = await executeScrapeLightJob(admin, job.job_id)
       .then(() => 'done')
       .catch(async (err: Error) => {
-        // executeScrapeLightJob already incremented attempts when it started running.
-        // Read the current value without adding 1 again to avoid double-counting.
-        const { data: currentJob } = await admin
-          .from('core_jobs')
-          .select('attempts, max_attempts')
-          .eq('job_id', job.job_id)
-          .single()
-
-        const currentAttempts = currentJob?.attempts ?? 1
-        const isFinal = currentAttempts >= (currentJob?.max_attempts ?? 3)
+        const currentAttempts = claimed.attempts + 1 // attempts was incremented inside executeScrapeLightJob
+        const isFinal = currentAttempts >= (claimed.max_attempts ?? 3)
 
         await admin
           .from('core_jobs')

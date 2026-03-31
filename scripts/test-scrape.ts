@@ -2,7 +2,7 @@
 // Run: npx tsx --env-file=.env scripts/test-scrape.ts
 import { createClient } from '@supabase/supabase-js'
 import { requestScrapeLight, executeScrapeLightJob } from '../lib/scrape'
-import { readFact, readSignals } from '../lib/brain'
+import { readFact, readSignals, writeFact } from '../lib/brain'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -265,10 +265,72 @@ async function testWalletDebit(db: ReturnType<typeof admin>, projectId: string) 
   ok('all ledger entries are debits', ledger?.every(l => (l.amount_premium ?? 0) < 0) ?? false)
 }
 
-// ── TEST 8: retry signals on failure ─────────────────────────────────────────
+// ── TEST 8: data_correction signal ───────────────────────────────────────────
+
+async function testDataCorrection(db: ReturnType<typeof admin>, projectId: string, userId: string) {
+  console.log('\n[8] data_correction signal — self-reported vs actual ≥30% diff')
+
+  // Write a self-reported follower count vastly different from leomessi's actual (~500M)
+  await writeFact(db as any, projectId, 'approximate_followers_self_reported', 1000, 'test')
+
+  // Clear today's idempotency record so the scrape actually runs (not skipped)
+  const today = new Date().toISOString().slice(0, 10)
+  await db.from('core_scrape_runs').delete().eq('idempotency_key', `instagram:leomessi:${today}`)
+
+  // Execute a fresh scrape job for leomessi
+  const { data: job } = await db.from('core_jobs').insert({
+    project_id: projectId,
+    user_id: userId,
+    job_type: 'scrape_light',
+    status: 'queued',
+    idempotency_key: `data-correction-test-${Date.now()}`,
+    cost_premium_credits: 5,
+    payload_json: { platform: 'instagram', handle: 'leomessi' },
+  }).select('job_id').single()
+
+  await executeScrapeLightJob(db as any, job!.job_id)
+
+  const correctionSigs = await readSignals(db as any, projectId, 1, 'data_correction')
+  ok('data_correction signal written', correctionSigs.length > 0, `got ${correctionSigs.length}`)
+
+  const sig = correctionSigs[0]?.value as any
+  ok('data_correction has self_reported', sig?.self_reported === 1000, JSON.stringify(sig))
+  ok('data_correction has actual followers', (sig?.actual ?? 0) > 1000, JSON.stringify(sig))
+  ok('data_correction pct_diff > 30', (sig?.pct_diff ?? 0) > 30, `got ${sig?.pct_diff}`)
+  ok('data_correction has fact=followers', sig?.fact === 'followers', JSON.stringify(sig))
+
+  // Clean up the self-reported fact so it doesn't affect other tests
+  await db.from('brain_facts').delete().eq('project_id', projectId).eq('fact_key', 'approximate_followers_self_reported')
+}
+
+// ── TEST 9: Phase Engine triggered after execute ──────────────────────────────
+
+async function testPhaseEngineTriggered(db: ReturnType<typeof admin>, projectId: string) {
+  console.log('\n[9] Phase Engine triggered — core_phase_runs written after execute')
+
+  const { data: runs } = await db.from('core_phase_runs')
+    .select('run_id, phase_code, capability_score, computed_at')
+    .eq('project_id', projectId)
+    .order('computed_at', { ascending: false })
+    .limit(1)
+
+  ok('core_phase_runs row exists after execute', (runs?.length ?? 0) > 0, 'no phase run found')
+
+  const run = runs?.[0]
+  ok('phase_code is valid F-code', /^F[0-7]$/.test(run?.phase_code ?? ''), `got ${run?.phase_code}`)
+  ok('capability_score 0-100', (run?.capability_score ?? -1) >= 0 && (run?.capability_score ?? 101) <= 100,
+    `got ${run?.capability_score}`)
+
+  // current_phase fact must match last run
+  const currentPhase = await readFact(db as any, projectId, 'current_phase')
+  ok('current_phase fact matches last run', currentPhase === run?.phase_code,
+    `fact=${currentPhase}, run=${run?.phase_code}`)
+}
+
+// ── TEST 10: retry signals on failure ─────────────────────────────────────────
 
 async function testRetrySignals(db: ReturnType<typeof admin>, projectId: string, userId: string) {
-  console.log('\n[8] Retry — scrape_failed signals on bad handle')
+  console.log('\n[10] Retry — scrape_failed signals on bad handle')
 
 
   // Queue a job with a non-existent handle that will cause an API error
@@ -336,6 +398,8 @@ async function main() {
       await testExecuteInstagram(db, projectId, instagramJobId)
       await testIdempotency(db, projectId, userId)
       await testWalletDebit(db, projectId)
+      await testDataCorrection(db, projectId, userId)
+      await testPhaseEngineTriggered(db, projectId)
       await testRetrySignals(db, projectId, userId)
     }
   } catch (err) {
