@@ -1,6 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export function extractToken(request: Request): string | null {
+  // 1. Bearer token in Authorization header (API/programmatic access)
+  const authHeader = request.headers.get('authorization') ?? ''
+  if (authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7).trim()
+    if (token) return token
+  }
+
+  // 2. Supabase session cookie (browser/SSR access)
   const cookie = request.headers.get('cookie') ?? ''
   const match = cookie.match(/sb-awaakurvnngazmnnmwza-auth-token=base64-([^;]+)/)
   if (!match) return null
