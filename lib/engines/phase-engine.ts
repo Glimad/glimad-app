@@ -96,8 +96,6 @@ export async function computePhase(
         ?? signals30d.filter(s => s.signal_key === 'consistency.posts_published_30d')
               .map(s => (s.value as { value: number }).value ?? 0)
               .slice(-1)[0] ?? 0
-  const resolvedAvgViews: number =
-    latestMetrics?.avg_views ?? (facts['avg_views_last10'] as number | null) ?? 0
   const lastScrapeDate: Date | null = latestMetrics?.fetched_at ? new Date(latestMetrics.fetched_at) : null
 
   // ── Evidence gate ─────────────────────────────────────────────────────────
