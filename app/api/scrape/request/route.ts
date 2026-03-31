@@ -28,5 +28,13 @@ export async function POST(request: Request) {
     project.focus_platform_handle
   )
 
+  // Trigger worker immediately after queuing — don't wait for daily cron
+  // Non-awaited: response returns to client while worker runs in a separate invocation
+  if (result.job_id) {
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/scrape/run`, {
+      headers: { 'Authorization': `Bearer ${process.env.CRON_SECRET}` },
+    }).catch(() => {})
+  }
+
   return NextResponse.json(result)
 }

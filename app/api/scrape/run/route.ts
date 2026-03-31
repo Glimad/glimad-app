@@ -32,20 +32,21 @@ export async function GET(req: NextRequest) {
     const outcome = await executeScrapeLightJob(admin, job.job_id)
       .then(() => 'done')
       .catch(async (err: Error) => {
+        // executeScrapeLightJob already incremented attempts when it started running.
+        // Read the current value without adding 1 again to avoid double-counting.
         const { data: currentJob } = await admin
           .from('core_jobs')
           .select('attempts, max_attempts')
           .eq('job_id', job.job_id)
           .single()
 
-        const attempts = (currentJob?.attempts ?? 0) + 1
-        const isFinal = attempts >= (currentJob?.max_attempts ?? 3)
+        const currentAttempts = currentJob?.attempts ?? 1
+        const isFinal = currentAttempts >= (currentJob?.max_attempts ?? 3)
 
         await admin
           .from('core_jobs')
           .update({
             status: isFinal ? 'failed' : 'queued',
-            attempts,
             finished_at: isFinal ? new Date().toISOString() : null,
             error_text: err.message,
           })
