@@ -251,7 +251,10 @@ export async function computePhase(
     growth = 15 // some follower data exists but no 30d trend yet
   }
 
-  const hasViralSpike = signals7d.some(s => s.signal_key === 'content_perf.viral_spike')
+  // Check both scrape-written and inflexion-engine-written viral spike signals
+  const hasViralSpike = signals7d.some(s =>
+    s.signal_key === 'content_perf.viral_spike' || s.signal_key === 'viral_spike'
+  )
   if (hasViralSpike) growth = clamp(growth + 10)
   growth = clamp(growth)
 
@@ -378,7 +381,7 @@ export async function computePhase(
   // Cooldown gate: don't advance if last phase change < 30 days
   const lastPhaseChange = await readLatestSignal(admin, projectId, 'phase_changed')
   if (lastPhaseChange) {
-    const daysSinceChange = (Date.now() - new Date(lastPhaseChange.observed_at).getTime()) / (24 * 3600 * 1000)
+    const daysSinceChange = (nowMs - new Date(lastPhaseChange.observed_at).getTime()) / (24 * 3600 * 1000)
     if (daysSinceChange < 30) {
       const prevPhaseRun = await admin
         .from('core_phase_runs')
