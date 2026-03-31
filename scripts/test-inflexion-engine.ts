@@ -369,28 +369,30 @@ async function testNoInflexion(projectId: string, token: string) {
 }
 
 async function testCooldown(projectId: string, token: string) {
-  console.log('\n[7] cooldown — same inflexion does not re-fire within 7 days')
+  console.log('\n[7] cooldown — 7-day guard: viral_spike does not re-write signal/event within 7 days')
   await resetBrain(projectId)
-  await seedFact(projectId, 'followers_total', 7500)
-  await seedFact(projectId, 'avg_engagement_rate', 0.045)
+  await seedFact(projectId, 'current_followers', 1000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  // Keep the viral spike signal alive across both calls
+  await seedSignal(projectId, 'content_perf.viral_spike', { multiplier: 6 }, 2)
 
-  // First call — should fire and write event
+  // First call — should fire and write event + signal
   const result1 = await runEngines(token)
-  ok('first call inflexion detected', result1?.inflexion?.type === 'monetization_ready', `got ${result1?.inflexion?.type}`)
+  ok('first call inflexion detected', result1?.inflexion?.type === 'viral_spike', `got ${result1?.inflexion?.type}`)
 
   const sigCount1 = await countInflexionSignals(projectId)
   ok('signal written on first call', sigCount1 === 1, `count=${sigCount1}`)
 
-  // Second call — cooldown should prevent re-writing signal/event
+  // Second call — 7-day cooldown in runInflexionEngine should prevent re-writing
   const result2 = await runEngines(token)
-  ok('second call still returns inflexion result', result2?.inflexion?.type === 'monetization_ready', `got ${result2?.inflexion?.type}`)
+  ok('second call still returns inflexion result (passed through)', result2?.inflexion?.type === 'viral_spike', `got ${result2?.inflexion?.type}`)
 
   const sigCount2 = await countInflexionSignals(projectId)
   ok('no duplicate signal on second call', sigCount2 === 1, `count=${sigCount2}`)
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
   const { data: events } = await admin.from('core_inflexion_events')
-    .select('id').eq('project_id', projectId).eq('event_key', 'monetization_ready')
+    .select('id').eq('project_id', projectId).eq('event_key', 'viral_spike')
   ok('only 1 core_inflexion_events row (no duplicate)', (events?.length ?? 0) === 1, `count=${events?.length}`)
 }
 
