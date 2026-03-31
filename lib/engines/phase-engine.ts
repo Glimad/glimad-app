@@ -378,25 +378,33 @@ export async function computePhase(
     }
   }
 
-  // Cooldown gate: don't advance if last phase change < 30 days
+  // Cooldown gate: if the user advanced a phase in the last 30 days, block further advancement
+  // Only upward phase changes start the cooldown clock — regressions do not
   const lastPhaseChange = await readLatestSignal(admin, projectId, 'phase_changed')
   if (lastPhaseChange) {
-    const daysSinceChange = (nowMs - new Date(lastPhaseChange.observed_at).getTime()) / (24 * 3600 * 1000)
-    if (daysSinceChange < 30) {
-      const prevPhaseRun = await admin
-        .from('core_phase_runs')
-        .select('phase_code')
-        .eq('project_id', projectId)
-        .order('computed_at', { ascending: false })
-        .limit(1)
-        .single()
+    const sig = lastPhaseChange.value as { from?: string; to?: string }
+    const phaseRanks = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']
+    const wasAdvancement = sig.from && sig.to
+      && phaseRanks.indexOf(sig.to) > phaseRanks.indexOf(sig.from)
 
-      if (prevPhaseRun.data) {
-        const prevRank = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'].indexOf(prevPhaseRun.data.phase_code)
-        const newRank = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'].indexOf(computedPhase)
-        if (newRank > prevRank) {
-          computedPhase = prevPhaseRun.data.phase_code as PhaseCode
-          gates['cooldown_gate_applied'] = true
+    if (wasAdvancement) {
+      const daysSinceAdvancement = (nowMs - new Date(lastPhaseChange.observed_at).getTime()) / (24 * 3600 * 1000)
+      if (daysSinceAdvancement < 30) {
+        const prevPhaseRun = await admin
+          .from('core_phase_runs')
+          .select('phase_code')
+          .eq('project_id', projectId)
+          .order('computed_at', { ascending: false })
+          .limit(1)
+          .single()
+
+        if (prevPhaseRun.data) {
+          const prevRank = phaseRanks.indexOf(prevPhaseRun.data.phase_code)
+          const newRank = phaseRanks.indexOf(computedPhase)
+          if (newRank > prevRank) {
+            computedPhase = prevPhaseRun.data.phase_code as PhaseCode
+            gates['cooldown_gate_applied'] = true
+          }
         }
       }
     }
