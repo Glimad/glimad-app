@@ -123,13 +123,22 @@ export async function computePhase(
   technology = clamp(technology)
 
   // ── Discovery dimension ───────────────────────────────────────────────────
-  const hasNiche = !!facts['niche_raw'] || !!facts['niche']
-  const hasGoal = !!facts['primary_goal']
+  // niche_raw exists (user-defined)  → 20 pts
+  // niche confirmed by AI (NICHE_CONFIRM_V1 completed, writes `niche` fact) → 30 pts
+  // audience_persona defined → 30 pts
+  // positioning_statement generated → 20 pts
+  // Full score = 100
+  const hasNicheRaw = !!facts['niche_raw']
+  const hasNicheConfirmed = !!facts['niche']
+    || signals90d.some(s => s.signal_key === 'mission_completed'
+        && (s.value as { mission_type?: string })?.mission_type === 'NICHE_CONFIRM_V1')
   const hasPersona = !!facts['audience_persona']
+  const hasPositioning = !!facts['positioning_statement']
   let discovery = 0
-  if (hasNiche) discovery += 40
-  if (hasGoal) discovery += 20
-  if (hasPersona) discovery += 40
+  if (hasNicheRaw) discovery += 20
+  if (hasNicheConfirmed) discovery += 30
+  if (hasPersona) discovery += 30
+  if (hasPositioning) discovery += 20
   discovery = clamp(discovery)
 
   // ── Audience dimension ────────────────────────────────────────────────────
@@ -253,7 +262,8 @@ export async function computePhase(
   const gates: Record<string, boolean> = {
     has_platform: hasPlatform,
     has_handle: hasHandle,
-    has_niche: hasNiche,
+    has_niche: hasNicheRaw,
+    niche_confirmed: hasNicheConfirmed,
     has_evidence: hasEvidence,
     offer_defined: offerDefined,
   }
@@ -317,7 +327,8 @@ export async function computePhase(
 
   // ── Reason summary ────────────────────────────────────────────────────────
   const reasonParts: string[] = []
-  if (!hasNiche) reasonParts.push('niche not defined')
+  if (!hasNicheRaw) reasonParts.push('niche not defined')
+  else if (!hasNicheConfirmed) reasonParts.push('niche not yet confirmed by AI')
   if (!hasEvidence) reasonParts.push(`only ${evidenceCount} signals (need 3+)`)
   if (!hasScrape) reasonParts.push('no scrape data yet')
   if (completedMissions > 0) reasonParts.push(`${completedMissions} missions completed`)
