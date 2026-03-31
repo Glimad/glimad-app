@@ -118,15 +118,19 @@ export async function detectInflexion(
   }
 
   // ── engagement_plateau detection ──────────────────────────────────────────
+  // Condition: no positive follower change AND all recent ER signals below 2% for 14d
   const erSignals14d = signals14d.filter(s => s.signal_key === 'engagement.avg_er_7d')
   const hasPositiveGrowth14d = signals14d.some(s => {
-    const val = s.value as { value: number }
-    return s.signal_key === 'growth.followers_total' && (val.value ?? 0) > 0
+    if (s.signal_key !== 'growth.followers_total') return false
+    const val = s.value as { delta?: number }
+    return (val.delta ?? 0) > 0
   })
 
   if (erSignals14d.length > 0 && !hasPositiveGrowth14d) {
-    const latestEr = (erSignals14d[0].value as { value: number }).value ?? 0
-    if (latestEr < 0.02) {
+    // All ER signals in the 14d window must be below 2% (approximates "14 consecutive days")
+    const allErLow = erSignals14d.every(s => ((s.value as { value: number }).value ?? 0) < 0.02)
+    if (allErLow) {
+      const latestEr = (erSignals14d[0].value as { value: number }).value ?? 0
       return {
         type: 'engagement_plateau',
         confidence: 0.7,

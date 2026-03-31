@@ -235,14 +235,16 @@ async function testMonetizationReady(projectId: string, token: string) {
 }
 
 async function testEngagementPlateau(projectId: string, token: string) {
-  console.log('\n[4] engagement_plateau — no growth + avg_er < 2% for 14d')
+  console.log('\n[4a] engagement_plateau — no growth (delta=0) + all ER signals < 2% for 14d')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 1200)
   await seedFact(projectId, 'avg_engagement_rate', 0.015)
-  // Seed engagement signals over last 14d with low ER (no positive growth signals)
+  // Seed 5 ER signals across 14d, all below 2%
   for (let i = 1; i <= 5; i++) {
     await seedSignal(projectId, 'engagement.avg_er_7d', { value: 0.015 }, i * 48)
   }
+  // Growth signal with delta=0 (no positive change)
+  await seedSignal(projectId, 'growth.followers_total', { value: 1200, delta: 0 }, 5 * 24)
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
@@ -253,6 +255,35 @@ async function testEngagementPlateau(projectId: string, token: string) {
   ok('core_inflexion_events row written', !!event, 'row missing')
   ok('event_key = engagement_plateau', event?.event_key === 'engagement_plateau', `got ${event?.event_key}`)
   ok('severity = med', event?.severity === 'med', `got ${event?.severity}`)
+
+  console.log('\n[4b] engagement_plateau suppressed — positive delta present')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'followers_total', 1200)
+  await seedFact(projectId, 'avg_engagement_rate', 0.015)
+  for (let i = 1; i <= 5; i++) {
+    await seedSignal(projectId, 'engagement.avg_er_7d', { value: 0.015 }, i * 48)
+  }
+  // Positive follower delta → plateau should NOT fire
+  await seedSignal(projectId, 'growth.followers_total', { value: 1250, delta: 50 }, 3 * 24)
+
+  const result2 = await runEngines(token)
+  ok('engines returns 200', !!result2, 'null response')
+  ok('engagement_plateau suppressed when delta > 0', result2?.inflexion?.type !== 'engagement_plateau',
+    `got: ${result2?.inflexion?.type}`)
+
+  console.log('\n[4c] engagement_plateau suppressed — ER spikes above 2% mid-window')
+  await resetBrain(projectId)
+  await seedFact(projectId, 'followers_total', 1200)
+  await seedFact(projectId, 'avg_engagement_rate', 0.015)
+  // Mix of low and high ER signals → not all < 2% → no plateau
+  await seedSignal(projectId, 'engagement.avg_er_7d', { value: 0.015 }, 1 * 48)
+  await seedSignal(projectId, 'engagement.avg_er_7d', { value: 0.025 }, 2 * 48) // spike above 2%
+  await seedSignal(projectId, 'engagement.avg_er_7d', { value: 0.015 }, 3 * 48)
+
+  const result3 = await runEngines(token)
+  ok('engines returns 200', !!result3, 'null response')
+  ok('engagement_plateau suppressed when any ER ≥ 2%', result3?.inflexion?.type !== 'engagement_plateau',
+    `got: ${result3?.inflexion?.type}`)
 }
 
 async function testBurnoutRisk(projectId: string, token: string) {
