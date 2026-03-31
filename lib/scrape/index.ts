@@ -46,6 +46,28 @@ async function runPlatformScrape(
   }
 }
 
+// ── Retry helper ──────────────────────────────────────────────────────────
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  onFailure: (attempt: number, err: Error) => Promise<void>,
+  maxAttempts = 3
+): Promise<T> {
+  let lastErr: Error = new Error('unknown')
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err as Error
+      await onFailure(attempt, lastErr)
+      if (attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1))) // 1s, 2s, 4s
+      }
+    }
+  }
+  throw lastErr
+}
+
 // ── Job execution ──────────────────────────────────────────────────────────
 
 export async function executeScrapeLightJob(
@@ -84,7 +106,26 @@ export async function executeScrapeLightJob(
     .single()
 
   if (!existingRun) {
-    const { raw, normalized } = await runPlatformScrape(platform, handle)
+    const { raw, normalized } = await withRetry(
+      () => runPlatformScrape(platform, handle),
+      async (attempt, err) => {
+        await appendSignal(admin, project_id, 'scrape_failed', {
+          platform,
+          handle,
+          attempt,
+          reason: err.message,
+        }, 'scrape')
+        if (attempt === 3) {
+          // Final failure — write notification so UI can prompt user to check their handle
+          await appendSignal(admin, project_id, 'user_notification', {
+            type: 'scrape_failed_final',
+            platform,
+            handle,
+            message: 'Scraping failed after 3 attempts. Please check that your handle is correct.',
+          }, 'scrape')
+        }
+      }
+    )
 
     // 1. Store raw + normalized in core_scrape_runs
     await admin.from('core_scrape_runs').insert({
