@@ -5,6 +5,13 @@ import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
+async function stripeGet(path: string) {
+  const res = await fetch(`https://api.stripe.com/v1${path}`, {
+    headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+  })
+  return res.json()
+}
+
 const CREDITS_BY_PLAN: Record<string, { allowance: number; premium: number }> = {
   BASE:  { allowance: 2000,  premium: 500  },
   PRO:   { allowance: 5000,  premium: 1250 },
@@ -84,7 +91,7 @@ async function handleSubscriptionActivated(
   const projectId = await getProjectId(admin, userId)
 
   // Retrieve full subscription
-  const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string)
+  const stripeSub = await stripeGet(`/subscriptions/${session.subscription}`)
   const item = stripeSub.items.data[0]
 
   // Upsert core_subscriptions
@@ -136,7 +143,7 @@ async function handleInvoicePaid(
   if (!sub) return
 
   // Update period
-  const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+  const stripeSub = await stripeGet(`/subscriptions/${subscriptionId}`)
   const periodItem = stripeSub.items.data[0]
   await admin.from('core_subscriptions').update({
     status: 'active',
