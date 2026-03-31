@@ -355,7 +355,8 @@ export async function runPhaseEngine(
     }, 'phase_engine')
 
     const allFacts = await readAllFacts(admin, projectId)
-    await createSnapshot(admin, projectId, 'phase_changed', result.phase, allFacts)
+    const recentSignals = await readSignals(admin, projectId, 72)
+    await createSnapshot(admin, projectId, 'phase_changed', { phase: result.phase, facts: allFacts, signals: recentSignals })
   }
 
   return result

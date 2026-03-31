@@ -289,7 +289,7 @@ async function executeStep(
     case 'snapshot': {
       const allFacts = await readAllFacts(admin, projectId)
       const currentPhase = (allFacts['current_phase'] as string) ?? 'F0'
-      await createSnapshot(admin, projectId, 'mission_completed', currentPhase, allFacts)
+      await createSnapshot(admin, projectId, 'mission_completed', { phase: currentPhase, facts: allFacts })
       return { snapshot_created: true }
     }
 

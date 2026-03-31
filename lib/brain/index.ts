@@ -120,16 +120,20 @@ export async function readLatestSignal(
 
 // ── Snapshots ─────────────────────────────────────────────────────────────
 
+export type BrainState = {
+  phase: string
+  facts: Record<string, unknown>
+  signals?: unknown[]
+}
+
 export async function createSnapshot(
   admin: AdminClient,
   projectId: string,
   trigger: string,
-  phaseCode: string,
-  factsSnapshot: Record<string, unknown>,
-  signalsSummary: unknown = null
+  state: BrainState
 ) {
   const snapshotHash = createHash('sha256')
-    .update(JSON.stringify({ projectId, trigger, phaseCode, factsSnapshot }))
+    .update(JSON.stringify({ projectId, trigger, state }))
     .digest('hex')
 
   const TRIGGER_TO_TYPE: Record<string, string> = {
@@ -141,9 +145,9 @@ export async function createSnapshot(
   await admin.from('brain_snapshots').insert({
     project_id: projectId,
     snapshot_type: snapshotType,
-    phase_code: phaseCode,
-    facts_snapshot: factsSnapshot,
-    signals_summary: signalsSummary,
+    phase_code: state.phase,
+    facts_snapshot: state.facts,
+    signals_summary: state.signals ?? null,
     trigger_source: trigger,
     snapshot_hash: snapshotHash,
   })

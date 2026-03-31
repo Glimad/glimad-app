@@ -123,5 +123,5 @@ export async function seedBrainFromOnboarding(
   // 7. Create initial Brain Snapshot — always written for new users after onboarding
   //    (runPhaseEngine only snapshots on phase CHANGE; this is the first-ever phase assignment)
   const allFacts = await readAllFacts(admin, projectId)
-  await createSnapshot(admin, projectId, 'onboarding_completed', phaseResult.phase, allFacts)
+  await createSnapshot(admin, projectId, 'onboarding_completed', { phase: phaseResult.phase, facts: allFacts })
 }
