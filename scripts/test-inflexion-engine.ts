@@ -266,6 +266,13 @@ async function testMonetizationReady(projectId: string, token: string) {
   ok('core_inflexion_events row written', !!event, 'row missing')
   ok('type = upgrade', event?.type === 'upgrade', `got ${event?.type}`)
   ok('recommended_actions contains DEFINE_OFFER_V1', event?.recommended_actions?.includes('DEFINE_OFFER_V1'), JSON.stringify(event?.recommended_actions))
+
+  console.log('\n[3b] monetization_ready suppressed — event already in last 90 days')
+  // Brain state still meets conditions but event already fired → should suppress
+  const result2 = await runEngines(token)
+  ok('engines returns 200', !!result2, 'null response')
+  ok('monetization_ready suppressed within 90d window', result2?.inflexion?.type !== 'monetization_ready',
+    `got: ${result2?.inflexion?.type}`)
 }
 
 async function testEngagementPlateau(projectId: string, token: string) {

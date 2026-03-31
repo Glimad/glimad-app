@@ -26,7 +26,6 @@ export async function detectInflexion(
   const signals72h = await readSignals(admin, projectId, 72)
   const signals14d = await readSignals(admin, projectId, 14 * 24)
   const signals30d = await readSignals(admin, projectId, 30 * 24)
-  const signals90d = await readSignals(admin, projectId, 90 * 24)
 
   // Spec uses current_followers; fall back to followers_total if not yet set
   const currentFollowers = (await readFact(admin, projectId, 'current_followers') as number | null)
@@ -107,9 +106,17 @@ export async function detectInflexion(
   }
 
   // ── monetization_ready detection ──────────────────────────────────────────
-  const hasMonetizationReady = signals90d.some(s => s.signal_key === 'monetization_ready')
+  // Spec: no monetization_ready inflexion event in the last 90 days
+  const { data: recentMonetization } = await admin
+    .from('core_inflexion_events')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('event_key', 'monetization_ready')
+    .gte('created_at', new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString())
+    .limit(1)
+    .single()
 
-  if (!hasMonetizationReady && followers >= 5000 && avgEr >= 0.03) {
+  if (!recentMonetization && followers >= 5000 && avgEr >= 0.03) {
     return {
       type: 'monetization_ready',
       confidence: 0.8,
