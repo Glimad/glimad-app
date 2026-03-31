@@ -1,11 +1,20 @@
 // TikTok public profile scraper — no OAuth required
-// Fetches the profile HTML page and parses the embedded __NEXT_DATA__ JSON blob
+// Step 1: fetch profile page → parse __NEXT_DATA__ for profile stats + secUid
+// Step 2: fetch last 10 videos via item_list API using secUid (per-video playCount)
 // TikTok has anti-bot measures — will fail if fingerprint is blocked
+
+const TIKTOK_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/json,*/*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Referer': 'https://www.tiktok.com/',
+}
 
 export interface TikTokRawData {
   user: {
     id: string
     uniqueId: string
+    secUid: string
     nickname: string
     signature: string
     verified: boolean
@@ -19,10 +28,10 @@ export interface TikTokRawData {
     createTime: number // unix timestamp
     desc: string
     stats: {
-      diggCount: number
+      diggCount: number   // likes
       shareCount: number
       commentCount: number
-      playCount: number
+      playCount: number   // views
     }
   }>
 }
@@ -42,7 +51,7 @@ export interface TikTokNormalized {
   viral_spike: { post_id: string; multiplier: number } | null
   // ── TikTok-specific ───────────────────────────────────────────────────────
   following_total: number
-  likes_total: number
+  likes_total: number    // total hearts across all videos
   videos_total: number
   bio: string
   is_verified: boolean
@@ -51,45 +60,45 @@ export interface TikTokNormalized {
 export async function scrapeTikTok(handle: string): Promise<{ raw: TikTokRawData; normalized: TikTokNormalized }> {
   const username = handle.startsWith('@') ? handle.slice(1) : handle
 
-  // Fetch profile page — parse __NEXT_DATA__ JSON blob
-  const res = await fetch(`https://www.tiktok.com/@${encodeURIComponent(username)}`, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
+  // ── Step 1: profile page → __NEXT_DATA__ for stats + secUid ───────────────
+  const pageRes = await fetch(`https://www.tiktok.com/@${encodeURIComponent(username)}`, {
+    headers: TIKTOK_HEADERS,
   })
-  const html = await res.text()
+  const html = await pageRes.text()
 
-  // Extract __NEXT_DATA__ script
   const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">([^<]+)<\/script>/)
   if (!match) throw new Error(`TikTok: __NEXT_DATA__ not found for @${username} — likely blocked`)
 
   const nextData = JSON.parse(match[1])
+  const userInfo = nextData?.props?.pageProps?.userInfo
+  if (!userInfo?.user) throw new Error(`TikTok: userInfo not found in __NEXT_DATA__ for @${username}`)
 
-  // Navigate to user detail — structure varies by TikTok's Next.js version
-  const userModule =
-    nextData?.props?.pageProps?.userInfo ||
-    nextData?.props?.pageProps?.itemList?.[0]?.author ||
-    nextData?.props?.pageProps?.user
+  const u = userInfo.user
+  const stats = userInfo.stats ?? {}
 
-  if (!userModule?.user) throw new Error(`TikTok: user data not found in page JSON for @${username}`)
+  const secUid: string = u.secUid
+  if (!secUid) throw new Error(`TikTok: secUid missing for @${username}`)
 
-  const u = userModule.user
-  const stats = userModule.stats ?? {}
+  // ── Step 2: fetch last 10 videos via item_list API using secUid ───────────
+  const videoRes = await fetch(
+    `https://www.tiktok.com/api/post/item_list/?secUid=${encodeURIComponent(secUid)}&count=10&cursor=0&aid=1988&app_name=tiktok_web`,
+    { headers: TIKTOK_HEADERS }
+  )
+  const videoJson = await videoRes.json()
 
-  // TikTok doesn't expose per-video stats on the profile page easily
-  // itemList may or may not be present depending on rendering mode
-  const itemList: TikTokRawData['videos'] = (nextData?.props?.pageProps?.itemList ?? [])
-    .map((item: {
-      id: string
-      createTime: number
-      desc: string
-      stats: { diggCount: number; shareCount: number; commentCount: number; playCount: number }
-    }) => ({
+  type TikTokVideoItem = {
+    id: string
+    createTime: number
+    desc: string
+    stats: { diggCount: number; shareCount: number; commentCount: number; playCount: number }
+  }
+
+  const videos: TikTokRawData['videos'] = (videoJson?.itemList ?? [])
+    .slice(0, 10)
+    .map((item: TikTokVideoItem) => ({
       id: item.id,
       createTime: item.createTime,
-      desc: item.desc,
+      desc: item.desc ?? '',
       stats: {
         diggCount: item.stats?.diggCount ?? 0,
         shareCount: item.stats?.shareCount ?? 0,
@@ -102,6 +111,7 @@ export async function scrapeTikTok(handle: string): Promise<{ raw: TikTokRawData
     user: {
       id: u.id,
       uniqueId: u.uniqueId,
+      secUid,
       nickname: u.nickname ?? '',
       signature: u.signature ?? '',
       verified: u.verified ?? false,
@@ -110,33 +120,39 @@ export async function scrapeTikTok(handle: string): Promise<{ raw: TikTokRawData
       heartCount: stats.heartCount ?? 0,
       videoCount: stats.videoCount ?? 0,
     },
-    videos: itemList,
+    videos,
   }
 
-  // Normalize
+  // ── Normalize ─────────────────────────────────────────────────────────────
   const now = new Date()
-  const videos7d = itemList.filter(v => now.getTime() / 1000 - v.createTime < 7 * 86400)
-  const videos30d = itemList.filter(v => now.getTime() / 1000 - v.createTime < 30 * 86400)
+  const videos7d = videos.filter(v => now.getTime() / 1000 - v.createTime < 7 * 86400)
+  const videos30d = videos.filter(v => now.getTime() / 1000 - v.createTime < 30 * 86400)
 
-  const avgViews = itemList.length > 0 ? itemList.reduce((s, v) => s + v.stats.playCount, 0) / itemList.length : 0
-  const avgLikes = itemList.length > 0 ? itemList.reduce((s, v) => s + v.stats.diggCount, 0) / itemList.length : 0
-  const avgComments = itemList.length > 0 ? itemList.reduce((s, v) => s + v.stats.commentCount, 0) / itemList.length : 0
+  // Average views per video (primary metric per spec)
+  const avgViews = videos.length > 0
+    ? videos.reduce((s, v) => s + v.stats.playCount, 0) / videos.length
+    : 0
 
-  const followers = raw.user.followerCount
+  const avgLikes = videos.length > 0
+    ? videos.reduce((s, v) => s + v.stats.diggCount, 0) / videos.length
+    : 0
+
+  const avgComments = videos.length > 0
+    ? videos.reduce((s, v) => s + v.stats.commentCount, 0) / videos.length
+    : 0
+
   // TikTok ER: (likes + comments) / views
   const avgEr = avgViews > 0 ? (avgLikes + avgComments) / avgViews : 0
 
-  const sortedByViews = [...itemList].sort((a, b) => b.stats.playCount - a.stats.playCount)
+  const sortedByViews = [...videos].sort((a, b) => b.stats.playCount - a.stats.playCount)
   const bestVideo = sortedByViews[0] ?? null
   const viralSpike = bestVideo && avgViews > 0 && bestVideo.stats.playCount > avgViews * 3
     ? { post_id: bestVideo.id, multiplier: parseFloat((bestVideo.stats.playCount / avgViews).toFixed(1)) }
     : null
 
-  const lastPostDate = itemList.length > 0
-    ? new Date(Math.max(...itemList.map(v => v.createTime)) * 1000).toISOString()
+  const lastPostDate = videos.length > 0
+    ? new Date(Math.max(...videos.map(v => v.createTime)) * 1000).toISOString()
     : null
-
-  void followers
 
   const normalized: TikTokNormalized = {
     followers_total: raw.user.followerCount,
