@@ -31,6 +31,27 @@ export async function detectInflexion(
   const followers = (await readFact(admin, projectId, 'followers_total') as number | null) ?? 0
   const avgEr = (await readFact(admin, projectId, 'avg_engagement_rate') as number | null) ?? 0
 
+  // ── crisis detection ──────────────────────────────────────────────────────
+  // Look for negative_sentiment signals, rapid follower loss, or high block rate
+  const negativeSentiment = signals72h.some(s => s.signal_key === 'negative_sentiment')
+  const followerLoss = signals72h.some(s => {
+    if (s.signal_key !== 'growth.followers_total') return false
+    const val = s.value as { delta?: number; value?: number }
+    return (val.delta ?? 0) < -100 || (val.value ?? 0) < 0
+  })
+  const blockRateSignal = signals72h.find(s => s.signal_key === 'block_rate')
+  const highBlockRate = blockRateSignal
+    ? ((blockRateSignal.value as { rate?: number }).rate ?? 0) > 0.05
+    : false
+
+  if (negativeSentiment || followerLoss || highBlockRate) {
+    return {
+      type: 'crisis',
+      confidence: negativeSentiment ? 0.85 : highBlockRate ? 0.80 : 0.70,
+      evidence: { negative_sentiment: negativeSentiment, follower_loss: followerLoss, high_block_rate: highBlockRate },
+    }
+  }
+
   // ── viral_spike detection ─────────────────────────────────────────────────
   // Look for scrape-detected viral spike or follower growth 3x above average
   const viralSpikeSignals = signals72h.filter(s => s.signal_key === 'content_perf.viral_spike')
@@ -47,17 +68,17 @@ export async function detectInflexion(
     }
   }
 
-  // Follower surge: current vs 30d ago
+  // Follower surge: current vs 30d ago — 3x daily average in last 72h
   if (growthSignals30d.length >= 2) {
     const oldest = growthSignals30d[growthSignals30d.length - 1]
     const newest = growthSignals30d[0]
     const dailyAvg = oldest > 0 ? (newest - oldest) / 30 : 0
-    const recent7dGrowth = signals72h
+    const recent72hGrowth = signals72h
       .filter(s => s.signal_key === 'growth.followers_total')
       .map(s => (s.value as { value: number }).value ?? 0)
 
-    if (recent7dGrowth.length >= 2) {
-      const recentGrowth = recent7dGrowth[0] - recent7dGrowth[recent7dGrowth.length - 1]
+    if (recent72hGrowth.length >= 2) {
+      const recentGrowth = recent72hGrowth[0] - recent72hGrowth[recent72hGrowth.length - 1]
       if (dailyAvg > 0 && recentGrowth > dailyAvg * 3 * 3) {
         return {
           type: 'viral_spike',
@@ -69,10 +90,7 @@ export async function detectInflexion(
   }
 
   // ── monetization_ready detection ──────────────────────────────────────────
-  const hasMonetizationReady = signals90d.some(s => {
-    const age = Date.now() - new Date(s.observed_at).getTime()
-    return s.signal_key === 'monetization_ready' && age < 90 * 24 * 3600 * 1000
-  })
+  const hasMonetizationReady = signals90d.some(s => s.signal_key === 'monetization_ready')
 
   if (!hasMonetizationReady && followers >= 5000 && avgEr >= 0.03) {
     return {
@@ -130,6 +148,19 @@ export async function runInflexionEngine(
 ): Promise<InflexionResult | null> {
   const result = await detectInflexion(admin, projectId)
   if (!result) return null
+
+  // Cooldown check — don't re-fire same inflexion type within 7 days
+  const { data: recentEvent } = await admin
+    .from('core_inflexion_events')
+    .select('id, created_at')
+    .eq('project_id', projectId)
+    .eq('event_key', result.type)
+    .gte('created_at', new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (recentEvent) return result // already fired recently — return result but don't re-write
 
   // Write inflexion signal
   await appendSignal(admin, projectId, 'inflexion_detected', {
