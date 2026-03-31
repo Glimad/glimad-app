@@ -81,13 +81,21 @@ export async function computePhase(
   const hasEvidence = evidenceCount >= 3
 
   // ── Technology dimension ──────────────────────────────────────────────────
+  // Spec: handle provided=30, scrape completed=40, satellites configured=30
   const hasPlatform = !!facts['focus_platform']
   const hasHandle = !!facts['focus_platform_handle'] || !!facts['handle']
   const hasScrape = signals90d.some(s => s.signal_key === 'scrape_completed')
+  const { data: satellitePlatforms } = await admin
+    .from('projects_platforms')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('role', 'satellite')
+    .limit(1)
+  const hasSatellites = (satellitePlatforms?.length ?? 0) > 0
   let technology = 0
-  if (hasPlatform) technology += 30
-  if (hasHandle) technology += 40
-  if (hasScrape) technology += 30
+  if (hasHandle) technology += 30
+  if (hasScrape) technology += 40
+  if (hasSatellites) technology += 30
   technology = clamp(technology)
 
   // ── Discovery dimension ───────────────────────────────────────────────────
