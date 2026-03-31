@@ -142,12 +142,22 @@ export async function computePhase(
   discovery = clamp(discovery)
 
   // ── Audience dimension ────────────────────────────────────────────────────
+  // Linear interpolation within spec bands:
+  // 0-1% → 0-25  |  1-2% → 25-50  |  2-4% → 50-75  |  4%+ → 75-100
+  // +10 if audience persona defined
   const avgEr = resolvedAvgEr
-  let audience = 0
-  if (avgEr >= 0.04) audience = 90
-  else if (avgEr >= 0.02) audience = 60
-  else if (avgEr >= 0.01) audience = 30
-  else if (avgEr > 0) audience = 15
+  let audience: number
+  if (avgEr <= 0) {
+    audience = 0
+  } else if (avgEr < 0.01) {
+    audience = Math.round((avgEr / 0.01) * 25)                          // 0–25
+  } else if (avgEr < 0.02) {
+    audience = Math.round(25 + ((avgEr - 0.01) / 0.01) * 25)           // 25–50
+  } else if (avgEr < 0.04) {
+    audience = Math.round(50 + ((avgEr - 0.02) / 0.02) * 25)           // 50–75
+  } else {
+    audience = Math.round(Math.min(100, 75 + ((avgEr - 0.04) / 0.04) * 25)) // 75–100
+  }
   if (hasPersona) audience = clamp(audience + 10)
   audience = clamp(audience)
 
