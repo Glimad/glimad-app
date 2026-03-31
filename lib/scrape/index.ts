@@ -285,17 +285,39 @@ export async function requestScrapeLight(
     return { job_id: '', status: 'skipped_no_handle' }
   }
 
-  const today = new Date().toISOString().slice(0, 10)
-  const idempotencyKey = `${projectId}:scrape_light:${platform}:${today}`
-
-  // Rate limit: only one job per platform per user per day
-  const { data: existing } = await admin
+  // Rate limit: reject if a completed job exists for this project+platform within the last 24 hours
+  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { data: recentDone } = await admin
     .from('core_jobs')
-    .select('job_id, status')
-    .eq('idempotency_key', idempotencyKey)
+    .select('job_id, finished_at, normalized_json:payload_json')
+    .eq('project_id', projectId)
+    .eq('job_type', 'scrape_light')
+    .eq('status', 'done')
+    .filter('payload_json->>platform', 'eq', platform)
+    .gte('finished_at', since24h)
+    .order('finished_at', { ascending: false })
+    .limit(1)
     .single()
 
-  if (existing) return { job_id: existing.job_id, status: existing.status }
+  if (recentDone) {
+    return { job_id: recentDone.job_id, status: 'rate_limited' }
+  }
+
+  // Also skip if already queued or running for this project+platform (DB partial unique index enforces this too)
+  const { data: activeJob } = await admin
+    .from('core_jobs')
+    .select('job_id, status')
+    .eq('project_id', projectId)
+    .eq('job_type', 'scrape_light')
+    .in('status', ['queued', 'running'])
+    .filter('payload_json->>platform', 'eq', platform)
+    .limit(1)
+    .single()
+
+  if (activeJob) return { job_id: activeJob.job_id, status: activeJob.status }
+
+  const today = new Date().toISOString().slice(0, 10)
+  const idempotencyKey = `${projectId}:scrape_light:${platform}:${today}`
 
   const { data: newJob } = await admin
     .from('core_jobs')
