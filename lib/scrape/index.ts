@@ -5,6 +5,7 @@ import { scrapeYouTube } from './youtube'
 import { scrapeInstagram } from './instagram'
 import { scrapeTikTok } from './tiktok'
 import { scrapeSpotify } from './spotify'
+import { scrapeTwitter } from './twitter'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -38,6 +39,8 @@ async function runPlatformScrape(
       return scrapeTikTok(handle)
     case 'spotify':
       return scrapeSpotify(handle)
+    case 'twitter':
+      return scrapeTwitter(handle)
     default:
       throw new Error(`Platform not supported yet: ${platform}`)
   }
