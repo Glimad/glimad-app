@@ -3,9 +3,17 @@ import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  httpClient: Stripe.createNodeHttpClient(),
-})
+// SDK used only for local signature verification (no network calls)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+
+const STRIPE_API = 'https://api.stripe.com/v1'
+
+async function stripeGet(path: string) {
+  const res = await fetch(`${STRIPE_API}${path}`, {
+    headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+  })
+  return res.json()
+}
 
 const CREDITS_BY_PLAN: Record<string, { allowance: number; premium: number }> = {
   BASE:  { allowance: 2000,  premium: 500  },
@@ -85,8 +93,8 @@ async function handleSubscriptionActivated(
 
   const projectId = await getProjectId(admin, userId)
 
-  // Retrieve full subscription
-  const stripeSub = await stripe.subscriptions.retrieve(session.subscription as string)
+  // Retrieve full subscription via direct fetch
+  const stripeSub = await stripeGet(`/subscriptions/${session.subscription}`)
   const item = stripeSub.items.data[0]
 
   // Upsert core_subscriptions
@@ -137,8 +145,8 @@ async function handleInvoicePaid(
 
   if (!sub) return
 
-  // Update period
-  const stripeSub = await stripe.subscriptions.retrieve(subscriptionId)
+  // Update period via direct fetch
+  const stripeSub = await stripeGet(`/subscriptions/${subscriptionId}`)
   const periodItem = stripeSub.items.data[0]
   await admin.from('core_subscriptions').update({
     status: 'active',
@@ -178,8 +186,6 @@ async function handlePaymentFailed(
     .update({ status: 'past_due' })
     .eq('stripe_subscription_id', subscriptionId)
 
-  // Suspend wallet so write operations are blocked after 7-day grace period
-  // The wallet status 'past_due' signals the app to show the grace period banner
   const { data: sub } = await admin
     .from('core_subscriptions')
     .select('project_id')
@@ -200,7 +206,6 @@ async function handleChargeRefunded(
   const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id
   if (!customerId) return
 
-  // Find subscription via customer
   const { data: sub } = await admin
     .from('core_subscriptions')
     .select('id, project_id, stripe_subscription_id')
@@ -214,18 +219,15 @@ async function handleChargeRefunded(
     .update({ status: 'canceled', cancel_at_period_end: false })
     .eq('id', sub.id)
 
-  // Revoke access grant
   await admin.from('core_access_grants')
     .update({ status: 'revoked', revoked_at: new Date().toISOString() })
     .eq('reference_id', sub.stripe_subscription_id)
     .eq('status', 'active')
 
-  // Lock wallet — blocks all write operations
   await admin.from('core_wallets')
     .update({ status: 'locked' })
     .eq('project_id', sub.project_id)
 
-  // Log refund in ledger
   await admin.from('core_ledger').insert({
     project_id: sub.project_id,
     kind: 'adjustment',
@@ -268,7 +270,6 @@ async function grantMonthlyCredits(
     ? `invoice_${invoiceId}_grant`
     : `subscription_grant_${subscriptionId}_${periodEnd}`
 
-  // Upsert wallet
   await admin.from('core_wallets').upsert({
     project_id: projectId,
     plan_code: planCode,
@@ -282,7 +283,6 @@ async function grantMonthlyCredits(
     updated_at: new Date().toISOString(),
   }, { onConflict: 'project_id' })
 
-  // Ledger credit entry
   await admin.from('core_ledger').insert({
     project_id: projectId,
     kind: 'credit',
