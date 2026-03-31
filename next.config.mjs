@@ -16,6 +16,7 @@ const CSP = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  serverExternalPackages: ['stripe'],
   images: {
     remotePatterns: [
       {

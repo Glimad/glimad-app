@@ -198,7 +198,7 @@ async function testReadSignals(db: ReturnType<typeof admin>, pid: string) {
   // Filter by signal key
   const typed = await readSignals(db as any, pid, 1, 'test.event')
   ok('key filter works', typed.every(s => s.signal_key === 'test.event'),
-    `got keys: ${[...new Set(typed.map(s => s.signal_key))].join(',')}`)
+    `got keys: ${Array.from(new Set(typed.map(s => s.signal_key))).join(',')}`)
   ok('returns correct count', typed.length === 3, `got ${typed.length}`)
 
   // Filter for a key with no signals

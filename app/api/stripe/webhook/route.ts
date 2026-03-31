@@ -3,7 +3,9 @@ import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  httpClient: Stripe.createNodeHttpClient(),
+})
 
 const CREDITS_BY_PLAN: Record<string, { allowance: number; premium: number }> = {
   BASE:  { allowance: 2000,  premium: 500  },

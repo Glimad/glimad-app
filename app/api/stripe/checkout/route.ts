@@ -10,7 +10,9 @@ export async function POST(request: Request) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const admin = createAdminClient()
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    httpClient: Stripe.createNodeHttpClient(),
+  })
 
   const PRICE_MAP: Record<string, string> = {
     BASE:  process.env.STRIPE_PRICE_BASE!,
