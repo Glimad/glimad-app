@@ -132,15 +132,30 @@ export async function createSnapshot(
     .update(JSON.stringify({ projectId, trigger, phaseCode, factsSnapshot }))
     .digest('hex')
 
+  const TRIGGER_TO_TYPE: Record<string, string> = {
+    phase_changed: 'phase_assigned',
+    onboarding_completed: 'onboarding_completed',
+  }
+  const snapshotType = TRIGGER_TO_TYPE[trigger] ?? trigger
+
   await admin.from('brain_snapshots').insert({
     project_id: projectId,
-    snapshot_type: trigger === 'phase_changed' ? 'phase_assigned' : 'onboarding_completed',
+    snapshot_type: snapshotType,
     phase_code: phaseCode,
     facts_snapshot: factsSnapshot,
     signals_summary: signalsSummary,
     trigger_source: trigger,
     snapshot_hash: snapshotHash,
   })
+}
+
+export async function readSnapshot(admin: AdminClient, snapshotId: string) {
+  const { data } = await admin
+    .from('brain_snapshots')
+    .select('*')
+    .eq('id', snapshotId)
+    .single()
+  return data ?? null
 }
 
 export async function readLatestSnapshot(admin: AdminClient, projectId: string) {
