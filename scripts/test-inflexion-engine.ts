@@ -248,11 +248,13 @@ async function testBurnoutRisk(projectId: string, token: string) {
 async function testNoInflexion(projectId: string, token: string) {
   console.log('\n[6] null (no inflexion) — clean state')
   await resetBrain(projectId)
+  // Low followers (< 5000 → no monetization_ready)
+  // avg_er > 2% → no engagement_plateau
+  // No negative signals → no crisis
+  // No consistency_gap → no burnout_risk
+  // No viral signals → no viral_spike
   await seedFact(projectId, 'followers_total', 500)
   await seedFact(projectId, 'avg_engagement_rate', 0.025)
-  // Some normal growth signals
-  await seedSignal(projectId, 'growth.followers_total', { value: 510 }, 48)
-  await seedSignal(projectId, 'growth.followers_total', { value: 500 }, 72)
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
