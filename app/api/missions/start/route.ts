@@ -4,6 +4,8 @@ import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createMissionInstance, executeMission } from '@/lib/missions/runner'
 import { onMissionStart } from '@/lib/gamification'
 
+export const maxDuration = 120
+
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
