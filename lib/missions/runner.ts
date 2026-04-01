@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { readAllFacts, readSignals, writeFact, appendSignal, createSnapshot } from '@/lib/brain'
 import { grantPremiumCredits } from '@/lib/wallet'
 import { buildPrompt, type PromptKey } from './prompts'
+import { PROMPT_SCHEMAS } from './schemas'
 import { onMissionComplete } from '@/lib/gamification'
 
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -143,7 +144,25 @@ export async function executeMission(
       started_at: new Date().toISOString(),
     }, { onConflict: 'mission_instance_id,step_number' })
 
-    const stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext)
+    let stepOutput: unknown
+    try {
+      stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err)
+      await admin.from('mission_steps').upsert({
+        mission_instance_id: instanceId,
+        step_number: step.step_number,
+        step_type: step.step_type,
+        status: 'failed',
+        input: { config: step.config },
+        output: { error: errorMessage },
+        completed_at: new Date().toISOString(),
+      }, { onConflict: 'mission_instance_id,step_number' })
+      await admin.from('mission_instances')
+        .update({ status: 'failed', completed_at: new Date().toISOString() })
+        .eq('id', instanceId)
+      return
+    }
 
     if (stepOutput === 'WAIT_FOR_INPUT') {
       await admin
@@ -258,24 +277,30 @@ async function executeStep(
           : process.env.ANTHROPIC_MODEL_HAIKU!
 
       const prompt = buildPrompt(promptKey, brainContext)
-
       const maxTokens = model.includes('sonnet') || model.includes('opus') ? 2048 : 1024
+      const schema = PROMPT_SCHEMAS[promptKey]
 
-      const message = await anthropic.messages.create({
-        model,
-        max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
-      })
-
-      const textContent = message.content.find(c => c.type === 'text')
-      const rawText = textContent?.text ?? ''
-
-      // Extract JSON from response
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        return JSON.parse(jsonMatch[0])
+      const callAndValidate = async (): Promise<Record<string, unknown>> => {
+        const message = await anthropic.messages.create({
+          model,
+          max_tokens: maxTokens,
+          messages: [{ role: 'user', content: prompt }],
+        })
+        const rawText = (message.content.find(c => c.type === 'text') as { type: 'text'; text: string } | undefined)?.text ?? ''
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {}
+        schema.parse(parsed) // throws ZodError if invalid
+        return parsed as Record<string, unknown>
       }
-      return { raw: rawText }
+
+      let result: Record<string, unknown>
+      try {
+        result = await callAndValidate()
+      } catch {
+        // One retry on parse or validation failure
+        result = await callAndValidate()
+      }
+      return result
     }
 
     case 'user_input': {
