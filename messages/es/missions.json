@@ -3,5 +3,18 @@
   "continue": "Continuar",
   "completed": "Completada",
   "xp_earned": "XP ganados",
-  "step": "Paso"
+  "step": "Paso",
+  "loading": "Cargando misión...",
+  "not_found": "Misión no encontrada",
+  "back": "← Volver al Dashboard",
+  "running": "La IA está trabajando para ti...",
+  "failed_msg": "La misión encontró un error. Vuelve al dashboard e intenta de nuevo.",
+  "completed_title": "¡Misión completada!",
+  "completed_sub": "Tu Brain ha sido actualizado con los resultados.",
+  "go_dashboard": "Volver al Dashboard",
+  "navigating": "Cargando...",
+  "ai_generated": "Glimy generó esto para ti",
+  "review_confirm": "Revisa y confirma",
+  "saving": "Guardando...",
+  "confirm_save": "Confirmar y guardar"
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 interface MissionStep {
   id: string
@@ -33,6 +34,7 @@ interface MissionInstance {
 export default function MissionPage() {
   const params = useParams()
   const router = useRouter()
+  const t = useTranslations('missions')
   const instanceId = params.id as string
 
   const [instance, setInstance] = useState<MissionInstance | null>(null)
@@ -80,7 +82,7 @@ export default function MissionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="text-zinc-400">Cargando misión...</div>
+        <div className="text-zinc-400">{t('loading')}</div>
       </div>
     )
   }
@@ -88,7 +90,7 @@ export default function MissionPage() {
   if (!instance) {
     return (
       <div className="flex items-center justify-center py-32">
-        <div className="text-zinc-400">Misión no encontrada</div>
+        <div className="text-zinc-400">{t('not_found')}</div>
       </div>
     )
   }
@@ -120,7 +122,7 @@ export default function MissionPage() {
             disabled={navigating}
             className="text-zinc-500 hover:text-zinc-300 disabled:opacity-40 text-sm mb-4 flex items-center gap-1 transition-colors"
           >
-            {navigating ? '...' : '← Volver al Dashboard'}
+            {navigating ? t('navigating') : t('back')}
           </button>
           <h1 className="text-2xl font-bold">{template.name}</h1>
           <p className="text-zinc-400 text-sm mt-1">{template.description}</p>
@@ -130,27 +132,27 @@ export default function MissionPage() {
           {isRunning && (
             <div className="flex items-center gap-3 bg-zinc-900 rounded-xl p-4 border border-zinc-800">
               <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
-              <span className="text-zinc-300 text-sm">La IA está trabajando para ti...</span>
+              <span className="text-zinc-300 text-sm">{t('running')}</span>
             </div>
           )}
 
           {isFailed && (
             <div className="bg-red-950 border border-red-800 rounded-xl p-4">
-              <p className="text-red-300 text-sm">La misión encontró un error. Vuelve al dashboard e intenta de nuevo.</p>
+              <p className="text-red-300 text-sm">{t('failed_msg')}</p>
             </div>
           )}
 
           {isCompleted && (
             <div className="bg-green-950 border border-green-800 rounded-xl p-6 text-center">
               <p className="text-2xl mb-2">✅</p>
-              <p className="text-green-300 font-semibold">¡Misión completada!</p>
-              <p className="text-zinc-400 text-sm mt-1">Tu Brain ha sido actualizado con los resultados.</p>
+              <p className="text-green-300 font-semibold">{t('completed_title')}</p>
+              <p className="text-zinc-400 text-sm mt-1">{t('completed_sub')}</p>
               <button
                 onClick={goToDashboard}
                 disabled={navigating}
                 className="mt-4 px-6 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white text-sm font-medium transition-colors"
               >
-                {navigating ? 'Cargando...' : 'Volver al Dashboard'}
+                {navigating ? t('navigating') : t('go_dashboard')}
               </button>
             </div>
           )}
@@ -160,7 +162,7 @@ export default function MissionPage() {
           <div className="space-y-6">
             <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
               <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-4">
-                Glimy generó esto para ti
+                {t('ai_generated')}
               </h2>
               <LlmOutputDisplay output={llmOutput} />
             </div>
@@ -168,7 +170,7 @@ export default function MissionPage() {
             {waitingStep?.config.fields && (
               <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
                 <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-4">
-                  Revisa y confirma
+                  {t('review_confirm')}
                 </h2>
                 <div className="space-y-4">
                   {waitingStep.config.fields.map(field => (
@@ -181,7 +183,7 @@ export default function MissionPage() {
                         value={userInputs[field] ?? (llmOutput[field] as string) ?? ''}
                         onChange={e => setUserInputs({ ...userInputs, [field]: e.target.value })}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-violet-500"
-                        placeholder={`Tu ${field.replace(/_/g, ' ')}...`}
+                        placeholder={field.replace(/_/g, ' ')}
                       />
                     </div>
                   ))}
@@ -191,7 +193,7 @@ export default function MissionPage() {
                   disabled={submitting}
                   className="mt-6 w-full py-3 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-40 text-white font-semibold transition-colors"
                 >
-                  {submitting ? 'Guardando...' : 'Confirmar y guardar'}
+                  {submitting ? t('saving') : t('confirm_save')}
                 </button>
               </div>
             )}

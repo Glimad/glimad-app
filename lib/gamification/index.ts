@@ -109,11 +109,10 @@ export async function onMissionComplete(
 }
 
 const STREAK_MILESTONES: Record<number, { energy: number; credits: number }> = {
-  7: { energy: 20, credits: 0 },
-  14: { energy: 30, credits: 5 },
-  30: { energy: 50, credits: 10 },
-  60: { energy: 0, credits: 20 },
-  100: { energy: 0, credits: 50 },
+  3:  { energy: 20, credits: 0  },
+  7:  { energy: 0,  credits: 50 },
+  14: { energy: 0,  credits: 100 },
+  30: { energy: 0,  credits: 0  }, // VIP badge — cosmetic only
 }
 
 async function checkStreakMilestones(admin: SupabaseClient, projectId: string, streak: number): Promise<void> {
@@ -148,6 +147,10 @@ async function checkStreakMilestones(admin: SupabaseClient, projectId: string, s
             metadata_json: { streak_milestone: milestone },
           })
         }
+      }
+      // 30-day milestone: VIP badge (cosmetic)
+      if (milestone === 30) {
+        await writeFact(admin, projectId, 'vip_badge', true, 'gamification')
       }
       granted.push(milestone)
       await writeFact(admin, projectId, 'streak_milestones_granted', granted, 'gamification')

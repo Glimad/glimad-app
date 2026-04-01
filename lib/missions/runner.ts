@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { readAllFacts, writeFact, appendSignal, createSnapshot } from '@/lib/brain'
+import { readAllFacts, readSignals, writeFact, appendSignal, createSnapshot } from '@/lib/brain'
+import { grantPremiumCredits } from '@/lib/wallet'
 import { buildPrompt, type PromptKey } from './prompts'
 import { onMissionComplete } from '@/lib/gamification'
 
@@ -193,6 +194,13 @@ export async function executeMission(
   // Gamification: award XP, update streak, restore energy
   await onMissionComplete(admin, instance.project_id, instance.template_code)
 
+  // Grant +15 premium credits per completed mission
+  await grantPremiumCredits(
+    admin, instance.project_id, 15,
+    'MISSION_COMPLETION_REWARD',
+    `mission:${instanceId}:completion_reward`
+  )
+
   // Debit allowance credits
   if (template.credit_cost_allowance > 0) {
     const { data: wallet } = await admin
@@ -232,8 +240,11 @@ async function executeStep(
       const facts = await readAllFacts(admin, projectId)
       const result: Record<string, unknown> = {}
       for (const key of keys) result[key] = facts[key] ?? null
-      // Also include all facts for broad context
-      return { ...facts, ...result }
+      if (step.config.signals_hours) {
+        const signals = await readSignals(admin, projectId, step.config.signals_hours)
+        result['__signals'] = signals
+      }
+      return result
     }
 
     case 'llm_text': {
