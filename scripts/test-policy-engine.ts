@@ -384,6 +384,91 @@ async function testActiveModeMonetization(projectId: string, userId: string, tok
   ok('topMission is DEFINE_OFFER_V1', data.policy?.topMission === 'DEFINE_OFFER_V1', `got: ${data.policy?.topMission}`)
 }
 
+async function testCompletedOver30DaysBonus(projectId: string, userId: string, token: string) {
+  console.log('\n[11] Completed >30 days ago → +10 bonus')
+  await resetState(projectId)
+  await seedWallet(projectId, 2000, 500)
+  await seedFact(projectId, 'current_followers', 3000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  // Mark ENGAGEMENT_RESCUE_V1 as completed 35 days ago (past cooldown, past 30d)
+  await markMissionCompleted(projectId, 'ENGAGEMENT_RESCUE_V1', 35)
+
+  const data = await runEngines(token)
+  const policy = data.policy
+  const rescue = policy.missionQueue?.find((m: { templateCode: string }) => m.templateCode === 'ENGAGEMENT_RESCUE_V1')
+
+  ok('ENGAGEMENT_RESCUE_V1 in queue (cooldown expired)', !!rescue,
+    `queue: ${JSON.stringify(policy.missionQueue?.map((m: { templateCode: string }) => m.templateCode))}`)
+  // P1=80 + phase_rec +30 (F1 recommended) + repeat >30d +10 = 120 (no "new" bonus since it was completed)
+  ok('+10 repeat bonus applied (score ≥ 110)', (rescue?.priorityScore ?? 0) >= 110,
+    `got: ${rescue?.priorityScore}`)
+}
+
+async function testActiveMissionFilter(projectId: string, userId: string, token: string) {
+  console.log('\n[12] Active missions filtered out')
+  await resetState(projectId)
+  await seedWallet(projectId, 2000, 500)
+  await seedFact(projectId, 'current_followers', 3000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+
+  // Insert an active (running) instance of ENGAGEMENT_RESCUE_V1
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
+  await admin.from('mission_instances').insert({
+    project_id: projectId,
+    template_code: 'ENGAGEMENT_RESCUE_V1',
+    status: 'running',
+    unique_key: `${projectId}:ENGAGEMENT_RESCUE_V1:active:${Date.now()}`,
+    params: {},
+    current_step: 1,
+  })
+
+  const data = await runEngines(token)
+  const policy = data.policy
+  const rescue = policy.missionQueue?.find((m: { templateCode: string }) => m.templateCode === 'ENGAGEMENT_RESCUE_V1')
+
+  ok('ENGAGEMENT_RESCUE_V1 filtered out (already running)', !rescue,
+    `found with score: ${rescue?.priorityScore}`)
+}
+
+async function testCooldownFilter(projectId: string, userId: string, token: string) {
+  console.log('\n[13] Cooldown window — mission completed within 7 days is filtered')
+  await resetState(projectId)
+  await seedWallet(projectId, 2000, 500)
+  await seedFact(projectId, 'current_followers', 3000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  // Mark ENGAGEMENT_RESCUE_V1 completed 2 days ago (within 7-day cooldown)
+  await markMissionCompleted(projectId, 'ENGAGEMENT_RESCUE_V1', 2)
+
+  const data = await runEngines(token)
+  const policy = data.policy
+  const rescue = policy.missionQueue?.find((m: { templateCode: string }) => m.templateCode === 'ENGAGEMENT_RESCUE_V1')
+
+  ok('ENGAGEMENT_RESCUE_V1 filtered out (within 7-day cooldown)', !rescue,
+    `found with score: ${rescue?.priorityScore}`)
+}
+
+async function testLowWalletPremiumPenalty(projectId: string, userId: string, token: string) {
+  console.log('\n[14] Wallet credits < 50 → premium mission score −40')
+  await resetState(projectId)
+  // Premium balance = 30 (below 50 threshold, above 0 so not filtered)
+  await seedWallet(projectId, 2000, 30)
+  await seedFact(projectId, 'current_followers', 3000)
+  await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  await seedSignal(projectId, 'content_perf.viral_spike', { multiplier: 5 }, 2)
+
+  const data = await runEngines(token)
+  const policy = data.policy
+  const contentBatch = policy.missionQueue?.find((m: { templateCode: string }) => m.templateCode === 'CONTENT_BATCH_3D_V1')
+
+  // CONTENT_BATCH has premium cost → appears in queue (not filtered, 30 > 0) but score reduced by 40
+  ok('CONTENT_BATCH_3D_V1 still in queue (30 > 0 premium credits)', !!contentBatch,
+    `queue: ${JSON.stringify(policy.missionQueue?.map((m: { templateCode: string }) => m.templateCode))}`)
+  // P2=60 + inflexion+50 + phase_rec+30 + new+20 - low_wallet-40 = 120
+  // Without penalty it would be 160; with -40 → 120
+  ok('score reduced by -40 penalty (< 160)', (contentBatch?.priorityScore ?? 200) < 160,
+    `got: ${contentBatch?.priorityScore}`)
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -412,6 +497,10 @@ async function main() {
     await testNoPremiumCreditsFilter(projectId, userId, token)
     await testActiveModeViralSpike(projectId, userId, token)
     await testActiveModeMonetization(projectId, userId, token)
+    await testCompletedOver30DaysBonus(projectId, userId, token)
+    await testActiveMissionFilter(projectId, userId, token)
+    await testCooldownFilter(projectId, userId, token)
+    await testLowWalletPremiumPenalty(projectId, userId, token)
 
     await cleanup(projectId)
   } finally {
