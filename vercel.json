@@ -1,8 +1,4 @@
 {
-  "functions": {
-    "app/api/missions/start/route.ts": { "maxDuration": 120 },
-    "app/api/missions/[id]/respond/route.ts": { "maxDuration": 120 }
-  },
   "crons": [
     {
       "path": "/api/scrape/run",
