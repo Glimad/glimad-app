@@ -4,6 +4,12 @@
   "per_month": "/ mes",
   "cta": "Suscribirme",
   "processing": "Redirigiendo...",
+  "activating": "Activando tu plan...",
+  "activating_sub": "Esto tarda solo un momento.",
+  "timeout_title": "Tardando más de lo esperado...",
+  "timeout_sub": "Tu pago fue recibido. Puede tardar un minuto en activarse.",
+  "go_dashboard": "Ir al Dashboard",
+  "retry": "Reintentar",
   "plans": {
     "BASE": {
       "name": "Base",

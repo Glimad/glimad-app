@@ -4,6 +4,12 @@
   "per_month": "/ month",
   "cta": "Subscribe",
   "processing": "Redirecting...",
+  "activating": "Activating your plan...",
+  "activating_sub": "This takes just a moment.",
+  "timeout_title": "Taking longer than expected...",
+  "timeout_sub": "Your payment was received. It may take a minute to activate.",
+  "go_dashboard": "Go to Dashboard",
+  "retry": "Retry",
   "plans": {
     "BASE": {
       "name": "Base",
