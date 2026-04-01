@@ -5,10 +5,6 @@ import { shouldRunPulse, runPulse } from '@/lib/pulse'
 
 export const maxDuration = 60
 
-export async function GET() {
-  return Response.json({ v: 2 })
-}
-
 export async function POST(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
