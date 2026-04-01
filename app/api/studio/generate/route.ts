@@ -32,8 +32,12 @@ export async function POST(request: Request) {
   const facts = await readAllFacts(admin, project!.id)
   const niche = facts['niche_raw'] ?? facts['niche'] ?? 'content creator'
   const platform = facts['focus_platform'] ?? 'instagram'
-  const tone = facts['brand_tone'] ?? 'authentic and engaging'
-  const audience = facts['audience_persona'] ?? 'general audience'
+  const brandKit = facts['brand_kit'] as Record<string, unknown> | null
+  const tone = (brandKit?.tone_of_voice as string) ?? 'authentic and engaging'
+  const audienceRaw = facts['audience_persona']
+  const audience = typeof audienceRaw === 'object' && audienceRaw !== null
+    ? JSON.stringify(audienceRaw).slice(0, 400)
+    : (audienceRaw as string) ?? 'general audience'
 
   const platformLimits: Record<string, { caption: number; hashtags: number }> = {
     instagram: { caption: 2200, hashtags: 30 },

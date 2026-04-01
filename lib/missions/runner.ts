@@ -250,13 +250,16 @@ async function executeStep(
 
     case 'llm_text': {
       const promptKey = step.config.prompt_key as PromptKey
-      const model = step.config.model === 'sonnet'
-        ? process.env.ANTHROPIC_MODEL_SONNET!
-        : process.env.ANTHROPIC_MODEL_HAIKU!
+      const modelConfig = step.config.model ?? 'haiku'
+      const model = modelConfig.startsWith('claude-')
+        ? modelConfig
+        : modelConfig === 'sonnet'
+          ? process.env.ANTHROPIC_MODEL_SONNET!
+          : process.env.ANTHROPIC_MODEL_HAIKU!
 
       const prompt = buildPrompt(promptKey, brainContext)
 
-      const maxTokens = step.config.model === 'sonnet' ? 2048 : 1024
+      const maxTokens = model.includes('sonnet') || model.includes('opus') ? 2048 : 1024
 
       const message = await anthropic.messages.create({
         model,

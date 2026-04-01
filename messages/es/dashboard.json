@@ -43,6 +43,7 @@
   "streak_days": "Racha de {days}d",
   "computing": "Calculando tu fase...",
   "mission_map": "Tu Camino",
+  "mission_active": "En progreso",
   "mission_completed": "Completada",
   "mission_locked": "Bloqueada",
   "mission_min": "min",

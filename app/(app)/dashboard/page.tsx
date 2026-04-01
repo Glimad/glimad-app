@@ -278,6 +278,7 @@ export default async function DashboardPage() {
               t={{
                 start: t('start_mission'),
                 resume: t('resume_mission'),
+                active: t('mission_active'),
                 completed: t('mission_completed'),
                 locked: t('mission_locked'),
                 xp: t('xp'),

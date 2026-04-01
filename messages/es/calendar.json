@@ -16,6 +16,11 @@
   "create_first": "Crea tu primera publicación",
   "drafts_title": "Borradores sin programar",
   "no_drafts": "Sin borradores.",
+  "state_draft": "Borrador",
+  "state_scheduled": "Programado",
+  "state_published": "Publicado",
+  "state_failed": "Fallido",
+  "state_paused": "Pausado",
   "save_reschedule": "Guardar nueva fecha",
   "cancel": "Cancelar"
 }

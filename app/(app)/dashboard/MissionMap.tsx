@@ -22,6 +22,7 @@ interface Props {
   t: {
     start: string
     resume: string
+    active: string
     completed: string
     locked: string
     xp: string
@@ -106,7 +107,7 @@ export default function MissionMap({ missions, t }: Props) {
                     </span>
                     {mission.status === 'active' && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-violet-900 text-violet-300 font-medium">
-                        In progress
+                        {t.active}
                       </span>
                     )}
                   </div>

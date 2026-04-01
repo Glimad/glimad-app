@@ -108,8 +108,8 @@ Generate a 3-day content plan with scripts/hooks for each post.
 Creator context:
 - Niche: ${context.niche ?? context.niche_raw ?? 'not specified'}
 - Platform: ${context.focus_platform ?? 'not specified'}
-- Audience: ${context.audience_persona ?? 'not specified'}
-- Brand kit: ${context.brand_kit ? JSON.stringify(context.brand_kit) : 'not defined yet'}
+- Audience: ${context.audience_persona ? (typeof context.audience_persona === 'object' ? JSON.stringify(context.audience_persona).slice(0, 300) : context.audience_persona) : 'not specified'}
+- Brand kit: ${context.brand_kit ? JSON.stringify(context.brand_kit).slice(0, 300) : 'not defined yet'}
 
 Return a JSON object with this exact structure:
 {
@@ -162,7 +162,7 @@ Help the creator define their first monetizable offer.
 
 Creator context:
 - Niche: ${context.niche ?? context.niche_raw ?? 'not specified'}
-- Audience: ${context.audience_persona ?? 'not specified'}
+- Audience: ${context.audience_persona ? (typeof context.audience_persona === 'object' ? JSON.stringify(context.audience_persona).slice(0, 300) : context.audience_persona) : 'not specified'}
 - Platform: ${context.focus_platform ?? 'not specified'}
 - Followers: ${context.followers_total ?? 'unknown'}
 

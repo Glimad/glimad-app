@@ -47,7 +47,7 @@ const F1_TEMPLATES = [
         name: 'Generate audience persona',
         config: {
           prompt_key: 'AUDIENCE_PERSONA_V1',
-          model: process.env.ANTHROPIC_MODEL_SONNET ?? 'claude-sonnet-4-6',
+          model: 'sonnet',
         },
         timeout_seconds: 60,
         retry_max: 2,
@@ -135,7 +135,7 @@ const F1_TEMPLATES = [
         name: 'Generate content schedule',
         config: {
           prompt_key: 'BATCH_CONFIG_V1',
-          model: process.env.ANTHROPIC_MODEL_HAIKU ?? 'claude-haiku-4-5-20251001',
+          model: 'haiku',
         },
         timeout_seconds: 30,
         retry_max: 2,
@@ -223,7 +223,7 @@ const F1_TEMPLATES = [
         name: 'Generate brand kit',
         config: {
           prompt_key: 'BRAND_KIT_LITE_V1',
-          model: process.env.ANTHROPIC_MODEL_SONNET ?? 'claude-sonnet-4-6',
+          model: 'sonnet',
         },
         timeout_seconds: 60,
         retry_max: 2,

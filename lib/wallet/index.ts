@@ -28,7 +28,7 @@ export async function grantPremiumCredits(
 ) {
   const { data: existing } = await admin
     .from('core_ledger')
-    .select('id')
+    .select('ledger_id')
     .eq('idempotency_key', idempotencyKey)
     .single()
   if (existing) return
@@ -63,7 +63,7 @@ export async function debitLlmCall(admin: SupabaseClient, projectId: string, ide
   // Check if this exact request was already debited
   const { data: existing } = await admin
     .from('core_ledger')
-    .select('id')
+    .select('ledger_id')
     .eq('idempotency_key', idempotencyKey)
     .single()
   if (existing) return

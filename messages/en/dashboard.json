@@ -43,6 +43,7 @@
   "streak_days": "{days}d streak",
   "computing": "Computing your phase...",
   "mission_map": "Your Journey",
+  "mission_active": "In progress",
   "mission_completed": "Completed",
   "mission_locked": "Locked",
   "mission_min": "min",

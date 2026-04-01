@@ -16,6 +16,11 @@
   "create_first": "Create your first post",
   "drafts_title": "Unscheduled Drafts",
   "no_drafts": "No drafts.",
+  "state_draft": "Draft",
+  "state_scheduled": "Scheduled",
+  "state_published": "Published",
+  "state_failed": "Failed",
+  "state_paused": "Paused",
   "save_reschedule": "Save New Date",
   "cancel": "Cancel"
 }

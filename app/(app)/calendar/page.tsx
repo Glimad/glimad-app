@@ -125,7 +125,18 @@ export default function CalendarPage() {
     setSelected(null)
   }
 
-  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const monthLabel = new Date(year, month - 1, 1).toLocaleString(undefined, { month: 'long', year: 'numeric' })
+  const dayHeaders = Array.from({ length: 7 }, (_, i) =>
+    new Date(2024, 0, i).toLocaleString(undefined, { weekday: 'short' })
+  )
+
+  const STATE_LABELS: Record<string, string> = {
+    draft: t('state_draft'),
+    scheduled: t('state_scheduled'),
+    published: t('state_published'),
+    failed: t('state_failed'),
+    paused: t('state_paused'),
+  }
 
   return (
     <div className="text-white max-w-5xl mx-auto px-4 pt-8 pb-12">
@@ -144,7 +155,7 @@ export default function CalendarPage() {
 
       <div className="flex items-center gap-4 mb-6">
         <button onClick={prevMonth} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">←</button>
-        <h2 className="text-lg font-semibold min-w-32 text-center">{monthNames[month - 1]} {year}</h2>
+        <h2 className="text-lg font-semibold min-w-32 text-center capitalize">{monthLabel}</h2>
         <button onClick={nextMonth} className="p-2 rounded-lg hover:bg-zinc-800 transition-colors">→</button>
       </div>
 
@@ -154,7 +165,7 @@ export default function CalendarPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="grid grid-cols-7 gap-px bg-zinc-800 rounded-xl overflow-hidden">
-              {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+              {dayHeaders.map(d => (
                 <div key={d} className="bg-zinc-900 text-xs text-zinc-500 text-center py-2">{d}</div>
               ))}
               {Array.from({ length: firstDayOfWeek }).map((_, i) => (
@@ -201,7 +212,7 @@ export default function CalendarPage() {
                     >
                       <span className={`w-2 h-2 rounded-full shrink-0 ${STATE_DOTS['draft']}`} />
                       <span className="text-sm flex-1 capitalize">{item.content_type.replace(/_/g, ' ')}</span>
-                      <span className="text-xs text-zinc-500">draft</span>
+                      <span className="text-xs text-zinc-500">{t('state_draft')}</span>
                     </button>
                   ))}
                 </div>
@@ -214,7 +225,7 @@ export default function CalendarPage() {
               <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 sticky top-4">
                 <div className="flex items-center justify-between mb-4">
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATE_COLORS[selected.state]}`}>
-                    {selected.state}
+                    {STATE_LABELS[selected.state] ?? selected.state}
                   </span>
                   <button onClick={() => { setSelected(null); setRescheduling(false) }} className="text-zinc-500 hover:text-zinc-300 text-sm">✕</button>
                 </div>

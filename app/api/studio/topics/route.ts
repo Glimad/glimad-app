@@ -58,7 +58,10 @@ export async function POST(request: Request) {
   const facts = await readAllFacts(admin, project!.id)
   const niche = facts['niche_raw'] ?? facts['niche'] ?? 'content creator'
   const platform = facts['focus_platform'] ?? 'instagram'
-  const audience = facts['audience_persona'] ?? ''
+  const audienceRaw = facts['audience_persona']
+  const audience = typeof audienceRaw === 'object' && audienceRaw !== null
+    ? JSON.stringify(audienceRaw).slice(0, 200)
+    : (audienceRaw as string) ?? ''
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const message = await client.messages.create({
