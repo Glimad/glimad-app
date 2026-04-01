@@ -4,7 +4,8 @@ import { getGamificationState } from '@/lib/gamification'
 
 export default async function AppProgressBar() {
   const cookieStore = cookies()
-  const authCookie = cookieStore.get('sb-awaakurvnngazmnnmwza-auth-token')
+  const supabaseRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]
+  const authCookie = cookieStore.get(`sb-${supabaseRef}-auth-token`)
   if (!authCookie?.value?.startsWith('base64-')) return null
 
   const session = JSON.parse(Buffer.from(authCookie.value.slice(7), 'base64').toString('utf-8'))

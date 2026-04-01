@@ -10,7 +10,8 @@ export function extractToken(request: Request): string | null {
 
   // 2. Supabase session cookie (browser/SSR access)
   const cookie = request.headers.get('cookie') ?? ''
-  const match = cookie.match(/sb-awaakurvnngazmnnmwza-auth-token=base64-([^;]+)/)
+  const supabaseRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]
+  const match = cookie.match(new RegExp(`sb-${supabaseRef}-auth-token=base64-([^;]+)`))
   if (!match) return null
   const decoded = Buffer.from(match[1], 'base64').toString('utf-8')
   const parsed = JSON.parse(decoded)

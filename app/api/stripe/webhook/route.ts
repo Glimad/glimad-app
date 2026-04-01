@@ -12,10 +12,19 @@ async function stripeGet(path: string) {
   return res.json()
 }
 
-const CREDITS_BY_PLAN: Record<string, { allowance: number; premium: number }> = {
-  BASE:  { allowance: 2000,  premium: 500  },
-  PRO:   { allowance: 5000,  premium: 1250 },
-  ELITE: { allowance: 12500, premium: 3125 },
+async function getPlanCredits(
+  admin: ReturnType<typeof createAdminClient>,
+  planCode: string
+): Promise<{ allowance: number; premium: number }> {
+  const { data } = await admin
+    .from('core_plans')
+    .select('allowance_llm_monthly, premium_credits_monthly')
+    .eq('plan_code', planCode)
+    .single()
+  return {
+    allowance: data?.allowance_llm_monthly ?? 2000,
+    premium: data?.premium_credits_monthly ?? 500,
+  }
 }
 
 export async function POST(request: Request) {
@@ -266,7 +275,7 @@ async function grantMonthlyCredits(
   periodEnd: number,
   invoiceId?: string
 ) {
-  const credits = CREDITS_BY_PLAN[planCode] ?? CREDITS_BY_PLAN.BASE
+  const credits = await getPlanCredits(admin, planCode)
   const projectId = await getProjectId(admin, userId)
   const resetAt = new Date(periodEnd * 1000).toISOString()
   const idempKey = invoiceId

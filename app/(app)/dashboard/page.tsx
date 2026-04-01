@@ -35,7 +35,8 @@ export default async function DashboardPage() {
   ])
 
   const cookieStore = cookies()
-  const authCookie = cookieStore.get('sb-awaakurvnngazmnnmwza-auth-token')
+  const supabaseRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]
+  const authCookie = cookieStore.get(`sb-${supabaseRef}-auth-token`)
   const admin = createAdminClient()
   let user = null
   if (authCookie?.value?.startsWith('base64-')) {
