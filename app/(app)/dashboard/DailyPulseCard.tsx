@@ -13,13 +13,19 @@ const CATEGORY_ICONS: Record<string, string> = {
   engagement: '💬',
 }
 
-function timeAgo(dateStr: string): string {
+interface TimeLabels {
+  justNow: string
+  hoursAgo: (h: number) => string
+  daysAgo: (d: number) => string
+}
+
+function timeAgo(dateStr: string, labels: TimeLabels): string {
   const diffMs = Date.now() - new Date(dateStr).getTime()
   const diffH = Math.floor(diffMs / (1000 * 60 * 60))
-  if (diffH < 1) return 'just now'
-  if (diffH < 24) return `${diffH}h ago`
+  if (diffH < 1) return labels.justNow
+  if (diffH < 24) return labels.hoursAgo(diffH)
   const diffD = Math.floor(diffH / 24)
-  return `${diffD}d ago`
+  return labels.daysAgo(diffD)
 }
 
 interface Props {
@@ -30,6 +36,9 @@ interface Props {
     noData: string
     noDataSub: string
     updated: string
+    justNow: string
+    hoursAgo: (h: number) => string
+    daysAgo: (d: number) => string
     priorityLabels: Record<string, string>
   }
 }
@@ -60,7 +69,7 @@ export default function DailyPulseCard({ pulse, t }: Props) {
           {!isFresh && (
             <span className="text-xs text-zinc-500 italic">{t.refreshing}</span>
           )}
-          <span className="text-xs text-zinc-500">{t.updated} {timeAgo(pulse.started_at)}</span>
+          <span className="text-xs text-zinc-500">{t.updated} {timeAgo(pulse.started_at, { justNow: t.justNow, hoursAgo: t.hoursAgo, daysAgo: t.daysAgo })}</span>
         </div>
       </div>
 

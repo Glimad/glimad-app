@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { getTranslations } from 'next-intl/server'
+import { getTranslations, getLocale } from 'next-intl/server'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
 import { runInflexionEngine } from '@/lib/engines/inflexion-engine'
 import { runPolicyEngine } from '@/lib/engines/policy-engine'
@@ -29,7 +29,10 @@ const PHASE_RANK: Record<string, number> = {
 }
 
 export default async function DashboardPage() {
-  const t = await getTranslations('dashboard')
+  const [t, locale] = await Promise.all([
+    getTranslations('dashboard'),
+    getLocale(),
+  ])
 
   const cookieStore = cookies()
   const authCookie = cookieStore.get('sb-awaakurvnngazmnnmwza-auth-token')
@@ -171,7 +174,7 @@ export default async function DashboardPage() {
 
   const calendarDays = next7.map(date => ({
     date,
-    label: new Date(date + 'T12:00:00Z').toLocaleDateString('en', { weekday: 'short' }),
+    label: new Date(date + 'T12:00:00Z').toLocaleDateString(locale, { weekday: 'short' }),
     dots: (calendarItems ?? [])
       .filter(item => item.scheduled_at?.startsWith(date))
       .map(item => ({ state: item.state ?? 'draft' })),
@@ -330,6 +333,9 @@ export default async function DashboardPage() {
               noData: t('pulse_no_data'),
               noDataSub: t('pulse_no_data_sub'),
               updated: t('pulse_updated'),
+              justNow: t('pulse_just_now'),
+              hoursAgo: (h: number) => t('pulse_hours_ago', { hours: h }),
+              daysAgo: (d: number) => t('pulse_days_ago', { days: d }),
               priorityLabels: {
                 high: t('pulse_priority_high'),
                 medium: t('pulse_priority_medium'),
