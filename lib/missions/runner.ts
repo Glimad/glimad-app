@@ -244,9 +244,11 @@ async function executeStep(
 
       const prompt = buildPrompt(promptKey, brainContext)
 
+      const maxTokens = step.config.model === 'sonnet' ? 2048 : 1024
+
       const message = await anthropic.messages.create({
         model,
-        max_tokens: 1024,
+        max_tokens: maxTokens,
         messages: [{ role: 'user', content: prompt }],
       })
 

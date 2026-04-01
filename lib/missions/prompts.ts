@@ -45,9 +45,9 @@ Creator context:
 
 Return a JSON object with this exact structure:
 {
-  "niche_confirmed": "The refined niche in 5-8 words (specific + differentiated)",
+  "niche": "The refined niche in 5-8 words (specific + differentiated)",
   "audience_persona": "Who is their ideal audience: age, interests, pain points (2-3 sentences)",
-  "positioning_statement": "What makes them unique vs others in this niche (1 sentence)",
+  "positioning": "What makes them unique vs others in this niche (1 sentence)",
   "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"]
 }
 
