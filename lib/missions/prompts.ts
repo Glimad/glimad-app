@@ -9,6 +9,9 @@ export type PromptKey =
   | 'CONTENT_BATCH_3D_V1'
   | 'ENGAGEMENT_RESCUE_V1'
   | 'DEFINE_OFFER_V1'
+  | 'AUDIENCE_PERSONA_V1'
+  | 'BATCH_CONFIG_V1'
+  | 'BRAND_KIT_LITE_V1'
 
 export function buildPrompt(key: PromptKey, context: Record<string, unknown>): string {
   switch (key) {
@@ -175,6 +178,99 @@ Return a JSON object with this exact structure:
 }
 
 Make the offer realistic for their current audience size and niche.`
+
+    case 'AUDIENCE_PERSONA_V1':
+      return `You are Glimy, the audience specialist at GlimAd. Define a specific, actionable audience persona for this creator.
+
+Creator context:
+- Niche: ${context.niche_raw ?? context.niche ?? 'not specified'}
+- 90-day goal: ${context.primary_goal ?? 'not specified'}
+- Camera comfort: ${context.on_camera_comfort ?? 'not specified'}
+- Platform: ${context.focus_platform ?? 'not specified'}
+
+Return a JSON object with this exact structure:
+{
+  "persona_name": "A memorable fictional name for the persona",
+  "demographics": {
+    "age_range": "specific range e.g. 28-35",
+    "gender": "male | female | non-binary | all",
+    "location": "country/region",
+    "occupation": "what they do",
+    "income_level": "low | medium | high | mixed"
+  },
+  "psychographics": {
+    "values": ["value1", "value2"],
+    "lifestyle": "how they live and work",
+    "content_consumption_habits": "when and how they consume content"
+  },
+  "pain_points": [
+    { "pain": "specific problem they face", "severity": "high | medium | low" }
+  ],
+  "goals_aspirations": ["what they want to achieve"],
+  "language_style": {
+    "tone": "formal | casual | technical | aspirational",
+    "keywords_they_use": ["keyword1", "keyword2"],
+    "phrases_they_say": ["phrase1", "phrase2"]
+  },
+  "best_times_to_reach": ["Morning 7-9am", "Evening 9-11pm"]
+}
+
+Include 3-5 pain points. Be hyper-specific to their niche — no generic personas.`
+
+    case 'BATCH_CONFIG_V1':
+      return `You are Glimy, the content rhythm specialist at GlimAd. Help this creator define a sustainable content publishing schedule.
+
+Creator context:
+- Platform: ${context.focus_platform ?? 'not specified'}
+- Weekly hours available: ${context.hours_per_week ?? 'unknown'}
+- Audience persona: ${context.audience_persona ? JSON.stringify(context.audience_persona).slice(0, 200) : 'not defined yet'}
+
+Return a JSON object with this exact structure:
+{
+  "posts_per_week": 3,
+  "batch_size": 3,
+  "batches_per_month": 4,
+  "creation_days": ["Monday", "Thursday"],
+  "hours_per_batch": 2,
+  "best_posting_times": ["Tuesday 18:00", "Thursday 18:00", "Saturday 12:00"],
+  "formats_rotation": ["Reel", "Carousel", "Story"],
+  "rationale": "Why this schedule fits their available time and platform algorithm (2 sentences)"
+}
+
+Do NOT recommend impossible schedules. Match frequency to their available hours. Factor in platform-specific best practices.`
+
+    case 'BRAND_KIT_LITE_V1':
+      return `You are Glimy, the brand designer at GlimAd. Create a lightweight brand kit for this creator's content consistency.
+
+Creator context:
+- Niche: ${context.niche_raw ?? context.niche ?? 'not specified'}
+- Platform: ${context.focus_platform ?? 'not specified'}
+- Audience persona: ${context.audience_persona ? JSON.stringify(context.audience_persona).slice(0, 200) : 'not defined yet'}
+- Vision: ${context.vision_statement ?? 'not defined yet'}
+
+Return a JSON object with this exact structure:
+{
+  "brand_name": "Creator's brand name or handle concept",
+  "tone_of_voice": "How they should sound: e.g. 'Educational but approachable, like a knowledgeable friend'",
+  "content_pillars": ["Pillar 1", "Pillar 2", "Pillar 3"],
+  "color_palette": {
+    "primary": "color description (e.g. Deep violet #6B46C1)",
+    "secondary": "color description",
+    "accent": "color description",
+    "background": "color description"
+  },
+  "visual_style": "Description of their visual aesthetic (2-3 sentences)",
+  "caption_formula": "Template for captions: e.g. Hook + Value + CTA",
+  "hashtag_strategy": {
+    "niche_tags": ["#tag1", "#tag2"],
+    "broad_tags": ["#tag3", "#tag4"],
+    "branded_tags": ["#personaltag"]
+  },
+  "dos": ["Do this in content"],
+  "donts": ["Avoid this in content"]
+}
+
+Make the brand kit specific to their niche and platform. Colors should reflect their content mood.`
 
     default:
       return `Analyze the creator's situation and provide strategic recommendations. Return a JSON object with your analysis.`
