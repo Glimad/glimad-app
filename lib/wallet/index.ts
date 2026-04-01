@@ -42,7 +42,7 @@ export async function debitLlmCall(admin: SupabaseClient, projectId: string, ide
   await admin.from('core_ledger').insert({
     project_id: projectId,
     kind: 'debit',
-    amount_allowance: -1,
+    amount_allowance: 1,
     reason_key: 'LLM_CALL_STUDIO',
     idempotency_key: idempotencyKey,
   })

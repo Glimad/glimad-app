@@ -6,6 +6,36 @@ import { readAllFacts } from '@/lib/brain'
 import { checkLlmRateLimit } from '@/lib/security/rate-limit'
 import { sanitizeText } from '@/lib/security/sanitize'
 
+// GET /api/studio/topics — returns the user's focus platform and caption limits (no LLM)
+export async function GET(request: Request) {
+  const user = await getAuthUser(request)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data: project } = await admin
+    .from('projects')
+    .select('id')
+    .eq('user_id', user.id)
+    .neq('status', 'archived')
+    .single()
+
+  const facts = await readAllFacts(admin, project!.id)
+  const platform = (facts['focus_platform'] as string) ?? 'instagram'
+
+  const captionLimits: Record<string, number> = {
+    instagram: 2200,
+    tiktok: 2200,
+    youtube: 5000,
+    twitter: 280,
+    spotify: 1500,
+  }
+
+  return NextResponse.json({
+    platform,
+    caption_limit: captionLimits[platform] ?? 2200,
+  })
+}
+
 export async function POST(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 
@@ -15,12 +15,16 @@ interface GeneratedContent {
 }
 
 const CONTENT_TYPES = [
-  { id: 'reel', label: 'Reel', icon: '🎬', platforms: ['instagram', 'tiktok'] },
-  { id: 'carousel', label: 'Carousel', icon: '📸', platforms: ['instagram'] },
-  { id: 'story', label: 'Story Series', icon: '⭕', platforms: ['instagram'] },
-  { id: 'short_video', label: 'Short Video', icon: '📱', platforms: ['tiktok', 'youtube'] },
-  { id: 'post', label: 'Single Post', icon: '🖼️', platforms: ['instagram', 'twitter'] },
-  { id: 'long_video', label: 'Long Video', icon: '🎥', platforms: ['youtube'] },
+  { id: 'reel',              label: 'Reel',                 icon: '🎬', platforms: ['instagram', 'tiktok'] },
+  { id: 'carousel',          label: 'Carousel',             icon: '📸', platforms: ['instagram'] },
+  { id: 'story',             label: 'Story Series',         icon: '⭕', platforms: ['instagram'] },
+  { id: 'short_video',       label: 'Short Video',          icon: '📱', platforms: ['tiktok', 'youtube'] },
+  { id: 'series',            label: 'Series',               icon: '🎞️', platforms: ['tiktok'] },
+  { id: 'post',              label: 'Single Post',          icon: '🖼️', platforms: ['instagram', 'twitter'] },
+  { id: 'long_video',        label: 'Long Video',           icon: '🎥', platforms: ['youtube'] },
+  { id: 'community_post',    label: 'Community Post',       icon: '💬', platforms: ['youtube'] },
+  { id: 'playlist_desc',     label: 'Playlist Description', icon: '🎵', platforms: ['spotify'] },
+  { id: 'bio_update',        label: 'Bio Update',           icon: '✏️', platforms: ['spotify'] },
 ]
 
 export default function StudioPage() {
@@ -28,6 +32,8 @@ export default function StudioPage() {
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('type')
+  const [platform, setPlatform] = useState<string>('instagram')
+  const [captionLimit, setCaptionLimit] = useState<number>(2200)
   const [contentType, setContentType] = useState('')
   const [topics, setTopics] = useState<string[]>([])
   const [selectedTopic, setSelectedTopic] = useState('')
@@ -35,6 +41,17 @@ export default function StudioPage() {
   const [editedContent, setEditedContent] = useState<GeneratedContent | null>(null)
   const [scheduledAt, setScheduledAt] = useState('')
   const [regeneratingField, setRegeneratingField] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/studio/topics')
+      .then(r => r.json())
+      .then(data => {
+        if (data.platform) setPlatform(data.platform)
+        if (data.caption_limit) setCaptionLimit(data.caption_limit)
+      })
+  }, [])
+
+  const availableTypes = CONTENT_TYPES.filter(ct => ct.platforms.includes(platform))
 
   async function handleTypeSelect(type: string) {
     setContentType(type)
@@ -88,6 +105,8 @@ export default function StudioPage() {
     setStep('done')
   }
 
+  const captionWarning = editedContent && editedContent.caption.length > captionLimit * 0.9
+
   return (
     <div className="text-white max-w-2xl mx-auto px-4 pt-8 pb-12">
 
@@ -96,7 +115,7 @@ export default function StudioPage() {
           <h1 className="text-2xl font-bold mb-2">{t('title')}</h1>
           <p className="text-zinc-400 mb-8">{t('type_subtitle')}</p>
           <div className="grid grid-cols-2 gap-4">
-            {CONTENT_TYPES.map(ct => (
+            {availableTypes.map(ct => (
               <button
                 key={ct.id}
                 onClick={() => handleTypeSelect(ct.id)}
@@ -104,7 +123,6 @@ export default function StudioPage() {
               >
                 <div className="text-3xl mb-3">{ct.icon}</div>
                 <p className="font-semibold">{ct.label}</p>
-                <p className="text-xs text-zinc-500 mt-1">{ct.platforms.join(', ')}</p>
               </button>
             ))}
           </div>
@@ -202,7 +220,9 @@ export default function StudioPage() {
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t('caption')}</label>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-500">{editedContent.caption.length} / 2200</span>
+                  <span className={`text-xs ${captionWarning ? 'text-amber-400 font-semibold' : 'text-zinc-500'}`}>
+                    {editedContent.caption.length} / {captionLimit}
+                  </span>
                   <button
                     onClick={() => handleRegenerateField('caption')}
                     disabled={!!regeneratingField}
@@ -251,17 +271,21 @@ export default function StudioPage() {
               />
             </div>
 
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
-              <div className="flex items-center justify-between mb-3">
-                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t('hashtags')}</label>
-                <span className="text-xs text-zinc-500">{editedContent.hashtags.length} tags</span>
+            {editedContent.hashtags.length > 0 && (
+              <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t('hashtags')}</label>
+                  <span className={`text-xs ${editedContent.hashtags.length < 15 || editedContent.hashtags.length > 20 ? 'text-amber-400' : 'text-zinc-500'}`}>
+                    {editedContent.hashtags.length} tags {platform === 'instagram' ? '(15–20 recommended)' : ''}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {editedContent.hashtags.map((tag, i) => (
+                    <span key={i} className="bg-zinc-800 text-violet-300 text-xs px-3 py-1 rounded-full">#{tag}</span>
+                  ))}
+                </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {editedContent.hashtags.map((tag, i) => (
-                  <span key={i} className="bg-zinc-800 text-violet-300 text-xs px-3 py-1 rounded-full">#{tag}</span>
-                ))}
-              </div>
-            </div>
+            )}
           </div>
 
           <button

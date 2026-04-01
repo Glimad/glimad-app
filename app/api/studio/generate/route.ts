@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/supabase/extract-token'
+
+export const maxDuration = 60
 import { createAdminClient } from '@/lib/supabase/admin'
 import Anthropic from '@anthropic-ai/sdk'
 import { readAllFacts } from '@/lib/brain'
