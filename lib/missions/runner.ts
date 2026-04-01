@@ -18,6 +18,7 @@ interface MissionStep {
     model?: string
     fields?: string[]
     signals?: string[]
+    full_output_key?: string  // save entire __llm_output as this fact key
   }
   timeout_seconds: number
   retry_max: number
@@ -280,6 +281,11 @@ async function executeStep(
 
     case 'brain_update': {
       const llmOutput = (brainContext['__llm_output'] ?? {}) as Record<string, unknown>
+
+      // Save entire LLM output as a single fact (used when the output IS the fact value)
+      if (step.config.full_output_key) {
+        await writeFact(admin, projectId, step.config.full_output_key, llmOutput, 'mission')
+      }
 
       if (step.config.facts) {
         for (const factKey of step.config.facts) {

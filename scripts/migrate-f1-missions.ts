@@ -75,7 +75,8 @@ const F1_TEMPLATES = [
         step_type: 'brain_update',
         name: 'Save audience persona to Brain',
         config: {
-          facts: ['audience_persona', 'persona_name'],
+          full_output_key: 'audience_persona',
+          facts: ['persona_name'],
           signals: ['audience_persona_defined'],
         },
         timeout_seconds: 10,
@@ -162,7 +163,8 @@ const F1_TEMPLATES = [
         step_type: 'brain_update',
         name: 'Save batch config to Brain',
         config: {
-          facts: ['batch_config', 'posting_frequency'],
+          full_output_key: 'batch_config',
+          facts: ['posts_per_week', 'posting_frequency'],
           signals: ['batch_config_set'],
         },
         timeout_seconds: 10,
@@ -249,7 +251,8 @@ const F1_TEMPLATES = [
         step_type: 'brain_update',
         name: 'Save brand kit to Brain',
         config: {
-          facts: ['brand_kit', 'brand_tone', 'brand_name'],
+          full_output_key: 'brand_kit',
+          facts: ['brand_name'],
           signals: ['brand_kit_defined'],
         },
         timeout_seconds: 10,
