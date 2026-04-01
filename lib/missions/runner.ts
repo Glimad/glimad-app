@@ -141,7 +141,7 @@ export async function executeMission(
       started_at: new Date().toISOString(),
     }, { onConflict: 'mission_instance_id,step_number' })
 
-    const stepOutput = await executeStep(admin, instance.project_id, step, brainContext)
+    const stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext)
 
     if (stepOutput === 'WAIT_FOR_INPUT') {
       await admin
@@ -177,7 +177,11 @@ export async function executeMission(
   // All steps done
   await admin
     .from('mission_instances')
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .update({
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+      outputs: brainContext['__llm_output'] ?? {},
+    })
     .eq('id', instanceId)
 
   // Write mission_completed signal
@@ -202,7 +206,7 @@ export async function executeMission(
       await admin.from('core_ledger').insert({
         project_id: instance.project_id,
         kind: 'debit',
-        amount_allowance: -template.credit_cost_allowance,
+        amount_allowance: template.credit_cost_allowance,
         reason_key: 'MISSION_ALLOWANCE_DEBIT',
         idempotency_key: `mission:${instanceId}:allowance_debit`,
         metadata_json: { template_code: instance.template_code },
@@ -218,6 +222,7 @@ export async function executeMission(
 async function executeStep(
   admin: AdminClient,
   projectId: string,
+  instanceId: string,
   step: MissionStep,
   brainContext: Record<string, unknown>
 ): Promise<unknown> {
@@ -282,8 +287,22 @@ async function executeStep(
     }
 
     case 'write_outputs': {
-      // Save content to core_outputs
-      return { saved: true }
+      const llmOutput = (brainContext['__llm_output'] ?? {}) as Record<string, unknown>
+      const posts = Array.isArray(llmOutput['posts'])
+        ? (llmOutput['posts'] as Array<Record<string, unknown>>)
+        : [llmOutput]
+      for (const post of posts) {
+        await admin.from('core_outputs').insert({
+          project_id: projectId,
+          mission_instance_id: instanceId,
+          output_type: 'content',
+          format: (post['format'] as string) ?? 'post',
+          content: post,
+          status: 'draft',
+          idempotency_key: `${instanceId}:output:${post['day'] ?? Date.now()}`,
+        })
+      }
+      return { saved: true, count: posts.length }
     }
 
     case 'snapshot': {
