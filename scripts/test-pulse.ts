@@ -128,20 +128,17 @@ async function main() {
   ok('signal has action_items_count', typeof sigVal?.['action_items_count'] === 'number')
 
   console.log('\n[4] POST /api/pulse/run rate-limits within 6h window')
+  // Verify the pulse_run was persisted
+  const { data: pulseRunCheck } = await sb().from('pulse_runs').select('id, completed_at').eq('project_id', projectId).not('completed_at', 'is', null).limit(1)
+  ok('pulse_run persisted in DB', (pulseRunCheck?.length ?? 0) > 0, `rows: ${pulseRunCheck?.length}`)
   const { status: s4 } = await post('/api/pulse/run', token)
   ok('429 on second run within 6h', s4 === 429, `got: ${s4}`)
 
-  console.log('\n[5] New project with no signals returns 429')
-  const { token: noSigToken } = await (async () => {
-    const email = `e2e-pulse-nosig-${Date.now()}@glimad-test.dev`
-    const { data: u } = await sb().auth.admin.createUser({ email, password: TEST_PASSWORD, email_confirm: true })
-    const anon = createClient(SUPABASE_URL, ANON_KEY)
-    const { data: s } = await anon.auth.signInWithPassword({ email, password: TEST_PASSWORD })
-    // cleanup this extra user after
-    setTimeout(() => sb().auth.admin.deleteUser(u.user!.id), 5000)
-    return { token: s.session!.access_token }
-  })()
-  const { status: s5 } = await post('/api/pulse/run', noSigToken)
+  console.log('\n[5] Project with no brain signals returns 429')
+  // Delete all brain_signals for this project, then delete the recent pulse_run so rate limit doesn't apply
+  await sb().from('pulse_runs').delete().eq('project_id', projectId)
+  await sb().from('brain_signals').delete().eq('project_id', projectId)
+  const { status: s5 } = await post('/api/pulse/run', token)
   ok('429 when no brain signals', s5 === 429, `got: ${s5}`)
 
   console.log('\n[6] Unauthorized request returns 401')
