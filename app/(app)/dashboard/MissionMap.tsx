@@ -28,6 +28,8 @@ interface Props {
     xp: string
     min: string
     credits: string
+    credit_allowance: string
+    credit_premium: string
     types: Record<string, string>
   }
 }
@@ -130,7 +132,7 @@ export default function MissionMap({ missions, t }: Props) {
                   <p className="text-xs text-zinc-400 mb-3">{mission.description}</p>
                   {(mission.credit_cost_allowance > 0 || mission.credit_cost_premium > 0) && (
                     <p className="text-xs text-zinc-500 mb-2">
-                      {t.credits}: {mission.credit_cost_allowance > 0 ? `${mission.credit_cost_allowance} allowance` : ''}{mission.credit_cost_premium > 0 ? `${mission.credit_cost_premium} premium` : ''}
+                      {t.credits}: {mission.credit_cost_allowance > 0 ? `${mission.credit_cost_allowance} ${t.credit_allowance}` : ''}{mission.credit_cost_premium > 0 ? `${mission.credit_cost_premium} ${t.credit_premium}` : ''}
                     </p>
                   )}
                   <button

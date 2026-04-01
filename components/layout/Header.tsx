@@ -19,7 +19,7 @@ export default async function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-        <a href="/onboarding" className="flex items-center">
+        <a href={user ? '/dashboard' : '/onboarding'} className="flex items-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="https://www.glimad.com/assets/5214dd55518a7c14c563198b177e58a9471a0f73-DFAXz9bY.png" alt="Glimad" width={40} height={40} />
         </a>

@@ -28,5 +28,6 @@
   "done_draft": "Tu publicación se ha guardado como borrador.",
   "view_calendar": "Ver Calendario",
   "create_another": "Crear otro",
-  "back_to_dashboard": "Volver al Dashboard"
+  "back_to_dashboard": "Volver al Dashboard",
+  "hashtag_recommendation": "(15–20 recomendados)"
 }

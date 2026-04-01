@@ -276,7 +276,7 @@ export default function StudioPage() {
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">{t('hashtags')}</label>
                   <span className={`text-xs ${editedContent.hashtags.length < 15 || editedContent.hashtags.length > 20 ? 'text-amber-400' : 'text-zinc-500'}`}>
-                    {editedContent.hashtags.length} tags {platform === 'instagram' ? '(15–20 recommended)' : ''}
+                    {editedContent.hashtags.length} tags {platform === 'instagram' ? t('hashtag_recommendation') : ''}
                   </span>
                 </div>
                 <div className="flex flex-wrap gap-2">

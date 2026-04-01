@@ -116,13 +116,13 @@ export default async function DashboardPage() {
         if (tmpl.cooldown_hours > 0 && hoursAgo < tmpl.cooldown_hours) {
           status = 'locked'
           const hoursLeft = Math.ceil(tmpl.cooldown_hours - hoursAgo)
-          lock_reason = `Available again in ${hoursLeft}h`
+          lock_reason = t('mission_cooldown_lock', { hours: hoursLeft })
         } else {
           status = 'completed'
         }
       } else if (currentRank < minRank || currentRank > maxRank) {
         status = 'locked'
-        lock_reason = `Unlocks at phase F${minRank}`
+        lock_reason = t('mission_phase_lock', { phase: `F${minRank}` })
       } else {
         status = 'available'
       }
@@ -284,6 +284,8 @@ export default async function DashboardPage() {
                 xp: t('xp'),
                 min: t('mission_min'),
                 credits: t('credits'),
+                credit_allowance: t('allowance'),
+                credit_premium: t('premium_credits'),
                 types: t.raw('mission_types') as Record<string, string>,
               }}
             />

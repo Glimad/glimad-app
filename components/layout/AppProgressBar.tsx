@@ -47,7 +47,7 @@ export default async function AppProgressBar() {
     : 'text-red-400 animate-pulse'
 
   return (
-    <div className="fixed top-14 left-0 right-0 z-30 bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800/60">
+    <div className="fixed top-14 left-14 right-0 z-30 bg-zinc-950/90 backdrop-blur-sm border-b border-zinc-800/60">
       <div className="max-w-6xl mx-auto px-4 h-9 flex items-center justify-between gap-4">
 
         {/* Level + XP */}

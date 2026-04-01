@@ -44,6 +44,8 @@
   "computing": "Computing your phase...",
   "mission_map": "Your Journey",
   "mission_active": "In progress",
+  "mission_cooldown_lock": "Available in {hours}h",
+  "mission_phase_lock": "Unlocks at {phase}",
   "mission_completed": "Completed",
   "mission_locked": "Locked",
   "mission_min": "min",

@@ -44,6 +44,8 @@
   "computing": "Calculando tu fase...",
   "mission_map": "Tu Camino",
   "mission_active": "En progreso",
+  "mission_cooldown_lock": "Disponible en {hours}h",
+  "mission_phase_lock": "Se desbloquea en {phase}",
   "mission_completed": "Completada",
   "mission_locked": "Bloqueada",
   "mission_min": "min",
