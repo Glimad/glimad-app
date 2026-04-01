@@ -52,6 +52,8 @@ export interface PolicyResult {
   missionQueue: MissionPriority[]
   activeMode: 'test' | 'scale' | 'monetize'
   rationale: string
+  dailyCallsUsed?: number
+  dailyCallsLimit?: number
 }
 
 export async function runPolicyEngine(
@@ -249,5 +251,7 @@ export async function runPolicyEngine(
     missionQueue: scored,
     activeMode,
     rationale,
+    dailyCallsUsed: dailyUsed ?? 0,
+    dailyCallsLimit: dailyLlmLimit,
   }
 }
