@@ -63,20 +63,36 @@ export async function runPolicyEngine(
   const facts = await readAllFacts(admin, projectId)
   const signals30d = await readSignals(admin, projectId, 30 * 24)
 
-  // Get wallet state
+  // Get wallet state + plan daily limit
   const { data: wallet } = await admin
     .from('core_wallets')
-    .select('allowance_llm_balance, premium_credits_balance')
+    .select('allowance_llm_balance, premium_credits_balance, plan_code')
     .eq('project_id', projectId)
     .single()
 
   const premiumBalance = wallet?.premium_credits_balance ?? 0
-  const allowanceBalance = wallet?.allowance_llm_balance ?? 0
+  const planCode = wallet?.plan_code ?? 'BASE'
 
-  // Daily LLM usage (allowance debits today)
-  // Plan daily limit (BASE=2000 allowance/month → ~67/day as proxy; use wallet balance heuristic)
-  // Treat daily limit as reached if allowance balance is 0
-  const dailyLimitReached = allowanceBalance <= 0
+  // Get plan's daily LLM call limit
+  const { data: plan } = await admin
+    .from('core_plans')
+    .select('daily_llm_limit')
+    .eq('plan_code', planCode)
+    .single()
+  const dailyLlmLimit = plan?.daily_llm_limit ?? 50
+
+  // Count today's allowance debits from core_ledger
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const { count: dailyUsed } = await admin
+    .from('core_ledger')
+    .select('ledger_id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('kind', 'debit')
+    .gt('amount_allowance', 0)
+    .gte('created_at', todayStart.toISOString())
+
+  const dailyLimitReached = (dailyUsed ?? 0) >= dailyLlmLimit
 
   // burnout_risk signal check
   const hasBurnoutRisk = signals30d.some(s => s.signal_key === 'consistency_gap' || s.signal_key === 'burnout_risk')

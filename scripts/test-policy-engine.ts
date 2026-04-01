@@ -11,10 +11,14 @@
 //   4. Priority scoring — inflexion bonus (viral_spike → +50)
 //   5. Priority scoring — phase recommendation bonus (+30)
 //   6. Burnout penalty — high-energy mission scores down by 30
-//   7. Daily LLM limit — all LLM missions → score 0
+//   7. Daily LLM limit — 50 ledger debits today → all LLM missions score 0
 //   8. No premium credits — premium missions filtered out
 //   9. activeMode — viral_spike inflexion → 'scale'
 //  10. activeMode — monetization_ready inflexion → 'monetize'
+//  11. Completed >30 days ago → +10 bonus
+//  12. Active missions filtered out
+//  13. Cooldown window — mission completed within 7 days is filtered
+//  14. Wallet credits < 50 → premium mission score −40
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -94,6 +98,7 @@ async function cleanup(projectId: string) {
   await admin.from('brain_snapshots').delete().eq('project_id', projectId)
   await admin.from('core_phase_runs').delete().eq('project_id', projectId)
   await admin.from('core_wallets').delete().eq('project_id', projectId)
+  await admin.from('core_ledger').delete().eq('project_id', projectId)
   await admin.from('core_subscriptions').delete().eq('project_id', projectId)
   await admin.from('projects').delete().eq('id', projectId)
 }
@@ -107,6 +112,20 @@ async function resetState(projectId: string) {
   await admin.from('core_policy_runs').delete().eq('project_id', projectId)
   await admin.from('core_phase_runs').delete().eq('project_id', projectId)
   await admin.from('core_wallets').delete().eq('project_id', projectId)
+  await admin.from('core_ledger').delete().eq('project_id', projectId)
+}
+
+// Insert `count` allowance debit records dated today (to simulate daily LLM calls used)
+async function seedLedgerDebits(projectId: string, count: number) {
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } })
+  const rows = Array.from({ length: count }, (_, i) => ({
+    project_id: projectId,
+    kind: 'debit',
+    amount_allowance: 1,
+    reason_key: 'MISSION_ALLOWANCE_DEBIT',
+    idempotency_key: `test-daily-${projectId}-${Date.now()}-${i}`,
+  }))
+  await admin.from('core_ledger').insert(rows)
 }
 
 async function setPhase(userId: string, phase: string) {
@@ -314,20 +333,21 @@ async function testBurnoutPenalty(projectId: string, userId: string, token: stri
 }
 
 async function testDailyLimitReached(projectId: string, userId: string, token: string) {
-  console.log('\n[7] Daily LLM limit — all LLM missions score 0')
+  console.log('\n[7] Daily LLM limit — 50 ledger debits today → all LLM missions score 0')
   await resetState(projectId)
   await setPhase(userId, 'F2')
-  // Empty wallet = daily limit reached
-  await seedWallet(projectId, 0, 0)
+  // Wallet has balance but daily call limit (BASE=50) is reached via ledger debits
+  await seedWallet(projectId, 2000, 500)
   await seedFact(projectId, 'current_followers', 3000)
   await seedFact(projectId, 'avg_engagement_rate', 0.04)
+  // Seed exactly 50 debit records today → daily limit reached for BASE plan
+  await seedLedgerDebits(projectId, 50)
 
   const data = await runEngines(token)
   const policy = data.policy
 
-  const llmMissions = policy.missionQueue?.filter((m: { priorityScore: number }) => m.priorityScore === 0) ?? []
   const allScoresZeroOrFiltered = policy.missionQueue?.every((m: { priorityScore: number }) => m.priorityScore === 0) ?? true
-  // All missions cost allowance credits, so all should be 0 or not present
+  // All missions cost allowance credits, so all should score 0 when daily limit reached
   ok('All missions score 0 when daily limit reached', allScoresZeroOrFiltered,
     `queue: ${JSON.stringify(policy.missionQueue?.map((m: { templateCode: string; priorityScore: number }) => `${m.templateCode}:${m.priorityScore}`))}`)
   ok('reason includes daily_limit', policy.missionQueue?.some((m: { reason: string }) => m.reason?.includes('daily_limit')),
