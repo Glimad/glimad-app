@@ -313,8 +313,9 @@ async function executeStep(
       const posts = Array.isArray(llmOutput['posts'])
         ? (llmOutput['posts'] as Array<Record<string, unknown>>)
         : [llmOutput]
+      const platform = (brainContext['focus_platform'] as string) ?? null
       for (const post of posts) {
-        await admin.from('core_outputs').insert({
+        const { data: output } = await admin.from('core_outputs').insert({
           project_id: projectId,
           mission_instance_id: instanceId,
           output_type: 'content',
@@ -322,7 +323,20 @@ async function executeStep(
           content: post,
           status: 'draft',
           idempotency_key: `${instanceId}:output:${post['day'] ?? Date.now()}`,
-        })
+        }).select('id').single()
+
+        // Also create a draft calendar item so content appears in the calendar
+        if (output) {
+          await admin.from('core_calendar_items').insert({
+            project_id: projectId,
+            output_id: output.id,
+            asset_id: null,
+            content_type: (post['format'] as string) ?? 'post',
+            platform,
+            state: 'draft',
+            scheduled_at: null,
+          })
+        }
       }
       return { saved: true, count: posts.length }
     }

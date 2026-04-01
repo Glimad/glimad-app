@@ -100,8 +100,15 @@ async function resetState(projectId: string) {
   const ids = (instances ?? []).map((r: { id: string }) => r.id)
   if (ids.length > 0) {
     await sb().from('mission_steps').delete().in('mission_instance_id', ids)
+    // Delete calendar items before outputs (FK: core_calendar_items.output_id → core_outputs.id)
+    const { data: outputs } = await sb().from('core_outputs').select('id').in('mission_instance_id', ids)
+    const outputIds = (outputs ?? []).map((o: { id: string }) => o.id)
+    if (outputIds.length > 0) {
+      await sb().from('core_calendar_items').delete().in('output_id', outputIds)
+    }
     await sb().from('core_outputs').delete().in('mission_instance_id', ids)
   }
+  await sb().from('core_calendar_items').delete().eq('project_id', projectId)
   await sb().from('mission_instances').delete().eq('project_id', projectId)
   await sb().from('brain_signals').delete().eq('project_id', projectId)
   await sb().from('brain_facts').delete().eq('project_id', projectId)
@@ -272,6 +279,15 @@ async function testWriteOutputs(projectId: string) {
   ok('output_type = content', outputs?.[0]?.output_type === 'content')
   ok('status = draft', outputs?.[0]?.status === 'draft')
   ok('mission_instance_id linked', outputs?.[0]?.mission_instance_id === instanceId)
+
+  // Draft calendar items should also be created
+  const outputIds = (outputs ?? []).map((o: { id: string }) => o.id)
+  const { data: calItems } = await sb().from('core_calendar_items')
+    .select('id, state, output_id')
+    .eq('project_id', projectId)
+    .in('output_id', outputIds)
+  ok('draft calendar items created', (calItems?.length ?? 0) > 0, `count: ${calItems?.length}`)
+  ok('calendar items are draft', calItems?.every((c: { state: string }) => c.state === 'draft'))
 }
 
 async function testOutputsOnInstance(projectId: string) {

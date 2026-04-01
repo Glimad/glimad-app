@@ -12,6 +12,7 @@ interface CalendarItem {
   scheduled_at: string | null
   created_at: string
   core_assets: { content: Record<string, unknown> } | null
+  core_outputs: { content: Record<string, unknown> } | null
 }
 
 const STATE_COLORS: Record<string, string> = {
@@ -239,11 +240,11 @@ export default function CalendarPage() {
                   </p>
                 )}
 
-                {selected.core_assets?.content && (
+                {(selected.core_assets?.content ?? selected.core_outputs?.content) && (
                   <div className="bg-zinc-800 rounded-lg p-3 mb-4">
                     <p className="text-xs text-zinc-500 mb-1">{t('hook')}</p>
                     <p className="text-sm text-zinc-200 line-clamp-3">
-                      {String((selected.core_assets.content as Record<string, unknown>).hook ?? '')}
+                      {String(((selected.core_assets?.content ?? selected.core_outputs?.content) as Record<string, unknown>).hook ?? '')}
                     </p>
                   </div>
                 )}
