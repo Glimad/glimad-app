@@ -24,13 +24,26 @@ export async function GET(request: Request) {
     ? new Date(parseInt(month.split('-')[0]), parseInt(month.split('-')[1]), 0, 23, 59, 59).toISOString()
     : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString()
 
-  const { data: items } = await admin
+  const selectFields = 'id, content_type, platform, state, scheduled_at, created_at, asset_id, core_assets(content)'
+
+  const { data: scheduledItems } = await admin
     .from('core_calendar_items')
-    .select('id, content_type, platform, state, scheduled_at, created_at, asset_id, core_assets(content)')
+    .select(selectFields)
     .eq('project_id', project!.id)
     .gte('scheduled_at', start)
     .lte('scheduled_at', end)
     .order('scheduled_at', { ascending: true })
 
-  return NextResponse.json({ items: items ?? [] })
+  const { data: draftItems } = await admin
+    .from('core_calendar_items')
+    .select(selectFields)
+    .eq('project_id', project!.id)
+    .eq('state', 'draft')
+    .is('scheduled_at', null)
+    .order('created_at', { ascending: false })
+
+  return NextResponse.json({
+    items: scheduledItems ?? [],
+    drafts: draftItems ?? [],
+  })
 }

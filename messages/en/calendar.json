@@ -8,8 +8,14 @@
   "pause": "Pause",
   "resume": "Resume",
   "retry": "Retry",
+  "reschedule": "Reschedule",
+  "approve": "Approve & Schedule",
   "delete": "Delete",
-  "select_item": "Click a day to see your content.",
+  "select_item": "Click an item to see details.",
   "empty_calendar": "No content scheduled this month.",
-  "create_first": "Create your first post"
+  "create_first": "Create your first post",
+  "drafts_title": "Unscheduled Drafts",
+  "no_drafts": "No drafts.",
+  "save_reschedule": "Save New Date",
+  "cancel": "Cancel"
 }

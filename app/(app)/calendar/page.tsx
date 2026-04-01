@@ -38,16 +38,23 @@ export default function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [items, setItems] = useState<CalendarItem[]>([])
+  const [drafts, setDrafts] = useState<CalendarItem[]>([])
   const [selected, setSelected] = useState<CalendarItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [rescheduling, setRescheduling] = useState(false)
+  const [newScheduledAt, setNewScheduledAt] = useState('')
 
   useEffect(() => {
     setLoading(true)
     const monthStr = `${year}-${String(month).padStart(2, '0')}`
     fetch(`/api/calendar?month=${monthStr}`)
       .then(r => r.json())
-      .then(data => { setItems(data.items); setLoading(false) })
+      .then(data => {
+        setItems(data.items ?? [])
+        setDrafts(data.drafts ?? [])
+        setLoading(false)
+      })
   }, [year, month])
 
   function prevMonth() {
@@ -80,13 +87,41 @@ export default function CalendarPage() {
     })
     const data = await res.json()
     setItems(prev => prev.map(i => i.id === itemId ? { ...i, state: data.item.state } : i))
+    setDrafts(prev => prev.map(i => i.id === itemId ? { ...i, state: data.item.state } : i))
     if (selected?.id === itemId) setSelected(prev => prev ? { ...prev, state: data.item.state } : null)
+    setUpdatingId(null)
+  }
+
+  async function saveReschedule(itemId: string) {
+    setUpdatingId(itemId)
+    const scheduled_at = newScheduledAt ? new Date(newScheduledAt).toISOString() : null
+    const body: Record<string, unknown> = { scheduled_at }
+    // Draft → scheduled transition when approving
+    if (selected?.state === 'draft' && scheduled_at) body.state = 'scheduled'
+    const res = await fetch(`/api/calendar/${itemId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    const data = await res.json()
+    const updated = data.item
+    setItems(prev => {
+      const exists = prev.find(i => i.id === itemId)
+      if (exists) return prev.map(i => i.id === itemId ? { ...i, ...updated } : i)
+      if (updated.scheduled_at) return [...prev, { ...selected!, ...updated }]
+      return prev
+    })
+    setDrafts(prev => prev.filter(i => i.id !== itemId))
+    if (selected?.id === itemId) setSelected(prev => prev ? { ...prev, ...updated } : null)
+    setRescheduling(false)
+    setNewScheduledAt('')
     setUpdatingId(null)
   }
 
   async function deleteItem(itemId: string) {
     await fetch(`/api/calendar/${itemId}`, { method: 'DELETE' })
     setItems(prev => prev.filter(i => i.id !== itemId))
+    setDrafts(prev => prev.filter(i => i.id !== itemId))
     setSelected(null)
   }
 
@@ -117,7 +152,7 @@ export default function CalendarPage() {
         <div className="flex items-center justify-center py-24 text-zinc-400">{t('loading')}</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 space-y-6">
             <div className="grid grid-cols-7 gap-px bg-zinc-800 rounded-xl overflow-hidden">
               {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
                 <div key={d} className="bg-zinc-900 text-xs text-zinc-500 text-center py-2">{d}</div>
@@ -138,8 +173,8 @@ export default function CalendarPage() {
                       {dayItems.slice(0, 2).map(item => (
                         <button
                           key={item.id}
-                          onClick={() => setSelected(item)}
-                          className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 ${STATE_COLORS[item.state]}`}
+                          onClick={() => { setSelected(item); setRescheduling(false) }}
+                          className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 border ${STATE_COLORS[item.state]}`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATE_DOTS[item.state]}`} />
                           {item.content_type}
@@ -153,22 +188,41 @@ export default function CalendarPage() {
                 )
               })}
             </div>
+
+            {drafts.length > 0 && (
+              <div>
+                <h3 className="text-sm font-semibold text-zinc-400 mb-3">{t('drafts_title')}</h3>
+                <div className="space-y-2">
+                  {drafts.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => { setSelected(item); setRescheduling(false) }}
+                      className={`w-full text-left px-4 py-3 rounded-xl border flex items-center gap-3 transition-colors hover:border-zinc-600 ${STATE_COLORS['draft']}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${STATE_DOTS['draft']}`} />
+                      <span className="text-sm flex-1 capitalize">{item.content_type.replace(/_/g, ' ')}</span>
+                      <span className="text-xs text-zinc-500">draft</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
             {selected ? (
-              <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5">
+              <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 sticky top-4">
                 <div className="flex items-center justify-between mb-4">
                   <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATE_COLORS[selected.state]}`}>
                     {selected.state}
                   </span>
-                  <button onClick={() => setSelected(null)} className="text-zinc-500 hover:text-zinc-300 text-sm">✕</button>
+                  <button onClick={() => { setSelected(null); setRescheduling(false) }} className="text-zinc-500 hover:text-zinc-300 text-sm">✕</button>
                 </div>
 
                 <p className="text-sm font-semibold mb-1 capitalize">{selected.content_type.replace(/_/g, ' ')}</p>
                 {selected.platform && <p className="text-xs text-zinc-500 mb-3">{selected.platform}</p>}
 
-                {selected.scheduled_at && (
+                {selected.scheduled_at && !rescheduling && (
                   <p className="text-xs text-zinc-400 mb-4">
                     📅 {new Date(selected.scheduled_at).toLocaleString()}
                   </p>
@@ -183,55 +237,108 @@ export default function CalendarPage() {
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  {selected.state === 'scheduled' && (
-                    <button
-                      onClick={() => updateState(selected.id, 'published')}
-                      disabled={!!updatingId}
-                      className="w-full py-2 rounded-lg bg-green-800 hover:bg-green-700 text-green-200 text-sm font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {updatingId === selected.id ? '...' : t('mark_published')}
-                    </button>
-                  )}
-                  {selected.state === 'scheduled' && (
-                    <button
-                      onClick={() => updateState(selected.id, 'paused')}
-                      disabled={!!updatingId}
-                      className="w-full py-2 rounded-lg bg-yellow-900 hover:bg-yellow-800 text-yellow-200 text-sm font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {t('pause')}
-                    </button>
-                  )}
-                  {selected.state === 'paused' && (
-                    <button
-                      onClick={() => updateState(selected.id, 'scheduled')}
-                      disabled={!!updatingId}
-                      className="w-full py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {t('resume')}
-                    </button>
-                  )}
-                  {selected.state === 'failed' && (
-                    <button
-                      onClick={() => updateState(selected.id, 'scheduled')}
-                      disabled={!!updatingId}
-                      className="w-full py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm font-medium disabled:opacity-40 transition-colors"
-                    >
-                      {t('retry')}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => deleteItem(selected.id)}
-                    className="w-full py-2 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 text-sm font-medium transition-colors"
-                  >
-                    {t('delete')}
-                  </button>
-                </div>
+                {rescheduling ? (
+                  <div className="mb-4 space-y-3">
+                    <input
+                      type="datetime-local"
+                      value={newScheduledAt}
+                      onChange={e => setNewScheduledAt(e.target.value)}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-violet-500"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => saveReschedule(selected.id)}
+                        disabled={!newScheduledAt || !!updatingId}
+                        className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium disabled:opacity-40 transition-colors"
+                      >
+                        {updatingId === selected.id ? '...' : t('save_reschedule')}
+                      </button>
+                      <button
+                        onClick={() => { setRescheduling(false); setNewScheduledAt('') }}
+                        className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 text-sm transition-colors hover:border-zinc-500"
+                      >
+                        {t('cancel')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {selected.state === 'scheduled' && (
+                      <>
+                        <button
+                          onClick={() => updateState(selected.id, 'published')}
+                          disabled={!!updatingId}
+                          className="w-full py-2 rounded-lg bg-green-800 hover:bg-green-700 text-green-200 text-sm font-medium disabled:opacity-40 transition-colors"
+                        >
+                          {updatingId === selected.id ? '...' : t('mark_published')}
+                        </button>
+                        <button
+                          onClick={() => { setRescheduling(true); setNewScheduledAt('') }}
+                          disabled={!!updatingId}
+                          className="w-full py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-medium disabled:opacity-40 transition-colors"
+                        >
+                          {t('reschedule')}
+                        </button>
+                        <button
+                          onClick={() => updateState(selected.id, 'paused')}
+                          disabled={!!updatingId}
+                          className="w-full py-2 rounded-lg bg-yellow-900 hover:bg-yellow-800 text-yellow-200 text-sm font-medium disabled:opacity-40 transition-colors"
+                        >
+                          {t('pause')}
+                        </button>
+                      </>
+                    )}
+                    {selected.state === 'draft' && (
+                      <button
+                        onClick={() => { setRescheduling(true); setNewScheduledAt('') }}
+                        disabled={!!updatingId}
+                        className="w-full py-2 rounded-lg bg-violet-700 hover:bg-violet-600 text-white text-sm font-medium disabled:opacity-40 transition-colors"
+                      >
+                        {t('approve')}
+                      </button>
+                    )}
+                    {selected.state === 'paused' && (
+                      <button
+                        onClick={() => updateState(selected.id, 'scheduled')}
+                        disabled={!!updatingId}
+                        className="w-full py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm font-medium disabled:opacity-40 transition-colors"
+                      >
+                        {updatingId === selected.id ? '...' : t('resume')}
+                      </button>
+                    )}
+                    {selected.state === 'failed' && (
+                      <>
+                        <button
+                          onClick={() => updateState(selected.id, 'scheduled')}
+                          disabled={!!updatingId}
+                          className="w-full py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm font-medium disabled:opacity-40 transition-colors"
+                        >
+                          {updatingId === selected.id ? '...' : t('retry')}
+                        </button>
+                        <button
+                          onClick={() => { setRescheduling(true); setNewScheduledAt('') }}
+                          disabled={!!updatingId}
+                          className="w-full py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-sm font-medium disabled:opacity-40 transition-colors"
+                        >
+                          {t('reschedule')}
+                        </button>
+                      </>
+                    )}
+                    {selected.state !== 'published' && (
+                      <button
+                        onClick={() => deleteItem(selected.id)}
+                        className="w-full py-2 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 text-sm font-medium transition-colors"
+                      >
+                        {t('delete')}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 text-center">
                 <p className="text-zinc-500 text-sm">{t('select_item')}</p>
-                {items.length === 0 && (
+                {items.length === 0 && drafts.length === 0 && (
                   <div className="mt-6">
                     <p className="text-zinc-400 text-sm mb-4">{t('empty_calendar')}</p>
                     <button

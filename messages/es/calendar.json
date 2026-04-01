@@ -8,8 +8,14 @@
   "pause": "Pausar",
   "resume": "Reanudar",
   "retry": "Reintentar",
+  "reschedule": "Reprogramar",
+  "approve": "Aprobar y programar",
   "delete": "Eliminar",
-  "select_item": "Haz clic en un día para ver tu contenido.",
+  "select_item": "Haz clic en un elemento para ver detalles.",
   "empty_calendar": "No hay contenido programado este mes.",
-  "create_first": "Crea tu primera publicación"
+  "create_first": "Crea tu primera publicación",
+  "drafts_title": "Borradores sin programar",
+  "no_drafts": "Sin borradores.",
+  "save_reschedule": "Guardar nueva fecha",
+  "cancel": "Cancelar"
 }
