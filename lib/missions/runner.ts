@@ -144,6 +144,50 @@ export async function executeMission(
       started_at: new Date().toISOString(),
     }, { onConflict: 'mission_instance_id,step_number' })
 
+    // Before writing to Brain or assets, validate the complete LLM output
+    if (step.step_type === 'brain_update' || step.step_type === 'write_outputs') {
+      const llmStepDef = steps
+        .slice(0, steps.findIndex(s => s.step_number === step.step_number))
+        .reverse()
+        .find(s => s.step_type === 'llm_text')
+
+      if (llmStepDef?.config.prompt_key) {
+        const schema = PROMPT_SCHEMAS[llmStepDef.config.prompt_key as PromptKey]
+        const check = schema.safeParse(brainContext['__llm_output'])
+
+        if (!check.success) {
+          let retried: Record<string, unknown>
+          try {
+            retried = await callLlmStep(llmStepDef, brainContext)
+          } catch (retryErr) {
+            const msg = retryErr instanceof Error ? retryErr.message : String(retryErr)
+            await admin.from('mission_steps').upsert({
+              mission_instance_id: instanceId,
+              step_number: step.step_number,
+              step_type: step.step_type,
+              status: 'failed',
+              output: { error: `Output validation failed after retry: ${msg}` },
+              completed_at: new Date().toISOString(),
+            }, { onConflict: 'mission_instance_id,step_number' })
+            await admin.from('mission_instances')
+              .update({ status: 'failed', completed_at: new Date().toISOString() })
+              .eq('id', instanceId)
+            return
+          }
+          // Retry succeeded — update brainContext and overwrite the llm_text step row
+          brainContext['__llm_output'] = retried
+          await admin.from('mission_steps').upsert({
+            mission_instance_id: instanceId,
+            step_number: llmStepDef.step_number,
+            step_type: llmStepDef.step_type,
+            status: 'completed',
+            output: retried,
+            completed_at: new Date().toISOString(),
+          }, { onConflict: 'mission_instance_id,step_number' })
+        }
+      }
+    }
+
     let stepOutput: unknown
     try {
       stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext)
@@ -256,6 +300,43 @@ export async function executeMission(
   }
 }
 
+// Calls Claude for an llm_text step, validates with Zod, retries once on failure.
+// Used by executeStep (normal execution) and the end-of-mission output guard.
+async function callLlmStep(
+  step: MissionStep,
+  brainContext: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const promptKey = step.config.prompt_key as PromptKey
+  const modelConfig = step.config.model ?? 'haiku'
+  const model = modelConfig.startsWith('claude-')
+    ? modelConfig
+    : modelConfig === 'sonnet'
+      ? process.env.ANTHROPIC_MODEL_SONNET!
+      : process.env.ANTHROPIC_MODEL_HAIKU!
+  const maxTokens = model.includes('sonnet') || model.includes('opus') ? 2048 : 1024
+  const prompt = buildPrompt(promptKey, brainContext)
+  const schema = PROMPT_SCHEMAS[promptKey]
+
+  const attempt = async (): Promise<Record<string, unknown>> => {
+    const message = await anthropic.messages.create({
+      model,
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }],
+    })
+    const rawText = (message.content.find(c => c.type === 'text') as { type: 'text'; text: string } | undefined)?.text ?? ''
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {}
+    schema.parse(parsed) // throws ZodError if invalid
+    return parsed as Record<string, unknown>
+  }
+
+  try {
+    return await attempt()
+  } catch {
+    return await attempt() // one retry
+  }
+}
+
 async function executeStep(
   admin: AdminClient,
   projectId: string,
@@ -277,39 +358,7 @@ async function executeStep(
     }
 
     case 'llm_text': {
-      const promptKey = step.config.prompt_key as PromptKey
-      const modelConfig = step.config.model ?? 'haiku'
-      const model = modelConfig.startsWith('claude-')
-        ? modelConfig
-        : modelConfig === 'sonnet'
-          ? process.env.ANTHROPIC_MODEL_SONNET!
-          : process.env.ANTHROPIC_MODEL_HAIKU!
-
-      const prompt = buildPrompt(promptKey, brainContext)
-      const maxTokens = model.includes('sonnet') || model.includes('opus') ? 2048 : 1024
-      const schema = PROMPT_SCHEMAS[promptKey]
-
-      const callAndValidate = async (): Promise<Record<string, unknown>> => {
-        const message = await anthropic.messages.create({
-          model,
-          max_tokens: maxTokens,
-          messages: [{ role: 'user', content: prompt }],
-        })
-        const rawText = (message.content.find(c => c.type === 'text') as { type: 'text'; text: string } | undefined)?.text ?? ''
-        const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-        const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {}
-        schema.parse(parsed) // throws ZodError if invalid
-        return parsed as Record<string, unknown>
-      }
-
-      let result: Record<string, unknown>
-      try {
-        result = await callAndValidate()
-      } catch {
-        // One retry on parse or validation failure
-        result = await callAndValidate()
-      }
-      return result
+      return callLlmStep(step, brainContext)
     }
 
     case 'user_input': {
