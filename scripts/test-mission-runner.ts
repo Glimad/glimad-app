@@ -138,7 +138,7 @@ async function testHappyPath(projectId: string) {
   await executeMission(admin, instanceId)
 
   const { data: inst1 } = await sb().from('mission_instances').select('status, current_step').eq('id', instanceId).single()
-  ok('status = waiting_input', inst1?.status === 'waiting_input', `got: ${inst1?.status}`)
+  ok('status = needs_user_input', inst1?.status === 'needs_user_input', `got: ${inst1?.status}`)
 
   const { data: steps1 } = await sb().from('mission_steps').select('step_number, status').eq('mission_instance_id', instanceId).order('step_number')
   const completed1 = (steps1 ?? []).filter((s: { status: string }) => s.status === 'completed')
@@ -213,6 +213,8 @@ async function testLedgerDebit(projectId: string) {
   console.log('\n[5] Ledger debit — positive amount_allowance after completion')
   await resetState(projectId)
   await seedWallet(projectId, 2000, 0)
+  await seedFact(projectId, 'niche_raw', 'cocina mediterránea')
+  await seedFact(projectId, 'primary_goal', 'build audience')
 
   const admin = createAdminClient()
   const instanceId = await createMissionInstance(admin, projectId, 'NICHE_CONFIRM_V1')
@@ -240,6 +242,8 @@ async function testWalletDecrement(projectId: string) {
   console.log('\n[6] Wallet balance decremented after completion')
   await resetState(projectId)
   await seedWallet(projectId, 2000, 0)
+  await seedFact(projectId, 'niche_raw', 'yoga para principiantes')
+  await seedFact(projectId, 'primary_goal', 'build audience')
 
   const admin = createAdminClient()
   const instanceId = await createMissionInstance(admin, projectId, 'NICHE_CONFIRM_V1')
@@ -269,7 +273,7 @@ async function testWriteOutputs(projectId: string) {
   await executeMission(admin, instanceId) // pauses at user_input after write_outputs
 
   const { data: inst } = await sb().from('mission_instances').select('status').eq('id', instanceId).single()
-  ok('status = waiting_input', inst?.status === 'waiting_input', `got: ${inst?.status}`)
+  ok('status = needs_user_input', inst?.status === 'needs_user_input', `got: ${inst?.status}`)
 
   const { data: outputs } = await sb().from('core_outputs')
     .select('id, output_type, format, status, mission_instance_id')

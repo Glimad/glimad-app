@@ -157,8 +157,8 @@ async function testF4Gate(db: ReturnType<typeof admin>, projectId: string) {
     console.log(`  ~ score ${resultNoOffer.capabilityScore} didn't reach F4 range — gate not triggered`)
   }
 
-  // Now add offer_defined — gate should clear
-  await writeFact(db as any, projectId, 'offer_defined', true, 'test')
+  // Now add offer_title — gate should clear
+  await writeFact(db as any, projectId, 'offer_title', 'My Offer', 'test')
   const resultWithOffer = await computePhase(db as any, projectId)
   ok('offer_defined present in gates', resultWithOffer.gates['offer_defined'] === true)
   ok('F4 gate not blocking (offer set)', !resultWithOffer.gates['f4_blocked_no_offer'])

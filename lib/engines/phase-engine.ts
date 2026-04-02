@@ -2,6 +2,7 @@
 // Pure function: reads data, returns result. Caller writes to Brain.
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createHash } from 'crypto'
 import { writeFact, appendSignal, createSnapshot, readAllFacts, readSignals, readLatestSignal } from '@/lib/brain'
 
 type AdminClient = ReturnType<typeof createAdminClient>
@@ -278,7 +279,7 @@ export async function computePhase(
   // Follower score (0-50): 5K→0, 10K→20, 50K→40, 100K+→50
   // ER score (0-30): 3%→0, 10%+→30 (linear)
   // monetization_ready signal → +20
-  const offerDefined = facts['offer_defined'] === true  // used only by F4 gate
+  const offerDefined = !!facts['offer_title']  // set by DEFINE_OFFER_V1 brain_update
   let monetization = 0
   if (followers >= 5000 && avgEr >= 0.03) {
     const followerScore = followers >= 100000 ? 50
@@ -457,24 +458,78 @@ export async function computePhase(
   }
 }
 
+// ── Recalculation guardrail ───────────────────────────────────────────────────
+// Rules (from SSOT §6):
+// 1. Cache TTL: 60 minutes — skip if last run < 60 min ago AND hash unchanged
+// 2. Multi-tab prevention: if last run < 5 min ago, always return cached (no recompute)
+// 3. force=true bypasses the 60-min cache (e.g. after mission completion)
+
+async function buildInputHash(admin: AdminClient, projectId: string): Promise<string> {
+  const [facts, recentSignals] = await Promise.all([
+    admin.from('brain_facts').select('fact_key,value,updated_at').eq('project_id', projectId),
+    admin.from('brain_signals').select('id').eq('project_id', projectId).order('observed_at', { ascending: false }).limit(50),
+  ])
+  return createHash('sha256')
+    .update(JSON.stringify({ facts: facts.data ?? [], signals: recentSignals.data ?? [] }))
+    .digest('hex')
+}
+
 export async function runPhaseEngine(
   admin: AdminClient,
-  projectId: string
-): Promise<PhaseResult> {
-  const result = await computePhase(admin, projectId)
-
-  // Get previous phase from last run
+  projectId: string,
+  force = false
+): Promise<PhaseResult & { cached?: boolean }> {
+  // Fetch last run
   const { data: lastRun } = await admin
     .from('core_phase_runs')
-    .select('phase_code')
+    .select('*')
     .eq('project_id', projectId)
     .order('computed_at', { ascending: false })
     .limit(1)
     .single()
 
+  const nowMs = Date.now()
+
+  if (lastRun) {
+    const lastRunMs = new Date(lastRun.computed_at).getTime()
+    const ageMinutes = (nowMs - lastRunMs) / 60000
+
+    // Multi-tab: always return cached if < 5 min ago
+    if (ageMinutes < 5 && !force) {
+      return {
+        phase: lastRun.phase_code as PhaseCode,
+        capabilityScore: lastRun.capability_score,
+        dimensionScores: lastRun.dimension_scores as DimensionScores,
+        gates: lastRun.gates_json as Record<string, boolean>,
+        confidence: lastRun.confidence,
+        reasonSummary: lastRun.reason_summary,
+        cached: true,
+      }
+    }
+
+    // 60-min cache: skip recompute if hash matches and < 60 min old
+    if (!force && ageMinutes < 60 && lastRun.input_hash) {
+      const currentHash = await buildInputHash(admin, projectId)
+      if (currentHash === lastRun.input_hash) {
+        return {
+          phase: lastRun.phase_code as PhaseCode,
+          capabilityScore: lastRun.capability_score,
+          dimensionScores: lastRun.dimension_scores as DimensionScores,
+          gates: lastRun.gates_json as Record<string, boolean>,
+          confidence: lastRun.confidence,
+          reasonSummary: lastRun.reason_summary,
+          cached: true,
+        }
+      }
+    }
+  }
+
+  const inputHash = await buildInputHash(admin, projectId)
+  const result = await computePhase(admin, projectId)
+
   const previousPhase = lastRun?.phase_code as PhaseCode | null
 
-  // Persist phase run
+  // Persist phase run with input_hash
   await admin.from('core_phase_runs').insert({
     project_id: projectId,
     phase_code: result.phase,
@@ -483,6 +538,7 @@ export async function runPhaseEngine(
     gates_json: result.gates,
     confidence: result.confidence,
     reason_summary: result.reasonSummary,
+    input_hash: inputHash,
   })
 
   // Write brain fact

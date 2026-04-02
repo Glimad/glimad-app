@@ -3,6 +3,7 @@
 // Output: ordered list of mission template codes with priority scores
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createHash } from 'crypto'
 import { readAllFacts, readSignals } from '@/lib/brain'
 import type { PhaseCode, PhaseResult } from './phase-engine'
 import type { InflexionResult } from './inflexion-engine'
@@ -60,8 +61,34 @@ export async function runPolicyEngine(
   admin: AdminClient,
   projectId: string,
   phaseResult: PhaseResult,
-  inflexion: InflexionResult | null
-): Promise<PolicyResult> {
+  inflexion: InflexionResult | null,
+  force = false
+): Promise<PolicyResult & { cached?: boolean }> {
+  // ── Recalculation guardrail (same rules as Phase Engine) ──────────────────
+  const inputHashRaw = createHash('sha256')
+    .update(JSON.stringify({ phase: phaseResult.phase, score: phaseResult.capabilityScore, inflexion: inflexion?.type ?? null, projectId }))
+    .digest('hex')
+
+  const { data: lastPolicyRun } = await admin
+    .from('core_policy_runs')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (lastPolicyRun && !force) {
+    const ageMinutes = (Date.now() - new Date(lastPolicyRun.created_at).getTime()) / 60000
+    if (ageMinutes < 5) {
+      const cached = lastPolicyRun.output_json as PolicyResult
+      return { ...cached, cached: true }
+    }
+    if (ageMinutes < 60 && lastPolicyRun.input_hash === inputHashRaw) {
+      const cached = lastPolicyRun.output_json as PolicyResult
+      return { ...cached, cached: true }
+    }
+  }
+
   const facts = await readAllFacts(admin, projectId)
   const signals30d = await readSignals(admin, projectId, 30 * 24)
 
@@ -128,7 +155,7 @@ export async function runPolicyEngine(
 
   if (inflexion?.type === 'viral_spike') {
     activeMode = 'scale'
-  } else if (inflexion?.type === 'monetization_ready' || facts['offer_defined']) {
+  } else if (inflexion?.type === 'monetization_ready' || facts['offer_title']) {
     activeMode = 'monetize'
   } else if (['F3', 'F4', 'F5', 'F6', 'F7'].includes(phaseResult.phase)) {
     const hasWinnerFormat = !!facts['winner_format']
@@ -239,11 +266,13 @@ export async function runPolicyEngine(
     ? `Phase ${phaseResult.phase} (score ${phaseResult.capabilityScore}), mode: ${activeMode}, top mission: ${topMission}`
     : `Phase ${phaseResult.phase}, no missions available`
 
+  const policyOutput = { active_mode: activeMode, top_mission: topMission, queue: scored.slice(0, 5), rationale, dailyCallsUsed: dailyUsed ?? 0, dailyCallsLimit: dailyLlmLimit }
   // Save policy run (non-critical)
   void admin.from('core_policy_runs').insert({
     project_id: projectId,
     input_ref: { phase: phaseResult.phase, inflexion: inflexion?.type ?? null },
-    output_json: { active_mode: activeMode, top_mission: topMission, queue: scored.slice(0, 5), rationale },
+    output_json: policyOutput,
+    input_hash: inputHashRaw,
   })
 
   return {

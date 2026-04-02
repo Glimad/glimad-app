@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, Wand2 } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Wand2, DollarSign, Target } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/missions', icon: Target, label: 'Missions' },
   { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
   { href: '/studio', icon: Wand2, label: 'Studio' },
+  { href: '/monetization', icon: DollarSign, label: 'Monetization' },
 ]
 
 export default function AppSidebar() {

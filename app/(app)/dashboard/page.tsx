@@ -7,6 +7,7 @@ import { runInflexionEngine } from '@/lib/engines/inflexion-engine'
 import { runPolicyEngine } from '@/lib/engines/policy-engine'
 import { getLatestPulse } from '@/lib/pulse'
 import { readAllFacts } from '@/lib/brain'
+import { getMonetizationKpis } from '@/lib/monetization'
 import MissionMap from './MissionMap'
 import DailyPulseCard from './DailyPulseCard'
 import CalendarPreview from './CalendarPreview'
@@ -58,7 +59,9 @@ export default async function DashboardPage() {
 
   if (!project) redirect('/onboarding')
 
-  const [phaseResult, inflexion, wallet, latestPulse, facts] = await Promise.all([
+  const currentPhaseRank = PHASE_RANK[project.phase_code ?? 'F0'] ?? 0
+
+  const [phaseResult, inflexion, wallet, latestPulse, facts, monetizationKpis] = await Promise.all([
     runPhaseEngine(admin, project.id),
     runInflexionEngine(admin, project.id),
     admin.from('core_wallets')
@@ -68,6 +71,7 @@ export default async function DashboardPage() {
       .then(r => r.data),
     getLatestPulse(admin, project.id),
     readAllFacts(admin, project.id),
+    currentPhaseRank >= 3 ? getMonetizationKpis(admin, project.id) : Promise.resolve(null),
   ])
 
   const policy = await runPolicyEngine(admin, project.id, phaseResult, inflexion)
@@ -168,7 +172,7 @@ export default async function DashboardPage() {
 
   const { data: calendarItems } = await admin
     .from('core_calendar_items')
-    .select('scheduled_at, state')
+    .select('scheduled_at, status')
     .eq('project_id', project.id)
     .gte('scheduled_at', today.toISOString().slice(0, 10))
     .lte('scheduled_at', endDate)
@@ -178,7 +182,7 @@ export default async function DashboardPage() {
     label: new Date(date + 'T12:00:00Z').toLocaleDateString(locale, { weekday: 'short' }),
     dots: (calendarItems ?? [])
       .filter(item => item.scheduled_at?.startsWith(date))
-      .map(item => ({ state: item.state ?? 'draft' })),
+      .map(item => ({ state: item.status ?? 'draft' })),
   }))
 
   // ── Quick stats ───────────────────────────────────────────────────────────
@@ -192,7 +196,7 @@ export default async function DashboardPage() {
     .from('core_calendar_items')
     .select('id', { count: 'exact', head: true })
     .eq('project_id', project.id)
-    .eq('state', 'published')
+    .eq('status', 'published')
     .gte('scheduled_at', weekAgo.toISOString())
 
   // Days until credit reset (approximate: 30 days from subscription creation)
@@ -316,6 +320,34 @@ export default async function DashboardPage() {
             {t('calendar')}
           </a>
         </div>
+
+        {/* Monetization widget — F3+ only */}
+        {monetizationKpis && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-semibold text-zinc-300">Monetization</h2>
+              <a href="/monetization" className="text-xs text-violet-400 hover:text-violet-300">Manage →</a>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-1">Total Revenue</p>
+                <p className="text-xl font-bold text-white">€{monetizationKpis.totalRevenue.toFixed(0)}</p>
+              </div>
+              <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-1">This Month</p>
+                <p className="text-xl font-bold text-white">€{monetizationKpis.thisMonthRevenue.toFixed(0)}</p>
+              </div>
+              <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-1">MRR</p>
+                <p className="text-xl font-bold text-white">€{monetizationKpis.mrr.toFixed(0)}</p>
+              </div>
+              <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                <p className="text-xs text-zinc-500 mb-1">Active Streams</p>
+                <p className="text-xl font-bold text-white">{monetizationKpis.activeStreams}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Calendar preview */}
         <div className="mb-8">
