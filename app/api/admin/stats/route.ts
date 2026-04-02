@@ -59,7 +59,7 @@ export async function GET(request: Request) {
         missionStats[inst.template_code].totalMinutes += mins
       }
     }
-    if (inst.status === 'waiting_input') {
+    if (inst.status === 'needs_user_input') {
       missionStats[inst.template_code].abandoned++
     }
   }

@@ -119,7 +119,7 @@ export async function runPolicyEngine(
     .from('mission_instances')
     .select('template_code, status')
     .eq('project_id', projectId)
-    .in('status', ['queued', 'running', 'waiting_input'])
+    .in('status', ['queued', 'running', 'needs_user_input'])
 
   const activeCodes = new Set((activeInstances ?? []).map(i => i.template_code))
 

@@ -46,7 +46,7 @@ export async function createMissionInstance(
     .select('id, status')
     .eq('project_id', projectId)
     .eq('template_code', templateCode)
-    .in('status', ['queued', 'running', 'waiting_input'])
+    .in('status', ['queued', 'running', 'needs_user_input'])
     .order('created_at', { ascending: false })
     .limit(1)
     .single()
@@ -81,7 +81,7 @@ export async function executeMission(
 
   if (!instance) return
   if (instance.status === 'completed' || instance.status === 'failed') return
-  if (instance.status === 'waiting_input') return
+  if (instance.status === 'needs_user_input') return
 
   const template = instance.mission_templates as { steps_json: MissionStep[]; credit_cost_allowance: number; credit_cost_premium: number }
   const steps: MissionStep[] = template.steps_json
@@ -165,11 +165,20 @@ export async function executeMission(
     }
 
     if (stepOutput === 'WAIT_FOR_INPUT') {
+      // Write question/choices to step row so the UI can read them directly
+      await admin.from('mission_steps').upsert({
+        mission_instance_id: instanceId,
+        step_number: step.step_number,
+        step_type: step.step_type,
+        status: 'awaiting_input',
+        input: { config: step.config },
+        started_at: new Date().toISOString(),
+      }, { onConflict: 'mission_instance_id,step_number' })
       await admin
         .from('mission_instances')
-        .update({ status: 'waiting_input', current_step: step.step_number })
+        .update({ status: 'needs_user_input', current_step: step.step_number })
         .eq('id', instanceId)
-      return // pause execution
+      return // stop execution until user responds
     }
 
     if (step.step_type === 'brain_read') {
@@ -393,7 +402,7 @@ export async function resumeMissionAfterInput(
     .eq('id', instanceId)
     .single()
 
-  if (!instance || instance.status !== 'waiting_input') return
+  if (!instance || instance.status !== 'needs_user_input') return
 
   const currentStep = instance.current_step ?? 0
 

@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   await onMissionStart(admin, project.id)
   const instanceId = await createMissionInstance(admin, project.id, template_code)
 
-  // Execute mission synchronously — runs until completed or waiting_input
+  // Execute mission synchronously — runs until completed or needs_user_input
   await executeMission(admin, instanceId)
 
   return NextResponse.json({ instance_id: instanceId })

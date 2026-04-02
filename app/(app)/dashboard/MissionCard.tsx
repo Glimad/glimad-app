@@ -22,6 +22,8 @@ interface Props {
     start: string
     resume: string
     types: Record<string, string>
+    waiting: string
+    in_progress: string
   }
 }
 
@@ -87,7 +89,7 @@ export default function MissionCard({ template, activeInstance, t }: Props) {
           <div className="mt-3 flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
             <span className="text-xs text-violet-400">
-              {activeInstance.status === 'waiting_input' ? 'Esperando tu respuesta' : 'En progreso'}
+              {activeInstance.status === 'needs_user_input' ? t.waiting : t.in_progress}
             </span>
           </div>
         )}

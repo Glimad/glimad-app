@@ -9,6 +9,7 @@ interface MissionStep {
   step_number: number
   step_type: string
   status: string
+  input: { config: { fields?: string[] } } | null
   output: Record<string, unknown> | null
 }
 
@@ -97,14 +98,15 @@ export default function MissionPage() {
 
   const template = instance.mission_templates
 
-  const waitingStep = template.steps_json.find(s => s.step_type === 'user_input' && s.step_number === instance.current_step)
+  // Read question/choices from the step row (written by runner when pausing)
+  const waitingStep = steps.find(s => s.status === 'awaiting_input')
 
   const llmStepData = steps.find(s => s.step_type === 'llm_text' && s.status === 'completed')
   const llmOutput = llmStepData?.output ?? {}
 
   const isCompleted = instance.status === 'completed'
   const isFailed = instance.status === 'failed'
-  const isWaiting = instance.status === 'waiting_input'
+  const isWaiting = instance.status === 'needs_user_input'
   const isRunning = instance.status === 'running' || instance.status === 'queued'
 
   function goToDashboard() {
@@ -167,13 +169,13 @@ export default function MissionPage() {
               <LlmOutputDisplay output={llmOutput} />
             </div>
 
-            {waitingStep?.config.fields && (
+            {waitingStep?.input?.config.fields && (
               <div className="bg-zinc-900 rounded-xl p-6 border border-zinc-800">
                 <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wide mb-4">
                   {t('review_confirm')}
                 </h2>
                 <div className="space-y-4">
-                  {waitingStep.config.fields.map(field => (
+                  {waitingStep.input.config.fields.map(field => (
                     <div key={field}>
                       <label className="text-xs text-zinc-500 mb-1 block capitalize">
                         {field.replace(/_/g, ' ')}
