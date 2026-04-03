@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getGamificationState } from '@/lib/gamification'
+import Link from 'next/link'
 
 export default async function AppProgressBar() {
   const cookieStore = cookies()
@@ -24,14 +25,20 @@ export default async function AppProgressBar() {
 
   if (!project) return null
 
-  const [gamification, walletResult] = await Promise.all([
+  const [gamification, walletResult, notifResult] = await Promise.all([
     getGamificationState(admin, project.id),
     admin.from('core_wallets')
       .select('premium_credits_balance')
       .eq('project_id', project.id)
       .single()
       .then(r => r.data),
+    admin.from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', authData.user.id)
+      .is('read_at', null),
   ])
+
+  const unreadCount = notifResult.count ?? 0
 
   if (!gamification) return null
 
@@ -94,6 +101,19 @@ export default async function AppProgressBar() {
         <span className="text-xs text-zinc-600 hidden md:block truncate max-w-32">
           {authData.user.email}
         </span>
+
+        {/* Notification bell */}
+        <Link href="/notifications" className="relative flex items-center justify-center w-7 h-7 rounded-lg hover:bg-zinc-800 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-violet-600 rounded-full text-white text-[10px] font-bold flex items-center justify-center leading-none">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Link>
 
       </div>
     </div>

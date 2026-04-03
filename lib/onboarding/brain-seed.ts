@@ -61,6 +61,8 @@ export async function seedBrainFromOnboarding(
   const timeBudget = String(r['time_budget_week'] ?? '')
   const platformRaw = String(r['platform_current'] ?? '')
   const handleRaw = String(r['handle_current'] ?? '').trim()
+  const locale = r['locale'] ? String(r['locale']) : null
+  const timezone = r['timezone'] ? String(r['timezone']) : null
 
   const focusPlatform = normalizePlatform(platformRaw)
 
@@ -82,6 +84,8 @@ export async function seedBrainFromOnboarding(
       project_id: projectId,
       face_visibility: parseFaceVisibility(facePref),
       availability_hours_week: parseAvailabilityHours(timeBudget),
+      ...(locale ? { locale } : {}),
+      ...(timezone ? { timezone } : {}),
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'project_id' }

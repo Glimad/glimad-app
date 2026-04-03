@@ -53,6 +53,7 @@ async function seedProject(db: ReturnType<typeof admin>) {
 async function cleanup(db: ReturnType<typeof admin>, projectId: string) {
   await db.from('brain_snapshots').delete().eq('project_id', projectId)
   await db.from('brain_signals').delete().eq('project_id', projectId)
+  await db.from('brain_facts_history').delete().eq('project_id', projectId)
   await db.from('brain_facts').delete().eq('project_id', projectId)
   await db.from('projects').delete().eq('id', projectId)
 }
@@ -165,6 +166,71 @@ async function testReadFacts(db: ReturnType<typeof admin>, pid: string) {
   ok('fact_number value correct', subset['fact_number'] === 42)
   ok('returns only requested keys', Object.keys(subset).length === 2,
     `got ${Object.keys(subset).length} keys: ${Object.keys(subset).join(',')}`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FACTS HISTORY
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function testHistoryOnCreate(db: ReturnType<typeof admin>, pid: string) {
+  console.log('\n[8] brain_facts_history — INSERT creates row with old_value=null')
+
+  await writeFact(db as any, pid, 'hist_key', 'first', 'test_source')
+
+  const { data: rows } = await db.from('brain_facts_history')
+    .select('*').eq('project_id', pid).eq('fact_key', 'hist_key')
+    .order('changed_at', { ascending: false }).limit(1)
+
+  const h = rows?.[0]
+  ok('history row created on insert', !!h, 'no history row found')
+  ok('old_value is null (first write)', h?.old_value === null, `got: ${JSON.stringify(h?.old_value)}`)
+  ok('new_value is first', h?.new_value === 'first', `got: ${JSON.stringify(h?.new_value)}`)
+  ok('changed_by = test_source', h?.changed_by === 'test_source', `got: ${h?.changed_by}`)
+}
+
+async function testHistoryOnUpdate(db: ReturnType<typeof admin>, pid: string) {
+  console.log('\n[9] brain_facts_history — UPDATE captures old and new values')
+
+  await writeFact(db as any, pid, 'hist_key', 'second', 'test_update')
+
+  const { data: rows } = await db.from('brain_facts_history')
+    .select('*').eq('project_id', pid).eq('fact_key', 'hist_key')
+    .order('changed_at', { ascending: true })
+
+  ok('2 history rows total (create + update)', rows?.length === 2, `got ${rows?.length}`)
+
+  const update = rows?.[1]
+  ok('old_value = first', update?.old_value === 'first', `got: ${JSON.stringify(update?.old_value)}`)
+  ok('new_value = second', update?.new_value === 'second', `got: ${JSON.stringify(update?.new_value)}`)
+  ok('changed_by = test_update', update?.changed_by === 'test_update', `got: ${update?.changed_by}`)
+}
+
+async function testHistoryAppendOnly(db: ReturnType<typeof admin>, pid: string) {
+  console.log('\n[10] brain_facts_history — append-only: each write adds a row')
+
+  await writeFact(db as any, pid, 'hist_key', 'third', 'test')
+  await writeFact(db as any, pid, 'hist_key', 'fourth', 'test')
+
+  const { data: rows } = await db.from('brain_facts_history')
+    .select('id').eq('project_id', pid).eq('fact_key', 'hist_key')
+
+  ok('4 history rows after 4 writes', rows?.length === 4, `got ${rows?.length}`)
+}
+
+async function testHistoryIsolation(db: ReturnType<typeof admin>, pid: string) {
+  console.log('\n[11] brain_facts_history — different keys have separate history')
+
+  await writeFact(db as any, pid, 'hist_key_a', 'v1', 'test')
+  await writeFact(db as any, pid, 'hist_key_b', 'v1', 'test')
+  await writeFact(db as any, pid, 'hist_key_a', 'v2', 'test')
+
+  const { data: a } = await db.from('brain_facts_history')
+    .select('id').eq('project_id', pid).eq('fact_key', 'hist_key_a')
+  const { data: b } = await db.from('brain_facts_history')
+    .select('id').eq('project_id', pid).eq('fact_key', 'hist_key_b')
+
+  ok('hist_key_a has 2 entries (create + update)', a?.length === 2, `got ${a?.length}`)
+  ok('hist_key_b has 1 entry (create only)', b?.length === 1, `got ${b?.length}`)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -437,6 +503,12 @@ async function main() {
     await testReadFact(db, pid)
     await testReadAllFacts(db, pid)
     await testReadFacts(db, pid)
+
+    // Facts history
+    await testHistoryOnCreate(db, pid)
+    await testHistoryOnUpdate(db, pid)
+    await testHistoryAppendOnly(db, pid)
+    await testHistoryIsolation(db, pid)
 
     // Signals
     await testAppendSignal(db, pid)

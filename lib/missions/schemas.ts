@@ -8,6 +8,15 @@ const VisionPurposeSchema = z.object({
   key_message: z.string(),
 })
 
+const ContentComfortStyleSchema = z.object({
+  brand_tone: z.string(),
+  content_style: z.string(),
+  face_visibility_confirmed: z.string(),
+  content_limits: z.array(z.string()),
+  style_inspirations: z.array(z.string()),
+  first_content_idea: z.string(),
+})
+
 const NicheConfirmSchema = z.object({
   niche: z.string(),
   audience_persona: z.string(),
@@ -127,6 +136,7 @@ const BrandKitLiteSchema = z.object({
 
 export const PROMPT_SCHEMAS: Record<PromptKey, z.ZodTypeAny> = {
   VISION_PURPOSE_V1: VisionPurposeSchema,
+  CONTENT_COMFORT_STYLE_V1: ContentComfortStyleSchema,
   NICHE_CONFIRM_V1: NicheConfirmSchema,
   PLATFORM_STRATEGY_V1: PlatformStrategySchema,
   PREFERENCES_CAPTURE_V1: PreferencesCaptureSchema,

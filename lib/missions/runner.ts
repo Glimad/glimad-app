@@ -373,14 +373,31 @@ async function executeStep(
         await writeFact(admin, projectId, step.config.full_output_key, llmOutput, 'mission')
       }
 
+      // Facts that should also be synced to user_preferences columns
+      const PREFERENCE_FACTS: Record<string, string> = {
+        posting_frequency: 'posting_frequency',
+      }
+      const preferenceUpdates: Record<string, unknown> = {}
+
       if (step.config.facts) {
         for (const factKey of step.config.facts) {
           // Prefer user-edited value from brainContext (user_input step), fall back to LLM output
           const value = brainContext[factKey] ?? llmOutput[factKey]
           if (value !== undefined) {
             await writeFact(admin, projectId, factKey, value, 'mission')
+            if (PREFERENCE_FACTS[factKey]) {
+              preferenceUpdates[PREFERENCE_FACTS[factKey]] = value
+            }
           }
         }
+      }
+
+      // Sync any preference facts to user_preferences
+      if (Object.keys(preferenceUpdates).length > 0) {
+        await admin.from('user_preferences').upsert(
+          { project_id: projectId, ...preferenceUpdates, updated_at: new Date().toISOString() },
+          { onConflict: 'project_id' }
+        )
       }
 
       if (step.config.signals) {
@@ -432,6 +449,16 @@ async function executeStep(
     }
 
     case 'finalize': {
+      // Services preference hooks (Step 20): write silent brain facts when preferences captured
+      const { data: inst } = await admin
+        .from('mission_instances')
+        .select('template_code')
+        .eq('id', instanceId)
+        .single()
+      if (inst?.template_code === 'PREFERENCES_CAPTURE_V1') {
+        await writeFact(admin, projectId, 'services.preference.channel', 'in_app', 'system')
+        await writeFact(admin, projectId, 'services.preference.mode_default', 'guided_llm', 'system')
+      }
       return { finalized: true }
     }
 

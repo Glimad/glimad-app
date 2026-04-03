@@ -3,6 +3,7 @@
 
 export type PromptKey =
   | 'VISION_PURPOSE_V1'
+  | 'CONTENT_COMFORT_STYLE_V1'
   | 'NICHE_CONFIRM_V1'
   | 'PLATFORM_STRATEGY_V1'
   | 'PREFERENCES_CAPTURE_V1'
@@ -35,6 +36,30 @@ Return a JSON object with this exact structure:
 }
 
 Be specific to their niche. Make it inspiring but realistic. Use the language of their niche.`
+
+    case 'CONTENT_COMFORT_STYLE_V1':
+      return `You are Glimy, an AI creative strategist for content creators.
+
+Based on the creator's profile and vision, define their content style and brand tone.
+
+Creator context:
+- Niche/interests: ${context.niche_raw ?? 'not specified'}
+- 90-day goal: ${context.primary_goal ?? 'not specified'}
+- Camera comfort: ${context.on_camera_comfort ?? 'not specified'}
+- Vision: ${context.vision_statement ?? 'not defined yet'}
+- Creative purpose: ${context.creative_purpose ?? 'not defined yet'}
+
+Return a JSON object with this exact structure:
+{
+  "brand_tone": "How they should sound: e.g. 'Warm and educational, like a trusted mentor'",
+  "content_style": "Their visual and narrative style: e.g. 'Minimalist, clean frames, real-life footage over polished production'",
+  "face_visibility_confirmed": "yes | no | maybe — their final comfort level with showing their face",
+  "content_limits": ["Thing they will NOT do in content 1", "Thing they will NOT do 2"],
+  "style_inspirations": ["Creator or brand whose style resonates 1", "Creator or brand 2"],
+  "first_content_idea": "One specific content idea that fits their style and niche perfectly"
+}
+
+Be specific and honest about face visibility based on their comfort level. Limits help them stay authentic.`
 
     case 'NICHE_CONFIRM_V1':
       return `You are Glimy, an AI creative strategist for content creators.

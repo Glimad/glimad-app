@@ -172,3 +172,21 @@ export async function readLatestSnapshot(admin: AdminClient, projectId: string) 
     .single()
   return data ?? null
 }
+
+// ── History ───────────────────────────────────────────────────────────────
+
+export async function readFactHistory(
+  admin: AdminClient,
+  projectId: string,
+  factKey: string,
+  limit = 20
+) {
+  const { data } = await admin
+    .from('brain_facts_history')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('fact_key', factKey)
+    .order('changed_at', { ascending: false })
+    .limit(limit)
+  return data ?? []
+}

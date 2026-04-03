@@ -7,6 +7,13 @@ import { ONBOARDING_QUESTIONS, TOTAL_STEPS, FLOW_A_VALUE, FLOW_A_VALUE_EN } from
 
 type Answers = Record<string, string | string[]>
 
+function getBrowserMeta(): { locale: string; timezone: string } {
+  const localeCookie = document.cookie.split(';').find(c => c.trim().startsWith('glimad_locale='))
+  const locale = localeCookie ? localeCookie.split('=')[1].trim() : navigator.language.slice(0, 2)
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  return { locale, timezone }
+}
+
 export default function OnboardingPage() {
   const t = useTranslations('onboarding')
   const router = useRouter()
@@ -96,7 +103,7 @@ export default function OnboardingPage() {
         await fetch(`/api/onboarding/${sessionId}/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ final_responses: {} }),
+          body: JSON.stringify({ final_responses: getBrowserMeta() }),
         })
         document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
         router.push(`/signup?sid=${sessionId}`)
@@ -123,7 +130,7 @@ export default function OnboardingPage() {
     await fetch(`/api/onboarding/${sessionId}/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ final_responses: { handle_current: handleValue.trim() } }),
+      body: JSON.stringify({ final_responses: { handle_current: handleValue.trim(), ...getBrowserMeta() } }),
     })
     document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
     router.push(`/signup?sid=${sessionId}`)

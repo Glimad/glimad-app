@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
+import { createMissionInstance, executeMission } from '@/lib/missions/runner'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -130,6 +131,23 @@ async function handleSubscriptionActivated(
 
   // Seed Brain Facts from onboarding answers + compute initial phase
   await seedBrainFromOnboarding(admin, userId, projectId)
+
+  // JIT mission instantiation — create all Core Flow missions as queued
+  // so the user sees them on the Dashboard mission map immediately after login
+  const CORE_FLOW_TEMPLATES = [
+    'VISION_PURPOSE_MOODBOARD_V1',
+    'CONTENT_COMFORT_STYLE_V1',
+    'NICHE_CONFIRM_V1',
+    'PLATFORM_STRATEGY_PICKER_V1',
+    'PREFERENCES_CAPTURE_V1',
+  ]
+  for (const templateCode of CORE_FLOW_TEMPLATES) {
+    await createMissionInstance(admin, projectId, templateCode)
+  }
+
+  // Execute first mission immediately so it reaches needs_user_input
+  const firstInstanceId = await createMissionInstance(admin, projectId, 'VISION_PURPOSE_MOODBOARD_V1')
+  await executeMission(admin, firstInstanceId)
 }
 
 async function handleInvoicePaid(
