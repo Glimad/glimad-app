@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/scrape-refresh",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/scrape/run",
       "schedule": "0 8 * * *"
     },

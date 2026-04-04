@@ -1,13 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useT } from '@/lib/i18n'
 
 export default function NewProductPage() {
   const t = useT('monetization')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [saving, setSaving] = useState(false)
+
+  const prefill = {
+    name: searchParams.get('name') ?? '',
+    type: searchParams.get('type') ?? 'service',
+    price_amount: searchParams.get('price_amount') ?? '',
+    platform: searchParams.get('platform') ?? '',
+    notes: searchParams.get('notes') ?? '',
+  }
 
   const PRODUCT_TYPES = [
     { value: 'service',          label: t('product_types.service') },
@@ -50,6 +59,7 @@ export default function NewProductPage() {
           <input
             name="name"
             required
+            defaultValue={prefill.name}
             placeholder={t('form_name_placeholder')}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
           />
@@ -60,6 +70,7 @@ export default function NewProductPage() {
           <select
             name="type"
             required
+            defaultValue={prefill.type}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:border-violet-500"
           >
             {PRODUCT_TYPES.map(pt => (
@@ -76,6 +87,7 @@ export default function NewProductPage() {
               type="number"
               step="0.01"
               min="0"
+              defaultValue={prefill.price_amount}
               placeholder="49.00"
               className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
             />
@@ -97,6 +109,7 @@ export default function NewProductPage() {
           <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_platform')}</label>
           <input
             name="platform"
+            defaultValue={prefill.platform}
             placeholder={t('form_platform_placeholder')}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
           />
@@ -117,6 +130,7 @@ export default function NewProductPage() {
           <textarea
             name="notes"
             rows={3}
+            defaultValue={prefill.notes}
             placeholder={t('form_notes_placeholder')}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-none"
           />

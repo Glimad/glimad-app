@@ -5,6 +5,7 @@ import { getMonetizationKpis, computeProductHealth } from '@/lib/monetization'
 import { makeServerT } from '@/lib/i18n'
 import { defaultLocale } from '@/i18n.config'
 import Link from 'next/link'
+import AiSuggestionCard from '@/components/monetization/AiSuggestionCard'
 
 const HEALTH_COLOR: Record<string, string> = {
   green: 'bg-emerald-500',
@@ -34,7 +35,7 @@ export default async function MonetizationPage() {
 
   const { data: project } = await admin
     .from('projects')
-    .select('id, phase_code')
+    .select('id, phase_code, active_mode')
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
@@ -70,6 +71,10 @@ export default async function MonetizationPage() {
     }
   }
 
+  const PHASE_RANK: Record<string, number> = { F0: 0, F1: 1, F2: 2, F3: 3, F4: 4, F5: 5, F6: 6, F7: 7 }
+  const phaseRank = PHASE_RANK[project.phase_code ?? 'F0'] ?? 0
+  const showAiSuggestion = phaseRank >= 3 && project.active_mode === 'monetize'
+
   return (
     <div className="text-white max-w-5xl mx-auto px-4 pt-6 pb-12">
       <div className="flex items-center justify-between mb-6">
@@ -103,6 +108,8 @@ export default async function MonetizationPage() {
           <p className="text-2xl font-bold">{kpis.activeStreams}</p>
         </div>
       </div>
+
+      {showAiSuggestion && <AiSuggestionCard />}
 
       {productsWithHealth.length === 0 ? (
         <div className="bg-zinc-900 rounded-xl p-10 border border-zinc-800 text-center">

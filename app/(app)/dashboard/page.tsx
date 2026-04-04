@@ -101,8 +101,14 @@ export default async function DashboardPage() {
 
   const currentRank = PHASE_RANK[phaseResult.phase] ?? 0
 
-  // Sort: core flow first, then by phase relevance
-  const CORE_FLOW = ['VISION_PURPOSE_MOODBOARD_V1', 'NICHE_CONFIRM_V1', 'PLATFORM_STRATEGY_PICKER_V1', 'PREFERENCES_CAPTURE_V1']
+  // Sort: core flow first, then by phase relevance (canonical order per implementation plan Step 10)
+  const CORE_FLOW = [
+    'VISION_PURPOSE_MOODBOARD_V1',
+    'CONTENT_COMFORT_STYLE_V1',
+    'PLATFORM_STRATEGY_PICKER_V1',
+    'NICHE_CONFIRM_V1',
+    'PREFERENCES_CAPTURE_V1',
+  ]
 
   const missionNodes = allTemplates
     .map(tmpl => {
@@ -185,8 +191,8 @@ export default async function DashboardPage() {
   }))
 
   // ── Quick stats ───────────────────────────────────────────────────────────
-  const followerCount = facts['follower_count'] as number | null
-  const engagementRate = facts['engagement_rate'] as number | null
+  const followerCount = (facts['followers_total'] ?? facts['current_followers']) as number | null
+  const engagementRate = facts['avg_engagement_rate'] as number | null
 
   // Posts this week
   const weekAgo = new Date()
@@ -345,6 +351,17 @@ export default async function DashboardPage() {
                 <p className="text-xl font-bold text-white">{monetizationKpis.activeStreams}</p>
               </div>
             </div>
+            {policy.activeMode === 'monetize' && (
+              <div className="mt-4 flex items-center justify-between bg-violet-950/40 border border-violet-800/50 rounded-xl px-4 py-3">
+                <p className="text-sm text-zinc-300">{t('monetization_ai_sub')}</p>
+                <a
+                  href="/monetization"
+                  className="ml-4 shrink-0 text-sm font-semibold text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  {t('monetization_ai_cta')}
+                </a>
+              </div>
+            )}
           </div>
         )}
 

@@ -12,7 +12,9 @@ const CSP = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['stripe'],
+  experimental: {
+    serverComponentsExternalPackages: ['stripe'],
+  },
   images: {
     remotePatterns: [
       {

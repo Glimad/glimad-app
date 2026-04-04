@@ -55,5 +55,12 @@
   "add_product_btn": "Añadir Producto",
   "saving": "Guardando...",
   "cancel": "Cancelar",
-  "manage": "Gestionar →"
+  "manage": "Gestionar →",
+  "suggestion_heading": "Sugerencia de Producto IA",
+  "suggestion_sub": "Deja que la IA analice tu perfil y sugiera el mejor producto para lanzar.",
+  "suggestion_cta": "Obtener Sugerencia",
+  "suggestion_loading": "Generando...",
+  "suggestion_label": "Sugerencia IA",
+  "suggestion_regenerate": "Regenerar",
+  "suggestion_create": "Crear desde sugerencia"
 }

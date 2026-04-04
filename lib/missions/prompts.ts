@@ -125,10 +125,12 @@ Return a JSON object with this exact structure:
   "energy_level": "low | medium | high — how intensive their content workflow should be",
   "batch_preference": "single | batch_3d | batch_7d — how they prefer to create content",
   "collaboration_style": "solo | collaborative",
+  "services_preference_channel": "in_app | email — preferred channel for support and expert help",
+  "services_preference_mode_default": "guided_llm | human_expert — preferred default assistance mode",
   "advice": "One key piece of advice to help them stay consistent (1-2 sentences)"
 }
 
-Tailor everything to their available time and energy level.`
+Tailor everything to their available time and energy level. For services_preference_channel: prefer in_app for creators with high energy or batch workflow; email for low energy or solo creators. For services_preference_mode_default: prefer guided_llm unless they indicated needing more hands-on help.`
 
     case 'CONTENT_BATCH_3D_V1':
       return `You are Glimy, an AI creative strategist for content creators.

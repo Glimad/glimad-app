@@ -10,14 +10,10 @@ type AdminClient = ReturnType<typeof createAdminClient>
 export type PhaseCode = 'F0' | 'F1' | 'F2' | 'F3' | 'F4' | 'F5' | 'F6' | 'F7'
 
 export interface DimensionScores {
-  discovery: number     // 15% — niche defined, missions done
-  audience: number      // 10% — engagement rate
-  consistency: number   // 15% — posting frequency, streaks
-  engagement: number    // 20% — engagement rate trend
-  growth: number        // 15% — follower growth
-  monetization: number  // 10% — product/monetization signals
-  teamOps: number       // 10% — missions completed, calendar
-  technology: number    // 5%  — platform configured, scrape done
+  execution: number      // 40% — posts published, streak_days, calendar items scheduled
+  audienceSignal: number // 25% — avg_engagement_rate, comment reply signals, saves signals
+  clarity: number        // 20% — identity.niche defined, content.winner_format confidence, identity.north_star
+  readiness: number      // 15% — calendar scheduled items, DM backlog, Core Flow missions completed
 }
 
 export interface PhaseResult {
@@ -30,14 +26,10 @@ export interface PhaseResult {
 }
 
 const WEIGHTS: Record<keyof DimensionScores, number> = {
-  discovery: 0.15,
-  audience: 0.10,
-  consistency: 0.15,
-  engagement: 0.20,
-  growth: 0.15,
-  monetization: 0.10,
-  teamOps: 0.10,
-  technology: 0.05,
+  execution: 0.40,
+  audienceSignal: 0.25,
+  clarity: 0.20,
+  readiness: 0.15,
 }
 
 const PHASE_THRESHOLDS: Array<{ min: number; phase: PhaseCode }> = [
@@ -67,8 +59,10 @@ export async function computePhase(
   projectId: string,
   now: Date = new Date()
 ): Promise<PhaseResult> {
-  // ── Fetch all inputs ──────────────────────────────────────────────────────
-  const [facts, signals90d, latestMetrics] = await Promise.all([
+  const nowMs = now.getTime()
+
+  // ── Fetch all inputs in parallel ─────────────────────────────────────────
+  const [facts, signals90d, latestMetrics, gamification, calendarResult, monetizationProductsResult, monetizationEventsResult] = await Promise.all([
     readAllFacts(admin, projectId),
     readSignals(admin, projectId, 90 * 24),
     admin
@@ -79,230 +73,75 @@ export async function computePhase(
       .limit(1)
       .single()
       .then(r => r.data ?? null),
+    admin
+      .from('core_gamification')
+      .select('streak_days, energy')
+      .eq('project_id', projectId)
+      .single()
+      .then(r => r.data ?? null),
+    admin
+      .from('core_calendar_items')
+      .select('id, state', { count: 'exact' })
+      .eq('project_id', projectId)
+      .in('state', ['scheduled', 'published'])
+      .limit(100),
+    admin
+      .from('monetization_products')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .neq('status', 'archived'),
+    admin
+      .from('monetization_events')
+      .select('event_type, amount, event_date')
+      .eq('project_id', projectId)
+      .order('event_date', { ascending: false })
+      .limit(200),
   ])
 
-  const nowMs = now.getTime()
   const signals30d = signals90d.filter(s => nowMs - new Date(s.observed_at).getTime() < 30 * 24 * 3600 * 1000)
   const signals7d = signals30d.filter(s => nowMs - new Date(s.observed_at).getTime() < 7 * 24 * 3600 * 1000)
 
-  // ── Resolve metrics: platform_metrics preferred, Brain Facts as fallback ──
-  const resolvedFollowers: number =
-    latestMetrics?.followers_count ?? (facts['followers_total'] as number | null) ?? 0
+  // ── Resolve core metrics ──────────────────────────────────────────────────
   const resolvedAvgEr: number =
     latestMetrics?.avg_engagement_rate ?? (facts['avg_engagement_rate'] as number | null) ?? 0
   const resolvedPosts30d: number =
     latestMetrics?.recent_posts_7d != null
-      ? latestMetrics.recent_posts_7d * 4   // extrapolate 7d → 30d
+      ? latestMetrics.recent_posts_7d * 4
       : (facts['posts_last_30d'] as number | null)
         ?? signals30d.filter(s => s.signal_key === 'consistency.posts_published_30d')
               .map(s => (s.value as { value: number }).value ?? 0)
               .slice(-1)[0] ?? 0
-  const lastScrapeDate: Date | null = latestMetrics?.fetched_at ? new Date(latestMetrics.fetched_at) : null
+  const streakDays: number =
+    gamification?.streak_days ?? (facts['streak_days'] as number | null) ?? 0
+  const scheduledCalendarItems = (calendarResult.data ?? []).filter(i => i.state === 'scheduled').length
+  const publishedCalendarItems = (calendarResult.data ?? []).filter(i => i.state === 'published').length
+
+  const monetizationProductsCount = monetizationProductsResult.count ?? 0
+  const monetizationEvents = monetizationEventsResult.data ?? []
+
+  const hasScrape = signals90d.some(s => s.signal_key === 'scrape_completed')
 
   // ── Evidence gate ─────────────────────────────────────────────────────────
-  // Only signals that represent real observed creator activity count as evidence.
-  // Administrative/error signals (scrape_skipped, scrape_failed, user_notification,
-  // missing_evidence, rate_limited) are explicitly excluded.
   const EVIDENCE_SIGNAL_KEYS = new Set([
-    'scrape_completed',
-    'mission_completed',
-    'growth.followers_total',
-    'engagement.avg_er_7d',
-    'consistency.posts_published_7d',
-    'consistency.posts_published_30d',
-    'content_perf.viral_spike',
-    'viral_spike',
-    'content_published',
-    'inflexion_detected',
-    'phase_changed',
-    'data_correction',
+    'scrape_completed', 'mission_completed', 'growth.followers_total',
+    'engagement.avg_er_7d', 'consistency.posts_published_7d', 'consistency.posts_published_30d',
+    'content_perf.viral_spike', 'viral_spike', 'content_published', 'inflexion_detected',
+    'phase_changed', 'data_correction',
   ])
   const evidenceCount = signals30d.filter(s => EVIDENCE_SIGNAL_KEYS.has(s.signal_key)).length
   const hasEvidence = evidenceCount >= 3
 
-  // ── Technology dimension ──────────────────────────────────────────────────
-  // Spec: handle provided=30, scrape completed=40, satellites configured=30
-  const hasPlatform = !!facts['focus_platform']
-  const hasHandle = !!facts['focus_platform_handle'] || !!facts['handle'] || !!latestMetrics?.handle
-  const hasScrape = signals90d.some(s => s.signal_key === 'scrape_completed')
-  const { data: satellitePlatforms } = await admin
-    .from('projects_platforms')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('role', 'satellite')
-    .limit(1)
-  const hasSatellites = (satellitePlatforms?.length ?? 0) > 0
-  let technology = 0
-  if (hasHandle) technology += 30
-  if (hasScrape) technology += 40
-  if (hasSatellites) technology += 30
-  technology = clamp(technology)
-
-  // ── Discovery dimension ───────────────────────────────────────────────────
-  // niche_raw exists (user-defined)  → 20 pts
-  // niche confirmed by AI (NICHE_CONFIRM_V1 completed, writes `niche` fact) → 30 pts
-  // audience_persona defined → 30 pts
-  // positioning_statement generated → 20 pts
-  // Full score = 100
-  const hasNicheRaw = !!facts['niche_raw']
-  const hasNicheConfirmed = !!facts['niche']
-    || signals90d.some(s => s.signal_key === 'mission_completed'
-        && (s.value as { mission_type?: string })?.mission_type === 'NICHE_CONFIRM_V1')
-  const hasPersona = !!facts['audience_persona']
-  const hasPositioning = !!facts['positioning_statement']
-  let discovery = 0
-  if (hasNicheRaw) discovery += 20
-  if (hasNicheConfirmed) discovery += 30
-  if (hasPersona) discovery += 30
-  if (hasPositioning) discovery += 20
-  discovery = clamp(discovery)
-
-  // ── Audience dimension ────────────────────────────────────────────────────
-  // Linear interpolation within spec bands:
-  // 0-1% → 0-25  |  1-2% → 25-50  |  2-4% → 50-75  |  4%+ → 75-100
-  // +10 if audience persona defined
-  const avgEr = resolvedAvgEr
-  let audience: number
-  if (avgEr <= 0) {
-    audience = 0
-  } else if (avgEr < 0.01) {
-    audience = Math.round((avgEr / 0.01) * 25)                          // 0–25
-  } else if (avgEr < 0.02) {
-    audience = Math.round(25 + ((avgEr - 0.01) / 0.01) * 25)           // 25–50
-  } else if (avgEr < 0.04) {
-    audience = Math.round(50 + ((avgEr - 0.02) / 0.02) * 25)           // 50–75
-  } else {
-    audience = Math.round(Math.min(100, 75 + ((avgEr - 0.04) / 0.04) * 25)) // 75–100
-  }
-  if (hasPersona) audience = clamp(audience + 10)
-  audience = clamp(audience)
-
-  // ── Consistency dimension ─────────────────────────────────────────────────
-  // Spec anchors: 0→0, 1→30, 3→70, 5+→100 — linear interpolation between
-  const posts30d = resolvedPosts30d
-  const avgPostsPerWeek = posts30d / 4
-  let consistency: number
-  if (avgPostsPerWeek >= 5) {
-    consistency = 100
-  } else if (avgPostsPerWeek >= 3) {
-    consistency = Math.round(70 + ((avgPostsPerWeek - 3) / 2) * 30)  // 3→70, 5→100
-  } else if (avgPostsPerWeek >= 1) {
-    consistency = Math.round(30 + ((avgPostsPerWeek - 1) / 2) * 40)  // 1→30, 3→70
-  } else {
-    consistency = Math.round((avgPostsPerWeek / 1) * 30)              // 0→0, 1→30
-  }
-
-  // Penalize for consistency_gap signal in last 14 days
-  // OR if last scrape shows 0 posts in 7d and scrape date is current (within 2 days)
-  const hasConsistencyGap = signals30d.some(s => {
-    const age = nowMs - new Date(s.observed_at).getTime()
-    return s.signal_key === 'consistency_gap' && age < 14 * 24 * 3600 * 1000
-  })
-  const scrapeShowsNoRecent = lastScrapeDate !== null
-    && (nowMs - lastScrapeDate.getTime()) < 2 * 24 * 3600 * 1000
-    && (latestMetrics?.recent_posts_7d ?? 1) === 0
-  if (hasConsistencyGap || scrapeShowsNoRecent) consistency = clamp(consistency - 20)
-  consistency = clamp(consistency)
-
-  // ── Engagement dimension ──────────────────────────────────────────────────
-  // Base: absolute ER mapped through same bands as audience (0–100)
-  // Trend: compare most-recent vs oldest signal in window — up to ±20 pts
-  // Spec: "an improving engagement rate scores higher even if absolute rate is low"
-  let erBase: number
-  if (avgEr <= 0) {
-    erBase = 0
-  } else if (avgEr < 0.01) {
-    erBase = Math.round((avgEr / 0.01) * 25)
-  } else if (avgEr < 0.02) {
-    erBase = Math.round(25 + ((avgEr - 0.01) / 0.01) * 25)
-  } else if (avgEr < 0.04) {
-    erBase = Math.round(50 + ((avgEr - 0.02) / 0.02) * 25)
-  } else {
-    erBase = Math.round(Math.min(100, 75 + ((avgEr - 0.04) / 0.04) * 25))
-  }
-
-  const erSignals = signals90d
-    .filter(s => s.signal_key === 'engagement.avg_er_7d')
-    .map(s => (s.value as { value: number }).value ?? 0)
-
-  let trendBonus = 0
-  if (erSignals.length >= 2) {
-    const newest = erSignals[0]
-    const oldest = erSignals[erSignals.length - 1]
-    // Relative change so a small absolute ER that is improving still scores well
-    const relativeTrend = oldest > 0 ? (newest - oldest) / oldest : 0
-    // Cap trend bonus at ±20 pts
-    trendBonus = Math.round(Math.max(-20, Math.min(20, relativeTrend * 100)))
-  }
-
-  const engagement = clamp(erBase + trendBonus)
-
-  // ── Growth dimension ──────────────────────────────────────────────────────
-  // Spec: use signals from last 30 days
-  // Bands (linear interpolation): 0%→0, 0-1%→0-30, 1-5%→30-60, 5-10%→60-80, 10-20%→80-100
-  // viral_spike signal in last 7 days → +10 bonus
-  const followers = resolvedFollowers
-  const followersSignals30d = signals30d
-    .filter(s => s.signal_key === 'growth.followers_total')
-    .map(s => (s.value as { value: number }).value ?? 0)
-
-  let growth = 0
-  if (followersSignals30d.length >= 2) {
-    const oldest = followersSignals30d[followersSignals30d.length - 1]
-    const newest = followersSignals30d[0]
-    const growthPct = oldest > 0 ? (newest - oldest) / oldest : 0
-
-    if (growthPct <= 0) {
-      growth = 0
-    } else if (growthPct < 0.01) {
-      growth = Math.round((growthPct / 0.01) * 30)                          // 0→0, 1%→30
-    } else if (growthPct < 0.05) {
-      growth = Math.round(30 + ((growthPct - 0.01) / 0.04) * 30)           // 1%→30, 5%→60
-    } else if (growthPct < 0.10) {
-      growth = Math.round(60 + ((growthPct - 0.05) / 0.05) * 20)           // 5%→60, 10%→80
-    } else {
-      growth = Math.round(Math.min(100, 80 + ((growthPct - 0.10) / 0.10) * 20)) // 10%→80, 20%→100
-    }
-  } else if (followers > 0) {
-    growth = 15 // some follower data exists but no 30d trend yet
-  }
-
-  // Check both scrape-written and inflexion-engine-written viral spike signals
+  // ── Viral spike ───────────────────────────────────────────────────────────
   const hasViralSpike = signals7d.some(s =>
     s.signal_key === 'content_perf.viral_spike' || s.signal_key === 'viral_spike'
   )
-  if (hasViralSpike) growth = clamp(growth + 10)
-  growth = clamp(growth)
 
-  // ── Monetization dimension ────────────────────────────────────────────────
-  // Gate: requires followers >= 5K AND ER >= 3% to start scoring (0 in F0-F3)
-  // Follower score (0-50): 5K→0, 10K→20, 50K→40, 100K+→50
-  // ER score (0-30): 3%→0, 10%+→30 (linear)
-  // monetization_ready signal → +20
-  const offerDefined = !!facts['offer_title']  // set by DEFINE_OFFER_V1 brain_update
-  let monetization = 0
-  if (followers >= 5000 && avgEr >= 0.03) {
-    const followerScore = followers >= 100000 ? 50
-      : followers >= 50000 ? 40
-      : followers >= 10000 ? Math.round(20 + ((followers - 10000) / 40000) * 20)  // 10K→20, 50K→40
-      : Math.round(((followers - 5000) / 5000) * 20)                               // 5K→0, 10K→20
-
-    const erScore = Math.round(Math.min(30, ((avgEr - 0.03) / 0.07) * 30))        // 3%→0, 10%→30
-
-    monetization = followerScore + erScore
-  }
-  const hasMonetizationReady = signals90d.some(s => s.signal_key === 'monetization_ready')
-  if (hasMonetizationReady) monetization = clamp(monetization + 20)
-  monetization = clamp(monetization)
-
-  // ── Team/Ops dimension ────────────────────────────────────────────────────
-  // 4 Core Flow missions × 15 pts each = 60  |  batch_config = 20  |  calendar = 20
-  // Mission completion detected via mission_completed signal with matching mission_type,
-  // with fact-based fallback for missions that write known facts
-  const coreFlowMissions = [
+  // ── Core Flow missions (5 canonical) ─────────────────────────────────────
+  const CORE_FLOW_MISSIONS = [
     'VISION_PURPOSE_MOODBOARD_V1',
-    'NICHE_CONFIRM_V1',
+    'CONTENT_COMFORT_STYLE_V1',
     'PLATFORM_STRATEGY_PICKER_V1',
+    'NICHE_CONFIRM_V1',
     'PREFERENCES_CAPTURE_V1',
   ] as const
 
@@ -312,33 +151,124 @@ export async function computePhase(
       .map(s => (s.value as { mission_type?: string })?.mission_type)
       .filter(Boolean)
   )
-
   // Fact-based fallbacks — each mission writes a canonical fact on completion
-  if (!!facts['positioning_statement']) completedCoreFlow.add('VISION_PURPOSE_MOODBOARD_V1')
-  if (!!facts['niche'])                 completedCoreFlow.add('NICHE_CONFIRM_V1')
-  if (!!facts['focus_platform'])        completedCoreFlow.add('PLATFORM_STRATEGY_PICKER_V1')
-  if (!!facts['on_camera_comfort'] !== undefined || !!facts['weekly_hours'])
-                                        completedCoreFlow.add('PREFERENCES_CAPTURE_V1')
+  const focusPlatformFact = facts['platforms.focus'] ?? facts['focus_platform']
+  const nicheFact = facts['identity.niche'] ?? facts['niche']
+  const northStarFact = facts['identity.north_star'] ?? facts['north_star']
+  const positioningFact = facts['positioning_statement']
+  const onCameraFact = facts['capabilities.on_camera_comfort'] ?? facts['on_camera_comfort']
+  const weeklyHoursFact = facts['capabilities.weekly_hours_available'] ?? facts['weekly_hours']
+  const contentStyleFact = facts['content.style'] ?? facts['content_style']
 
-  const coreFlowScore = coreFlowMissions.filter(m => completedCoreFlow.has(m)).length * 15
+  if (positioningFact || northStarFact)   completedCoreFlow.add('VISION_PURPOSE_MOODBOARD_V1')
+  if (contentStyleFact)                   completedCoreFlow.add('CONTENT_COMFORT_STYLE_V1')
+  if (focusPlatformFact)                  completedCoreFlow.add('PLATFORM_STRATEGY_PICKER_V1')
+  if (nicheFact)                          completedCoreFlow.add('NICHE_CONFIRM_V1')
+  if (onCameraFact != null || weeklyHoursFact != null) completedCoreFlow.add('PREFERENCES_CAPTURE_V1')
 
-  const hasBatchConfig = !!facts['batch_config']
-  const hasCalendar = signals90d.some(s => s.signal_key === 'content_published')
+  const coreFlowCompleted = CORE_FLOW_MISSIONS.filter(m => completedCoreFlow.has(m)).length
 
-  let teamOps = coreFlowScore
-  if (hasBatchConfig) teamOps += 20
-  if (hasCalendar) teamOps += 20
-  teamOps = clamp(teamOps)
+  // ── DIMENSION: Execution (40%) ────────────────────────────────────────────
+  // Sub-scores: posts_30d (40%), streak_days (35%), calendar items (25%)
+  const avgPostsPerWeek = resolvedPosts30d / 4
+  let postsScore: number
+  if (avgPostsPerWeek >= 5) {
+    postsScore = 100
+  } else if (avgPostsPerWeek >= 3) {
+    postsScore = Math.round(70 + ((avgPostsPerWeek - 3) / 2) * 30)
+  } else if (avgPostsPerWeek >= 1) {
+    postsScore = Math.round(30 + ((avgPostsPerWeek - 1) / 2) * 40)
+  } else {
+    postsScore = Math.round((avgPostsPerWeek / 1) * 30)
+  }
+
+  let streakScore: number
+  if (streakDays >= 30) {
+    streakScore = 100
+  } else if (streakDays >= 14) {
+    streakScore = Math.round(60 + ((streakDays - 14) / 16) * 40)
+  } else if (streakDays >= 7) {
+    streakScore = Math.round(30 + ((streakDays - 7) / 7) * 30)
+  } else {
+    streakScore = Math.round((streakDays / 7) * 30)
+  }
+
+  const totalCalendarItems = scheduledCalendarItems + publishedCalendarItems
+  let calendarScore: number
+  if (totalCalendarItems >= 7) {
+    calendarScore = 100
+  } else if (totalCalendarItems >= 3) {
+    calendarScore = Math.round(60 + ((totalCalendarItems - 3) / 4) * 40)
+  } else if (totalCalendarItems >= 1) {
+    calendarScore = Math.round(30 + ((totalCalendarItems - 1) / 2) * 30)
+  } else {
+    calendarScore = 0
+  }
+
+  const execution = clamp(Math.round(postsScore * 0.40 + streakScore * 0.35 + calendarScore * 0.25))
+
+  // ── DIMENSION: Audience Signal (25%) ──────────────────────────────────────
+  // ER score (0-70): bands 0-1%→0-25, 1-2%→25-50, 2-4%→50-65, 4%+→65-70
+  // Reply rate bonus (0-20): if reply_rate signal > 50%
+  // Saves signal bonus (0-10): if saves signals exist
+  const avgEr = resolvedAvgEr
+  let erScore: number
+  if (avgEr <= 0) {
+    erScore = 0
+  } else if (avgEr < 0.01) {
+    erScore = Math.round((avgEr / 0.01) * 25)
+  } else if (avgEr < 0.02) {
+    erScore = Math.round(25 + ((avgEr - 0.01) / 0.01) * 25)
+  } else if (avgEr < 0.04) {
+    erScore = Math.round(50 + ((avgEr - 0.02) / 0.02) * 15)
+  } else {
+    erScore = Math.round(Math.min(70, 65 + ((avgEr - 0.04) / 0.04) * 5))
+  }
+
+  const replyRateSignals = signals90d.filter(s => s.signal_key === 'engagement.reply_rate')
+  const latestReplyRate = replyRateSignals.length > 0
+    ? ((replyRateSignals[0].value as { value?: number })?.value ?? 0)
+    : 0
+  const replyBonus = latestReplyRate > 0.5 ? 20 : Math.round(latestReplyRate / 0.5 * 10)
+
+  const hasSavesSignal = signals90d.some(s => s.signal_key === 'engagement.saves' || s.signal_key === 'content_perf.saves')
+  const savesBonus = hasSavesSignal ? 10 : 0
+
+  const audienceSignal = clamp(erScore + replyBonus + savesBonus)
+
+  // ── DIMENSION: Clarity (20%) ──────────────────────────────────────────────
+  // identity.niche defined: +30
+  // content.winner_format with confidence ≥ 0.8: +40
+  // identity.north_star defined: +30
+  const hasNiche = !!nicheFact
+  const winnerFormat = facts['content.winner_format'] as { confidence?: number } | null | undefined
+  const hasWinnerFormat = !!winnerFormat && (winnerFormat.confidence ?? 0) >= 0.8
+  const hasNorthStar = !!northStarFact
+
+  let clarity = 0
+  if (hasNiche)        clarity += 30
+  if (hasWinnerFormat) clarity += 40
+  if (hasNorthStar)    clarity += 30
+  clarity = clamp(clarity)
+
+  // ── DIMENSION: Readiness (15%) ────────────────────────────────────────────
+  // Calendar has scheduled items: +30
+  // DM backlog < threshold (no dm_backlog_high signal in last 30d): +30
+  // Core Flow missions completed (5 × 8 pts each = 40): up to 40
+  const hasDmBacklogHigh = signals30d.some(s => s.signal_key === 'dm_backlog_high')
+  const dmBacklogOk = !hasDmBacklogHigh
+
+  let readiness = 0
+  if (scheduledCalendarItems >= 1) readiness += 30
+  if (dmBacklogOk)                 readiness += 30
+  readiness += coreFlowCompleted * 8  // 5 missions × 8 pts = 40 max
+  readiness = clamp(readiness)
 
   const dimensions: DimensionScores = {
-    discovery,
-    audience,
-    consistency,
-    engagement,
-    growth,
-    monetization,
-    teamOps,
-    technology,
+    execution,
+    audienceSignal,
+    clarity,
+    readiness,
   }
 
   // ── Capability score (weighted average) ───────────────────────────────────
@@ -353,28 +283,102 @@ export async function computePhase(
 
   // ── Evidence gate: cap at F1 if < 3 signals ──────────────────────────────
   if (!hasEvidence) {
-    const phaseRank = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']
-    const currentRank = phaseRank.indexOf(computedPhase)
-    if (currentRank > 1) computedPhase = 'F1'
+    const phaseRankArr = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']
+    if (phaseRankArr.indexOf(computedPhase) > 1) computedPhase = 'F1'
   }
 
-  // ── Anti-fraud gates ──────────────────────────────────────────────────────
-  const gates: Record<string, boolean> = {
-    has_platform: hasPlatform,
-    has_handle: hasHandle,
-    has_niche: hasNicheRaw,
-    niche_confirmed: hasNicheConfirmed,
-    has_evidence: hasEvidence,
-    offer_defined: offerDefined,
+  // ── Hard gates per phase (ALL must pass to stay at target phase) ──────────
+  const PHASE_RANKS = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']
+  const gates: Record<string, boolean> = { has_evidence: hasEvidence }
+
+  // F1 gates: platforms.focus defined, bio created, ≥1 calendar item scheduled
+  const hasFocusPlatform = !!focusPlatformFact
+  const hasBio = !!(facts['bio'] ?? facts['platform_bio'] ?? latestMetrics?.handle)
+  gates['f1_focus_platform'] = hasFocusPlatform
+  gates['f1_bio_created'] = hasBio
+  gates['f1_calendar_item'] = scheduledCalendarItems >= 1 || publishedCalendarItems >= 1
+
+  // F2 gates: ≥5 real publications, ≥1 format tested in series (3+ same-type pieces)
+  const totalPublications = (latestMetrics?.posts_count ?? 0) + publishedCalendarItems
+  const hasSeriesFormat = signals90d.some(s => s.signal_key === 'content_perf.series_detected'
+    || (s.signal_key === 'mission_completed' && (s.value as { series?: boolean })?.series === true))
+    || publishedCalendarItems >= 3
+  gates['f2_min_publications'] = totalPublications >= 5
+  gates['f2_series_format'] = hasSeriesFormat
+
+  // F3 gates: streak ≥14 days, avg_engagement_rate ≥2.5% (30d), reply_rate >50%, winner_format.confidence ≥ 0.8
+  gates['f3_streak_14'] = streakDays >= 14
+  gates['f3_er_2_5pct'] = avgEr >= 0.025
+  gates['f3_reply_rate_50pct'] = latestReplyRate > 0.5
+  gates['f3_winner_format'] = hasWinnerFormat
+
+  // F4 gates: monetization_products count ≥1 OR offer_defined, AND demand signals
+  const offerDefined = !!(facts['offer_title'] ?? facts['offer_defined'])
+  const hasDemandSignals =
+    monetizationEvents.some(e => e.event_type === 'sale') ||
+    signals90d.filter(s => s.signal_key === 'demand.dm_inquiry').length >= 5 ||
+    signals90d.filter(s => s.signal_key === 'demand.link_click').length >= 50
+  gates['f4_offer_or_product'] = monetizationProductsCount >= 1 || offerDefined
+  gates['f4_demand_signals'] = hasDemandSignals
+
+  // F5 gates: media_kit defined, ≥5 completed content batches, ≥1 collaboration signal
+  const hasMediaKit = !!(facts['media_kit'] ?? facts['media_kit_url'])
+  const completedBatchCount = signals90d.filter(s => s.signal_key === 'batch_completed').length
+  const hasCollabSignal = signals90d.some(s => s.signal_key === 'collaboration_completed' || s.signal_key === 'collaboration_signal')
+  gates['f5_media_kit'] = hasMediaKit
+  gates['f5_content_batches'] = completedBatchCount >= 5
+  gates['f5_collaboration'] = hasCollabSignal
+
+  // F6 gates: ≥2 platforms active, ≥10 repurposed items/month
+  const { data: activePlatforms } = await admin
+    .from('projects_platforms')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('status', 'active')
+  const activePlatformCount = (activePlatforms?.length ?? 0) + (hasFocusPlatform ? 1 : 0)
+  const repurposedThisMonth = signals30d.filter(s => s.signal_key === 'content_repurposed').length
+  gates['f6_multi_platform'] = activePlatformCount >= 2
+  gates['f6_repurposed_items'] = repurposedThisMonth >= 10
+
+  // F7 gates: SOPs defined, revenue ≥€5K/month, demand-driven signals
+  const hasSOPs = !!(facts['sops_defined'] ?? facts['operations_sops'])
+  const revenueThisMonth = monetizationEvents
+    .filter(e => {
+      const age = nowMs - new Date(e.event_date).getTime()
+      return e.event_type === 'sale' && age < 30 * 24 * 3600 * 1000
+    })
+    .reduce((s, e) => s + Number(e.amount), 0)
+  const hasDemandDriven = signals30d.some(s => s.signal_key === 'demand_driven_signal' || s.signal_key === 'demand.high_intent')
+  gates['f7_sops'] = hasSOPs
+  gates['f7_revenue_5k'] = revenueThisMonth >= 5000
+  gates['f7_demand_driven'] = hasDemandDriven
+
+  // Apply hard gates: if target phase gates fail → drop to previous phase
+  const phaseGateMap: Record<string, string[]> = {
+    F1: ['f1_focus_platform', 'f1_bio_created', 'f1_calendar_item'],
+    F2: ['f2_min_publications', 'f2_series_format'],
+    F3: ['f3_streak_14', 'f3_er_2_5pct', 'f3_reply_rate_50pct', 'f3_winner_format'],
+    F4: ['f4_offer_or_product', 'f4_demand_signals'],
+    F5: ['f5_media_kit', 'f5_content_batches', 'f5_collaboration'],
+    F6: ['f6_multi_platform', 'f6_repurposed_items'],
+    F7: ['f7_sops', 'f7_revenue_5k', 'f7_demand_driven'],
   }
 
-  // Hard gate F4: needs offer defined
-  if (computedPhase === 'F4' && !offerDefined) {
-    computedPhase = 'F3'
-    gates['f4_blocked_no_offer'] = true
+  // Walk from computed phase downward until all gates pass
+  let rank = PHASE_RANKS.indexOf(computedPhase)
+  while (rank > 0) {
+    const targetPhase = PHASE_RANKS[rank]
+    const gateKeys = phaseGateMap[targetPhase]
+    if (!gateKeys) break  // F0 has no gates
+    const allPass = gateKeys.every(k => gates[k] === true)
+    if (allPass) break
+    // Mark as blocked
+    gates[`${targetPhase.toLowerCase()}_blocked`] = true
+    rank--
+    computedPhase = PHASE_RANKS[rank] as PhaseCode
   }
 
-  // Viral gate: don't advance more than 1 phase if viral_spike in last 7 days
+  // Viral gate: cap advancement to 1 phase max if viral spike in last 7 days
   if (hasViralSpike) {
     const prevPhaseRun = await admin
       .from('core_phase_runs')
@@ -385,27 +389,25 @@ export async function computePhase(
       .single()
 
     if (prevPhaseRun.data) {
-      const prevPhaseRank = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'].indexOf(prevPhaseRun.data.phase_code)
-      const newRank = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'].indexOf(computedPhase)
-      if (newRank > prevPhaseRank + 1) {
-        computedPhase = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7'][prevPhaseRank + 1] as PhaseCode
+      const prevRank = PHASE_RANKS.indexOf(prevPhaseRun.data.phase_code)
+      const newRank = PHASE_RANKS.indexOf(computedPhase)
+      if (newRank > prevRank + 1) {
+        computedPhase = PHASE_RANKS[prevRank + 1] as PhaseCode
         gates['viral_gate_applied'] = true
       }
     }
   }
 
-  // Cooldown gate: if the user advanced a phase in the last 30 days, block further advancement
-  // Only upward phase changes start the cooldown clock — regressions do not
+  // Cooldown gate: block further advancement within 30 days of last phase advance
   const lastPhaseChange = await readLatestSignal(admin, projectId, 'phase_changed')
   if (lastPhaseChange) {
     const sig = lastPhaseChange.value as { from?: string; to?: string }
-    const phaseRanks = ['F0', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7']
     const wasAdvancement = sig.from && sig.to
-      && phaseRanks.indexOf(sig.to) > phaseRanks.indexOf(sig.from)
+      && PHASE_RANKS.indexOf(sig.to) > PHASE_RANKS.indexOf(sig.from)
 
     if (wasAdvancement) {
-      const daysSinceAdvancement = (nowMs - new Date(lastPhaseChange.observed_at).getTime()) / (24 * 3600 * 1000)
-      if (daysSinceAdvancement < 30) {
+      const daysSince = (nowMs - new Date(lastPhaseChange.observed_at).getTime()) / (24 * 3600 * 1000)
+      if (daysSince < 30) {
         const prevPhaseRun = await admin
           .from('core_phase_runs')
           .select('phase_code')
@@ -415,8 +417,8 @@ export async function computePhase(
           .single()
 
         if (prevPhaseRun.data) {
-          const prevRank = phaseRanks.indexOf(prevPhaseRun.data.phase_code)
-          const newRank = phaseRanks.indexOf(computedPhase)
+          const prevRank = PHASE_RANKS.indexOf(prevPhaseRun.data.phase_code)
+          const newRank = PHASE_RANKS.indexOf(computedPhase)
           if (newRank > prevRank) {
             computedPhase = prevPhaseRun.data.phase_code as PhaseCode
             gates['cooldown_gate_applied'] = true
@@ -428,21 +430,23 @@ export async function computePhase(
 
   // ── Confidence ────────────────────────────────────────────────────────────
   let confidence = 0.5
-  if (hasEvidence) confidence += 0.2
-  if (hasScrape) confidence += 0.2
-  if (completedCoreFlow.size >= 2) confidence += 0.1
+  if (hasEvidence)             confidence += 0.2
+  if (hasScrape)               confidence += 0.2
+  if (coreFlowCompleted >= 2)  confidence += 0.1
   confidence = Math.min(1, confidence)
 
   // ── Reason summary ────────────────────────────────────────────────────────
   const reasonParts: string[] = []
-  if (!hasNicheRaw) reasonParts.push('niche not defined')
-  else if (!hasNicheConfirmed) reasonParts.push('niche not yet confirmed by AI')
-  if (!hasEvidence) reasonParts.push(`only ${evidenceCount} signals (need 3+)`)
-  if (!hasScrape) reasonParts.push('no scrape data yet')
-  if (completedCoreFlow.size > 0) reasonParts.push(`${completedCoreFlow.size}/4 core flow missions completed`)
-  if (gates['viral_gate_applied']) reasonParts.push('viral gate applied')
+  if (!hasNiche)           reasonParts.push('niche not defined')
+  if (!hasEvidence)        reasonParts.push(`only ${evidenceCount} signals (need 3+)`)
+  if (!hasScrape)          reasonParts.push('no scrape data yet')
+  if (coreFlowCompleted > 0) reasonParts.push(`${coreFlowCompleted}/5 core flow missions completed`)
+  if (gates['viral_gate_applied'])   reasonParts.push('viral gate applied')
   if (gates['cooldown_gate_applied']) reasonParts.push('cooldown gate applied')
-  if (gates['f4_blocked_no_offer']) reasonParts.push('F4 blocked: no offer defined')
+  // Report any blocked phases
+  for (const p of ['f1_blocked', 'f2_blocked', 'f3_blocked', 'f4_blocked', 'f5_blocked', 'f6_blocked', 'f7_blocked']) {
+    if (gates[p]) reasonParts.push(`${p.replace('_blocked', '').toUpperCase()} blocked: gates not met`)
+  }
 
   const reasonSummary = reasonParts.length > 0
     ? reasonParts.join('; ')
@@ -541,9 +545,9 @@ export async function runPhaseEngine(
     input_hash: inputHash,
   })
 
-  // Write brain fact
+  // Write brain facts (per Step 8 spec)
   await writeFact(admin, projectId, 'current_phase', result.phase, 'phase_engine')
-  await writeFact(admin, projectId, 'phase_scores', result.dimensionScores, 'phase_engine')
+  await writeFact(admin, projectId, 'capabilities.current', result.dimensionScores, 'phase_engine')
   await writeFact(admin, projectId, 'capability_score', result.capabilityScore, 'phase_engine')
 
   // Update project phase

@@ -154,6 +154,48 @@ export async function executeScrapeLightJob(
       fetched_at: new Date().toISOString(),
     })
 
+    // 2b. Compare with previous platform_metrics row → detect growth/decline signals
+    const { data: prevMetricsRows } = await admin
+      .from('platform_metrics')
+      .select('followers_count, avg_engagement_rate')
+      .eq('project_id', project_id)
+      .eq('platform', platform)
+      .order('fetched_at', { ascending: false })
+      .limit(2)
+
+    if (prevMetricsRows && prevMetricsRows.length >= 2) {
+      const curr = prevMetricsRows[0]  // just inserted
+      const prev = prevMetricsRows[1]  // previous run
+
+      const followerDelta = curr.followers_count - prev.followers_count
+      const followerGrowthPct = prev.followers_count > 0 ? followerDelta / prev.followers_count : 0
+
+      if (followerGrowthPct > 0.05) {
+        await appendSignal(admin, project_id, 'growth.acceleration', {
+          pct: parseFloat((followerGrowthPct * 100).toFixed(2)),
+          delta: followerDelta,
+          platform,
+        }, 'scrape')
+      } else if (followerDelta < 0) {
+        await appendSignal(admin, project_id, 'growth.decline', {
+          delta: followerDelta,
+          platform,
+        }, 'scrape')
+      }
+
+      const erDrop = prev.avg_engagement_rate > 0
+        ? (prev.avg_engagement_rate - curr.avg_engagement_rate) / prev.avg_engagement_rate
+        : 0
+      if (erDrop > 0.2) {
+        await appendSignal(admin, project_id, 'engagement.drop', {
+          prev_er: prev.avg_engagement_rate,
+          curr_er: curr.avg_engagement_rate,
+          drop_pct: parseFloat((erDrop * 100).toFixed(2)),
+          platform,
+        }, 'scrape')
+      }
+    }
+
     // 3. Write Brain Facts
     await writeFact(admin, project_id, 'followers_total', normalized.followers_total, 'scrape')
     await writeFact(admin, project_id, 'current_followers', normalized.followers_total, 'scrape')
@@ -263,7 +305,30 @@ export async function executeScrapeLightJob(
     .update({ status: 'done', finished_at: new Date().toISOString() })
     .eq('job_id', jobId)
 
-  // 8. Trigger Phase Engine re-evaluation
+  // 8. FOCO-first: if this was the FOCO platform, now queue satellite platforms
+  // Satellites only run after FOCO completes (spec non-negotiable)
+  const { data: projectRow } = await admin
+    .from('projects')
+    .select('focus_platform, user_id')
+    .eq('id', project_id)
+    .single()
+
+  if (projectRow?.focus_platform === platform) {
+    const { data: satellites } = await admin
+      .from('projects_platforms')
+      .select('platform, handle')
+      .eq('project_id', project_id)
+      .eq('role', 'satellite')
+      .eq('status', 'active')
+
+    for (const sat of satellites ?? []) {
+      if (sat.handle) {
+        void requestScrapeLight(admin, project_id, projectRow.user_id, sat.platform, sat.handle)
+      }
+    }
+  }
+
+  // 9. Trigger Phase Engine re-evaluation
   await runPhaseEngine(admin, project_id)
 }
 

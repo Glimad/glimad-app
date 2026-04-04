@@ -1,6 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
 import { createMissionInstance, executeMission } from '@/lib/missions/runner'
+import { runPhaseEngine } from '@/lib/engines/phase-engine'
+import { requestScrapeLight } from '@/lib/scrape'
+import { readAllFacts } from '@/lib/brain'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
@@ -129,23 +132,33 @@ async function handleSubscriptionActivated(
   // Initialize wallet + grant credits
   await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end)
 
-  // Seed Brain Facts from onboarding answers + compute initial phase
+  // Seed Brain Facts from onboarding answers
   await seedBrainFromOnboarding(admin, userId, projectId)
 
-  // JIT mission instantiation — create all Core Flow missions as queued
-  // so the user sees them on the Dashboard mission map immediately after login
+  // Trigger Phase Engine (Step 4 item 7) — sets initial phase (F0) and writes capabilities.current
+  await runPhaseEngine(admin, projectId, true)
+
+  // Queue Scrape Light if platform handle exists (Step 4 item 6) — FOCO only
+  const facts = await readAllFacts(admin, projectId)
+  const focusFact = facts['platforms.focus'] as { platform?: string; handle?: string } | null
+  if (focusFact?.platform && focusFact?.handle) {
+    void requestScrapeLight(admin, projectId, userId, focusFact.platform, focusFact.handle)
+  }
+
+  // JIT mission instantiation (Step 4 item 8) — create all 5 Core Flow missions as queued
+  // Order is canonical per implementation plan Step 10
   const CORE_FLOW_TEMPLATES = [
     'VISION_PURPOSE_MOODBOARD_V1',
     'CONTENT_COMFORT_STYLE_V1',
-    'NICHE_CONFIRM_V1',
     'PLATFORM_STRATEGY_PICKER_V1',
+    'NICHE_CONFIRM_V1',
     'PREFERENCES_CAPTURE_V1',
   ]
   for (const templateCode of CORE_FLOW_TEMPLATES) {
     await createMissionInstance(admin, projectId, templateCode)
   }
 
-  // Execute first mission immediately so it reaches needs_user_input
+  // Execute first mission immediately so it reaches needs_user_input on Dashboard
   const firstInstanceId = await createMissionInstance(admin, projectId, 'VISION_PURPOSE_MOODBOARD_V1')
   await executeMission(admin, firstInstanceId)
 }

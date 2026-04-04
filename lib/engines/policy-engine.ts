@@ -11,11 +11,12 @@ import type { InflexionResult } from './inflexion-engine'
 type AdminClient = ReturnType<typeof createAdminClient>
 
 // Core Flow gate — must complete these in order before anything else (F0)
+// Order is canonical per implementation plan Step 10
 const CORE_FLOW: string[] = [
   'VISION_PURPOSE_MOODBOARD_V1',
   'CONTENT_COMFORT_STYLE_V1',
-  'NICHE_CONFIRM_V1',
   'PLATFORM_STRATEGY_PICKER_V1',
+  'NICHE_CONFIRM_V1',
   'PREFERENCES_CAPTURE_V1',
 ]
 
@@ -152,17 +153,29 @@ export async function runPolicyEngine(
   const activeCodes = new Set((activeInstances ?? []).map(i => i.template_code))
 
   // ── Determine active mode ───────────────────────────────────────────────
+  // Per spec: viral_spike→scale | F4+→monetize | monetization_ready→monetize
+  //           F3+ with winner_format→scale | plateau→test | default by phase
   let activeMode: 'test' | 'scale' | 'monetize' = 'test'
+
+  const hasWinnerFormat = !!(facts['content.winner_format'] as { confidence?: number } | null | undefined)
+    && ((facts['content.winner_format'] as { confidence?: number })?.confidence ?? 0) >= 0.8
+  const offerDefined = !!(facts['offer_title'] ?? facts['offer_defined'])
+  const isF4Plus = ['F4', 'F5', 'F6', 'F7'].includes(phaseResult.phase)
+  const isF3Plus = ['F3', 'F4', 'F5', 'F6', 'F7'].includes(phaseResult.phase)
+  const hasEngagementPlateau = inflexion?.type === 'engagement_plateau'
+    || signals30d.some(s => s.signal_key === 'inflexion_detected'
+      && (s.value as { type?: string })?.type === 'engagement_plateau')
 
   if (inflexion?.type === 'viral_spike') {
     activeMode = 'scale'
-  } else if (inflexion?.type === 'monetization_ready' || facts['offer_title']) {
+  } else if (isF4Plus || inflexion?.type === 'monetization_ready' || offerDefined) {
     activeMode = 'monetize'
-  } else if (['F3', 'F4', 'F5', 'F6', 'F7'].includes(phaseResult.phase)) {
-    const hasWinnerFormat = !!facts['winner_format']
-    activeMode = hasWinnerFormat ? 'scale' : 'test'
-  } else {
+  } else if (isF3Plus && hasWinnerFormat && !hasEngagementPlateau) {
+    activeMode = 'scale'
+  } else if (hasEngagementPlateau || !hasWinnerFormat || !isF3Plus) {
     activeMode = 'test'
+  } else {
+    activeMode = isF3Plus ? 'scale' : 'test'
   }
 
   // ── Core Flow Gate (F0 users) ──────────────────────────────────────────

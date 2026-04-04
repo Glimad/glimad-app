@@ -55,5 +55,12 @@
   "add_product_btn": "Add Product",
   "saving": "Saving...",
   "cancel": "Cancel",
-  "manage": "Manage →"
+  "manage": "Manage →",
+  "suggestion_heading": "AI Product Suggestion",
+  "suggestion_sub": "Let AI analyze your profile and suggest the best product to launch next.",
+  "suggestion_cta": "Get Suggestion",
+  "suggestion_loading": "Generating...",
+  "suggestion_label": "AI Suggestion",
+  "suggestion_regenerate": "Regenerate",
+  "suggestion_create": "Create from suggestion"
 }
