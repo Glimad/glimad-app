@@ -76,9 +76,10 @@ Return ONLY a JSON array of 6 strings, each a short topic idea (max 10 words). N
   })
 
   const text = (message.content[0] as { type: string; text: string }).text
-  const start = text.indexOf('[')
-  const end = text.lastIndexOf(']') + 1
-  const topics = JSON.parse(text.slice(start, end)) as string[]
+  const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
+  const start = stripped.indexOf('[')
+  const end = stripped.lastIndexOf(']') + 1
+  const topics = JSON.parse(stripped.slice(start, end)) as string[]
 
   return NextResponse.json({ topics })
 }

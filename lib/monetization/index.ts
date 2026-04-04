@@ -160,5 +160,13 @@ Return ONLY valid JSON (no markdown):
   })
 
   const text = (response.content[0] as { text: string }).text
-  return JSON.parse(text)
+  return parseJsonFromLlm(text)
+}
+
+function parseJsonFromLlm(text: string): unknown {
+  // Strip markdown code fences if present
+  const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
+  const start = stripped.indexOf('{')
+  const end = stripped.lastIndexOf('}') + 1
+  return JSON.parse(stripped.slice(start, end))
 }

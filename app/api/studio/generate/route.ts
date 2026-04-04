@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
   const message = await client.messages.create({
     model: process.env.ANTHROPIC_MODEL_SONNET!,
-    max_tokens: 1024,
+    max_tokens: 2048,
     messages: [{
       role: 'user',
       content: `You are a content writer for a ${platform} creator in the niche: "${niche}".
@@ -75,9 +75,10 @@ Generate a complete ${content_type} content piece. Return ONLY valid JSON with t
   await debitLlmCall(admin, project!.id, idempotencyKey)
 
   const text = (message.content[0] as { type: string; text: string }).text
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}') + 1
-  const content = JSON.parse(text.slice(start, end))
+  const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
+  const start = stripped.indexOf('{')
+  const end = stripped.lastIndexOf('}') + 1
+  const content = JSON.parse(stripped.slice(start, end))
 
   return NextResponse.json({ content })
 }

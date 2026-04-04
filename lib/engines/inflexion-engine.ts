@@ -11,7 +11,7 @@ export type InflexionType =
   | 'engagement_plateau'
   | 'burnout_risk'
   | 'monetization_ready'
-  | 'crisis'
+  | 'consistency_risk'
 
 export interface InflexionResult {
   type: InflexionType
@@ -32,24 +32,37 @@ export async function detectInflexion(
   const followers = currentFollowers ?? (await readFact(admin, projectId, 'followers_total') as number | null) ?? 0
   const avgEr = (await readFact(admin, projectId, 'avg_engagement_rate') as number | null) ?? 0
 
-  // ── crisis detection ──────────────────────────────────────────────────────
-  // Look for negative_sentiment signals, rapid follower loss, or high block rate
-  const negativeSentiment = signals72h.some(s => s.signal_key === 'negative_sentiment')
-  const followerLoss = signals72h.some(s => {
-    if (s.signal_key !== 'growth.followers_total') return false
-    const val = s.value as { delta?: number }
-    return (val.delta ?? 0) < -100
+  // ── consistency_risk detection ────────────────────────────────────────────
+  // SSOT §7: calendar empty + no post signal for 7+ days
+  // Blocks creative missions, prioritizes system missions
+  const signals7d = await readSignals(admin, projectId, 7 * 24)
+  const hasRecentPost = signals7d.some(s =>
+    s.signal_key === 'content_published' || s.signal_key === 'consistency_maintained'
+  )
+  const hasConsistencyGap7d = signals7d.some(s => {
+    if (s.signal_key !== 'consistency_gap') return false
+    const val = s.value as { days_since_last_post?: number }
+    return (val.days_since_last_post ?? 0) >= 7
   })
-  const blockRateSignal = signals72h.find(s => s.signal_key === 'block_rate')
-  const highBlockRate = blockRateSignal
-    ? ((blockRateSignal.value as { rate?: number }).rate ?? 0) > 0.05
-    : false
 
-  if (negativeSentiment || followerLoss || highBlockRate) {
+  // Check calendar — no scheduled items = empty
+  const { count: scheduledCount } = await admin
+    .from('core_calendar_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('status', 'scheduled')
+
+  const calendarEmpty = (scheduledCount ?? 0) === 0
+
+  if (!hasRecentPost && (hasConsistencyGap7d || calendarEmpty)) {
     return {
-      type: 'crisis',
-      confidence: negativeSentiment ? 0.85 : highBlockRate ? 0.80 : 0.70,
-      evidence: { negative_sentiment: negativeSentiment, follower_loss: followerLoss, high_block_rate: highBlockRate },
+      type: 'consistency_risk',
+      confidence: 0.80,
+      evidence: {
+        no_recent_post: !hasRecentPost,
+        consistency_gap_7d: hasConsistencyGap7d,
+        calendar_empty: calendarEmpty,
+      },
     }
   }
 
@@ -210,7 +223,7 @@ export async function runInflexionEngine(
     engagement_plateau: 'ENGAGEMENT_RECOVERY_V1',
     burnout_risk: 'RESCUE_CONSISTENCY_V1',
     monetization_ready: 'DEFINE_OFFER_V1',
-    crisis: 'CRISIS_RESPONSE_V1',
+    consistency_risk: 'RESCUE_CONSISTENCY_V1',
   }
 
   const typeMap: Record<InflexionType, 'alert' | 'upgrade' | 'downgrade' | 'mode_change'> = {
@@ -218,7 +231,7 @@ export async function runInflexionEngine(
     engagement_plateau: 'alert',
     burnout_risk: 'downgrade',
     monetization_ready: 'upgrade',
-    crisis: 'downgrade',
+    consistency_risk: 'alert',
   }
 
   const severityMap: Record<InflexionType, 'low' | 'med' | 'high'> = {
@@ -226,7 +239,7 @@ export async function runInflexionEngine(
     engagement_plateau: 'med',
     burnout_risk: 'high',
     monetization_ready: 'med',
-    crisis: 'high',
+    consistency_risk: 'high',
   }
 
   await admin.from('core_inflexion_events').insert({

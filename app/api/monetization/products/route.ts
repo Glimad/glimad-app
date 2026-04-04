@@ -4,13 +4,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { appendSignal } from '@/lib/brain'
-import { getProjectId } from '@/lib/supabase/project'
+import { getAuthUser } from '@/lib/supabase/extract-token'
 
 export async function GET(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const admin = createAdminClient()
-  const projectId = await getProjectId(req, admin)
+
+  const { data: project } = await admin
+    .from('projects')
+    .select('id')
+    .eq('user_id', user.id)
+    .neq('status', 'archived')
+    .single()
+  const projectId = project!.id
 
   let query = admin
     .from('monetization_products')
@@ -25,9 +35,19 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const body = await req.json()
   const admin = createAdminClient()
-  const projectId = await getProjectId(req, admin)
+
+  const { data: project } = await admin
+    .from('projects')
+    .select('id')
+    .eq('user_id', user.id)
+    .neq('status', 'archived')
+    .single()
+  const projectId = project!.id
 
   const { data: product } = await admin
     .from('monetization_products')
