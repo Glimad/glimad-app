@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 
 type Step = 'type' | 'topic' | 'generating' | 'review' | 'schedule' | 'done'
 
@@ -14,22 +14,27 @@ interface GeneratedContent {
   hashtags: string[]
 }
 
-const CONTENT_TYPES = [
-  { id: 'reel',              label: 'Reel',                 icon: '🎬', platforms: ['instagram', 'tiktok'] },
-  { id: 'carousel',          label: 'Carousel',             icon: '📸', platforms: ['instagram'] },
-  { id: 'story',             label: 'Story Series',         icon: '⭕', platforms: ['instagram'] },
-  { id: 'short_video',       label: 'Short Video',          icon: '📱', platforms: ['tiktok', 'youtube'] },
-  { id: 'series',            label: 'Series',               icon: '🎞️', platforms: ['tiktok'] },
-  { id: 'post',              label: 'Single Post',          icon: '🖼️', platforms: ['instagram', 'twitter'] },
-  { id: 'long_video',        label: 'Long Video',           icon: '🎥', platforms: ['youtube'] },
-  { id: 'community_post',    label: 'Community Post',       icon: '💬', platforms: ['youtube'] },
-  { id: 'playlist_desc',     label: 'Playlist Description', icon: '🎵', platforms: ['spotify'] },
-  { id: 'bio_update',        label: 'Bio Update',           icon: '✏️', platforms: ['spotify'] },
+const CONTENT_TYPE_DEFS = [
+  { id: 'reel',              icon: '🎬', platforms: ['instagram', 'tiktok'] },
+  { id: 'carousel',          icon: '📸', platforms: ['instagram'] },
+  { id: 'story',             icon: '⭕', platforms: ['instagram'] },
+  { id: 'short_video',       icon: '📱', platforms: ['tiktok', 'youtube'] },
+  { id: 'series',            icon: '🎞️', platforms: ['tiktok'] },
+  { id: 'post',              icon: '🖼️', platforms: ['instagram', 'twitter'] },
+  { id: 'long_video',        icon: '🎥', platforms: ['youtube'] },
+  { id: 'community_post',    icon: '💬', platforms: ['youtube'] },
+  { id: 'playlist_desc',     icon: '🎵', platforms: ['spotify'] },
+  { id: 'bio_update',        icon: '✏️', platforms: ['spotify'] },
 ]
 
 export default function StudioPage() {
-  const t = useTranslations('studio')
+  const t = useT('studio')
   const router = useRouter()
+
+  const CONTENT_TYPES = CONTENT_TYPE_DEFS.map(ct => ({
+    ...ct,
+    label: t(`content_types.${ct.id}`),
+  }))
 
   const [step, setStep] = useState<Step>('type')
   const [platform, setPlatform] = useState<string>('instagram')
@@ -52,6 +57,7 @@ export default function StudioPage() {
   }, [])
 
   const availableTypes = CONTENT_TYPES.filter(ct => ct.platforms.includes(platform))
+
 
   async function handleTypeSelect(type: string) {
     setContentType(type)

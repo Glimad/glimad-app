@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 }
 
 async function loadMessages(locale: string) {
-  const [auth, subscribe, dashboard, missions, common, onboarding, studio, calendar] = await Promise.all([
+  const [auth, subscribe, dashboard, missions, common, onboarding, studio, calendar, monetization, notifications, admin] = await Promise.all([
     import(`../messages/${locale}/auth.json`),
     import(`../messages/${locale}/subscribe.json`),
     import(`../messages/${locale}/dashboard.json`),
@@ -24,6 +24,9 @@ async function loadMessages(locale: string) {
     import(`../messages/${locale}/onboarding.json`),
     import(`../messages/${locale}/studio.json`),
     import(`../messages/${locale}/calendar.json`),
+    import(`../messages/${locale}/monetization.json`),
+    import(`../messages/${locale}/notifications.json`),
+    import(`../messages/${locale}/admin.json`),
   ])
   return {
     auth: auth.default,
@@ -34,6 +37,9 @@ async function loadMessages(locale: string) {
     onboarding: onboarding.default,
     studio: studio.default,
     calendar: calendar.default,
+    monetization: monetization.default,
+    notifications: notifications.default,
+    admin: admin.default,
   }
 }
 

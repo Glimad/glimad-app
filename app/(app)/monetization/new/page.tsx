@@ -2,19 +2,21 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-
-const PRODUCT_TYPES = [
-  { value: 'service', label: 'Service' },
-  { value: 'digital_product', label: 'Digital Product' },
-  { value: 'membership', label: 'Membership' },
-  { value: 'affiliate', label: 'Affiliate' },
-  { value: 'brand_deal', label: 'Brand Deal' },
-  { value: 'course', label: 'Course' },
-]
+import { useT } from '@/lib/i18n'
 
 export default function NewProductPage() {
+  const t = useT('monetization')
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+
+  const PRODUCT_TYPES = [
+    { value: 'service',          label: t('product_types.service') },
+    { value: 'digital_product',  label: t('product_types.digital_product') },
+    { value: 'membership',       label: t('product_types.membership') },
+    { value: 'affiliate',        label: t('product_types.affiliate') },
+    { value: 'brand_deal',       label: t('product_types.brand_deal') },
+    { value: 'course',           label: t('product_types.course') },
+  ]
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -39,36 +41,36 @@ export default function NewProductPage() {
 
   return (
     <div className="text-white max-w-xl mx-auto px-4 pt-8 pb-12">
-      <h1 className="text-2xl font-bold mb-2">Add Revenue Stream</h1>
-      <p className="text-zinc-500 text-sm mb-8">Add a product or service you offer to your audience</p>
+      <h1 className="text-2xl font-bold mb-2">{t('new_title')}</h1>
+      <p className="text-zinc-500 text-sm mb-8">{t('new_subtitle')}</p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Name</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_name')}</label>
           <input
             name="name"
             required
-            placeholder="e.g. 1:1 Coaching Session"
+            placeholder={t('form_name_placeholder')}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Type</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_type')}</label>
           <select
             name="type"
             required
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:border-violet-500"
           >
-            {PRODUCT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {PRODUCT_TYPES.map(pt => (
+              <option key={pt.value} value={pt.value}>{pt.label}</option>
             ))}
           </select>
         </div>
 
         <div className="flex gap-3">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Price</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_price')}</label>
             <input
               name="price_amount"
               type="number"
@@ -79,7 +81,7 @@ export default function NewProductPage() {
             />
           </div>
           <div className="w-28">
-            <label className="block text-sm font-medium text-zinc-300 mb-1">Currency</label>
+            <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_currency')}</label>
             <select
               name="price_currency"
               className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white focus:outline-none focus:border-violet-500"
@@ -92,16 +94,16 @@ export default function NewProductPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Platform (optional)</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_platform')}</label>
           <input
             name="platform"
-            placeholder="e.g. gumroad, patreon, instagram"
+            placeholder={t('form_platform_placeholder')}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">URL (optional)</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_url')}</label>
           <input
             name="url"
             type="url"
@@ -111,11 +113,11 @@ export default function NewProductPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-zinc-300 mb-1">Notes (optional)</label>
+          <label className="block text-sm font-medium text-zinc-300 mb-1">{t('form_notes')}</label>
           <textarea
             name="notes"
             rows={3}
-            placeholder="Additional details about this product..."
+            placeholder={t('form_notes_placeholder')}
             className="w-full px-4 py-3 rounded-lg bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500 resize-none"
           />
         </div>
@@ -126,14 +128,14 @@ export default function NewProductPage() {
             onClick={() => router.push('/monetization')}
             className="flex-1 px-5 py-3 rounded-lg border border-zinc-700 hover:border-zinc-500 text-zinc-300 font-semibold text-sm"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             type="submit"
             disabled={saving}
             className="flex-1 px-5 py-3 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white font-semibold text-sm"
           >
-            {saving ? 'Saving...' : 'Add Product'}
+            {saving ? t('saving') : t('add_product_btn')}
           </button>
         </div>
       </form>

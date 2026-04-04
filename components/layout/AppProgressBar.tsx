@@ -1,10 +1,16 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getGamificationState } from '@/lib/gamification'
+import { makeServerT } from '@/lib/i18n'
+import { defaultLocale } from '@/i18n.config'
 import Link from 'next/link'
 
 export default async function AppProgressBar() {
   const cookieStore = cookies()
+  const locale = cookieStore.get('NEXT_LOCALE')?.value ?? defaultLocale
+  const commonMessages = (await import(`@/messages/${locale}/common.json`)).default as Record<string, unknown>
+  const t = makeServerT(commonMessages)
+
   const supabaseRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]
   const authCookie = cookieStore.get(`sb-${supabaseRef}-auth-token`)
   if (!authCookie?.value?.startsWith('base64-')) return null
@@ -61,7 +67,7 @@ export default async function AppProgressBar() {
         {/* Level + XP */}
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xs text-zinc-400 whitespace-nowrap">
-            Lv.{gamification.level}
+            {t('progress.level')}{gamification.level}
           </span>
           <div className="w-20 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
             <div
@@ -70,7 +76,7 @@ export default async function AppProgressBar() {
             />
           </div>
           <span className="text-xs text-zinc-500 hidden sm:block whitespace-nowrap">
-            {gamification.xpInLevel}/{gamification.xpForNext} XP
+            {gamification.xpInLevel}/{gamification.xpForNext} {t('progress.xp')}
           </span>
         </div>
 

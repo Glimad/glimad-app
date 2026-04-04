@@ -1,16 +1,16 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { useT } from '@/lib/i18n'
 
 type Props = {
   user: { email: string } | null
 }
 
 export default function AuthMenu({ user }: Props) {
-  const t = useTranslations('common.header')
+  const t = useT('common.header')
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)

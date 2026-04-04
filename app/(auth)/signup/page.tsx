@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function SignupPage() {
-  const t = useTranslations('auth.signup')
+  const t = useT('auth.signup')
   const router = useRouter()
   const searchParams = useSearchParams()
   const supabase = createClient()

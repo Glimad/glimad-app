@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useT } from '@/lib/i18n'
 
 interface AdminStats {
   userOverview: {
@@ -45,6 +46,7 @@ interface AdminStats {
 }
 
 export default function AdminPage() {
+  const t = useT('admin')
   const [stats, setStats] = useState<AdminStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -80,17 +82,17 @@ export default function AdminPage() {
 
   if (loading) return (
     <div className="text-white flex items-center justify-center min-h-96">
-      <div className="text-zinc-500">Loading admin data...</div>
+      <div className="text-zinc-500">{t('loading')}</div>
     </div>
   )
 
   if (error) return (
     <div className="text-white flex items-center justify-center min-h-96">
       <div className="text-center">
-        <p className="text-red-400 font-medium mb-2">Access denied</p>
+        <p className="text-red-400 font-medium mb-2">{t('access_denied')}</p>
         <p className="text-zinc-500 text-sm">{error}</p>
         <button onClick={() => router.push('/dashboard')} className="mt-4 text-violet-400 text-sm hover:underline">
-          Back to dashboard
+          {t('back_dashboard')}
         </button>
       </div>
     </div>
@@ -102,19 +104,19 @@ export default function AdminPage() {
     <div className="text-white">
       <div className="max-w-6xl mx-auto px-4 pt-8 pb-12">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold">Admin Panel</h1>
-          <p className="text-zinc-500 text-sm mt-1">Internal metrics — do not share</p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-zinc-500 text-sm mt-1">{t('subtitle')}</p>
         </div>
 
         {/* User Overview */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4">User Overview</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('user_overview')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: 'Total users', value: stats.userOverview.total },
-              { label: 'Completed onboarding', value: stats.userOverview.completedOnboarding },
-              { label: 'Paying users', value: stats.userOverview.paid },
-              { label: 'Users with missions', value: stats.userOverview.withMissions },
+              { label: t('total_users'), value: stats.userOverview.total },
+              { label: t('completed_onboarding'), value: stats.userOverview.completedOnboarding },
+              { label: t('paying_users'), value: stats.userOverview.paid },
+              { label: t('users_with_missions'), value: stats.userOverview.withMissions },
             ].map(stat => (
               <div key={stat.label} className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
                 <p className="text-xs text-zinc-500 mb-1">{stat.label}</p>
@@ -126,20 +128,20 @@ export default function AdminPage() {
 
         {/* A/B Test Results */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4">Onboarding A/B Results</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('ab_results')}</h2>
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left px-4 py-3 text-zinc-400 font-medium">Variant</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Sessions</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Converted</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Rate</th>
+                  <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t('variant')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('sessions')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('converted')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('rate')}</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.abResults.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-zinc-600">No A/B data yet</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-6 text-center text-zinc-600">{t('no_ab_data')}</td></tr>
                 ) : stats.abResults.map(row => (
                   <tr key={row.variant} className="border-b border-zinc-800/50">
                     <td className="px-4 py-3 font-mono text-xs text-zinc-300">{row.variant}</td>
@@ -155,22 +157,22 @@ export default function AdminPage() {
 
         {/* Mission Analytics */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4">Mission Analytics</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('mission_analytics')}</h2>
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left px-4 py-3 text-zinc-400 font-medium">Mission</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Total</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Completed</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Rate</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Abandoned</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Avg time</th>
+                  <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t('mission')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('total')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('completed')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('rate')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('abandoned')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('avg_time')}</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.missionAnalytics.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-center text-zinc-600">No mission data yet</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-6 text-center text-zinc-600">{t('no_mission_data')}</td></tr>
                 ) : stats.missionAnalytics.map(row => (
                   <tr key={row.template_code} className="border-b border-zinc-800/50">
                     <td className="px-4 py-3 font-mono text-xs text-zinc-300">{row.template_code}</td>
@@ -192,20 +194,20 @@ export default function AdminPage() {
 
         {/* Credit Consumption */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4">Credit Consumption</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('credit_consumption')}</h2>
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-800">
-                  <th className="text-left px-4 py-3 text-zinc-400 font-medium">Operation</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Uses</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Allowance</th>
-                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">Premium</th>
+                  <th className="text-left px-4 py-3 text-zinc-400 font-medium">{t('operation')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('uses')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('allowance')}</th>
+                  <th className="text-right px-4 py-3 text-zinc-400 font-medium">{t('premium')}</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.creditConsumption.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-6 text-center text-zinc-600">No credit data yet</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-6 text-center text-zinc-600">{t('no_credit_data')}</td></tr>
                 ) : stats.creditConsumption.map(row => (
                   <tr key={row.reason_key} className="border-b border-zinc-800/50">
                     <td className="px-4 py-3 font-mono text-xs text-zinc-300">{row.reason_key}</td>
@@ -221,10 +223,10 @@ export default function AdminPage() {
 
         {/* Feature Flags */}
         <section className="mb-10">
-          <h2 className="text-lg font-semibold mb-4">Feature Flags</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('feature_flags')}</h2>
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
             {stats.featureFlags.length === 0 ? (
-              <div className="px-4 py-6 text-center text-zinc-600">No feature flags configured</div>
+              <div className="px-4 py-6 text-center text-zinc-600">{t('no_flags')}</div>
             ) : stats.featureFlags.map(flag => (
               <div key={flag.id} className="px-4 py-3 flex items-center justify-between gap-4">
                 <div>
@@ -248,10 +250,10 @@ export default function AdminPage() {
 
         {/* Error Log */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-4">Recent Mission Failures</h2>
+          <h2 className="text-lg font-semibold mb-4">{t('error_log')}</h2>
           <div className="bg-zinc-900 rounded-xl border border-zinc-800 divide-y divide-zinc-800">
             {stats.errorLog.length === 0 ? (
-              <div className="px-4 py-6 text-center text-zinc-600">No failures — all good!</div>
+              <div className="px-4 py-6 text-center text-zinc-600">{t('no_failures')}</div>
             ) : stats.errorLog.map(err => (
               <div key={err.id} className="px-4 py-3">
                 <div className="flex items-center justify-between gap-4">

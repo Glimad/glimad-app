@@ -7,7 +7,54 @@ import { Resend } from 'resend'
 type AdminClient = ReturnType<typeof createAdminClient>
 
 const resend = new Resend(process.env.RESEND_API_KEY!)
-const FROM_EMAIL = 'Glimad <noreply@glimad.com>'
+const FROM_EMAIL = process.env.EMAIL_FROM!
+
+// ── Email copy (bilingual) ────────────────────────────────────────────────
+
+const COPY = {
+  en: {
+    mission_reminder: {
+      subject: '[Glimad] Your mission needs your input',
+      heading: 'Your mission is waiting',
+      body: (template: string) => `The mission <strong>${template}</strong> is waiting for your input for more than 24 hours.`,
+      sub: 'Complete it to keep your growth momentum going.',
+      cta: 'Continue Mission →',
+    },
+    weekly_digest: {
+      subject: '[Glimad] Your weekly growth summary',
+      heading: 'Your week in Glimad',
+      phase_label: 'Phase',
+      missions_label: 'Missions completed',
+      content_label: 'Content published',
+      followers_label: 'Follower change',
+      cta: 'View Dashboard →',
+    },
+  },
+  es: {
+    mission_reminder: {
+      subject: '[Glimad] Tu misión necesita tu respuesta',
+      heading: 'Tu misión está esperando',
+      body: (template: string) => `La misión <strong>${template}</strong> lleva más de 24 horas esperando tu respuesta.`,
+      sub: 'Complétala para mantener tu impulso de crecimiento.',
+      cta: 'Continuar misión →',
+    },
+    weekly_digest: {
+      subject: '[Glimad] Tu resumen semanal de crecimiento',
+      heading: 'Tu semana en Glimad',
+      phase_label: 'Fase',
+      missions_label: 'Misiones completadas',
+      content_label: 'Contenido publicado',
+      followers_label: 'Cambio de seguidores',
+      cta: 'Ver panel →',
+    },
+  },
+} as const
+
+type SupportedLocale = keyof typeof COPY
+
+function getCopy(locale: string): typeof COPY['en'] {
+  return (locale in COPY ? COPY[locale as SupportedLocale] : COPY.en) as typeof COPY['en']
+}
 
 // ── Core notification writer ──────────────────────────────────────────────
 
@@ -28,7 +75,7 @@ export async function sendNotification(
 ) {
   const channel = opts.deliveryChannel ?? 'in_app'
 
-  // Insert in-app notification record
+  // Insert in-app notification record (title/body stored for reference; UI renders from type+metadata)
   await admin.from('notifications').insert({
     project_id: opts.projectId,
     user_id: opts.userId,
@@ -77,6 +124,9 @@ export async function sendMissionReminders(admin: AdminClient) {
     const { data: authUser } = await admin.auth.admin.getUserById(project.user_id)
     if (!authUser.user?.email) continue
 
+    const userLocale: string = (authUser.user.user_metadata?.locale as string) ?? 'en'
+    const c = getCopy(userLocale).mission_reminder
+
     const template = mission.template_code.replace(/_V\d+$/, '').replace(/_/g, ' ')
 
     await sendNotification(admin, {
@@ -85,16 +135,16 @@ export async function sendMissionReminders(admin: AdminClient) {
       userEmail: authUser.user.email,
       type: 'mission_reminder',
       title: 'Mission waiting for your input',
-      body: `Your mission "${template}" is waiting for your response. Complete it to keep your growth on track.`,
+      body: `Your mission "${template}" is waiting for your response.`,
       deliveryChannel: 'email',
       metadata: { mission_instance_id: mission.id, template_code: mission.template_code },
-      emailSubject: `[Glimad] Your mission needs your input`,
+      emailSubject: c.subject,
       emailHtml: `
-        <h2>Your mission is waiting</h2>
-        <p>The mission <strong>${template}</strong> is waiting for your input for more than 24 hours.</p>
-        <p>Complete it to keep your growth momentum going.</p>
+        <h2>${c.heading}</h2>
+        <p>${c.body(template)}</p>
+        <p>${c.sub}</p>
         <a href="${process.env.NEXT_PUBLIC_APP_URL}/missions/${mission.id}" style="display:inline-block;padding:12px 24px;background:#7c3aed;color:white;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:16px">
-          Continue Mission →
+          ${c.cta}
         </a>
       `,
     })
@@ -164,6 +214,9 @@ export async function sendWeeklyDigests(admin: AdminClient) {
     const { data: authUser } = await admin.auth.admin.getUserById(project.user_id)
     if (!authUser.user?.email) continue
 
+    const userLocale: string = (authUser.user.user_metadata?.locale as string) ?? 'en'
+    const c = getCopy(userLocale).weekly_digest
+
     // Aggregate stats
     const [missionsResult, contentResult, metricsNow, metricsWeekAgo] = await Promise.all([
       admin.from('mission_instances').select('id', { count: 'exact', head: true })
@@ -181,6 +234,7 @@ export async function sendWeeklyDigests(admin: AdminClient) {
     const followersNow = metricsNow.data?.followers_count ?? 0
     const followersWeekAgo = metricsWeekAgo.data?.followers_count ?? 0
     const followerDelta = followersNow - followersWeekAgo
+    const followerDeltaStr = `${followerDelta >= 0 ? '+' : ''}${followerDelta}`
 
     await sendNotification(admin, {
       projectId: project.id,
@@ -188,20 +242,20 @@ export async function sendWeeklyDigests(admin: AdminClient) {
       userEmail: authUser.user.email,
       type: 'weekly_digest',
       title: 'Your weekly growth summary',
-      body: `${missionsCompleted} missions · ${contentPublished} posts · ${followerDelta >= 0 ? '+' : ''}${followerDelta} followers`,
+      body: `${missionsCompleted} missions · ${contentPublished} posts · ${followerDeltaStr} followers`,
       deliveryChannel: 'email',
       metadata: { missionsCompleted, contentPublished, followerDelta },
-      emailSubject: `[Glimad] Your weekly growth summary`,
+      emailSubject: c.subject,
       emailHtml: `
-        <h2>Your week in Glimad</h2>
-        <p>Phase: <strong>${project.phase_code ?? 'F0'}</strong></p>
+        <h2>${c.heading}</h2>
+        <p>${c.phase_label}: <strong>${project.phase_code ?? 'F0'}</strong></p>
         <table style="border-collapse:collapse;margin:16px 0">
-          <tr><td style="padding:8px 16px 8px 0;color:#a1a1aa">Missions completed</td><td style="padding:8px 0;font-weight:bold">${missionsCompleted}</td></tr>
-          <tr><td style="padding:8px 16px 8px 0;color:#a1a1aa">Content published</td><td style="padding:8px 0;font-weight:bold">${contentPublished}</td></tr>
-          <tr><td style="padding:8px 16px 8px 0;color:#a1a1aa">Follower change</td><td style="padding:8px 0;font-weight:bold;color:${followerDelta >= 0 ? '#10b981' : '#ef4444'}">${followerDelta >= 0 ? '+' : ''}${followerDelta}</td></tr>
+          <tr><td style="padding:8px 16px 8px 0;color:#a1a1aa">${c.missions_label}</td><td style="padding:8px 0;font-weight:bold">${missionsCompleted}</td></tr>
+          <tr><td style="padding:8px 16px 8px 0;color:#a1a1aa">${c.content_label}</td><td style="padding:8px 0;font-weight:bold">${contentPublished}</td></tr>
+          <tr><td style="padding:8px 16px 8px 0;color:#a1a1aa">${c.followers_label}</td><td style="padding:8px 0;font-weight:bold;color:${followerDelta >= 0 ? '#10b981' : '#ef4444'}">${followerDeltaStr}</td></tr>
         </table>
         <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display:inline-block;padding:12px 24px;background:#7c3aed;color:white;border-radius:8px;text-decoration:none;font-weight:bold;margin-top:8px">
-          View Dashboard →
+          ${c.cta}
         </a>
       `,
     })

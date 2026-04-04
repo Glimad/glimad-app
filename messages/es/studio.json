@@ -29,5 +29,17 @@
   "view_calendar": "Ver Calendario",
   "create_another": "Crear otro",
   "back_to_dashboard": "Volver al Dashboard",
-  "hashtag_recommendation": "(15–20 recomendados)"
+  "hashtag_recommendation": "(15–20 recomendados)",
+  "content_types": {
+    "reel": "Reel",
+    "carousel": "Carrusel",
+    "story": "Serie de Stories",
+    "short_video": "Video corto",
+    "series": "Serie",
+    "post": "Publicación",
+    "long_video": "Video largo",
+    "community_post": "Post comunidad",
+    "playlist_desc": "Descripción de playlist",
+    "bio_update": "Actualización de bio"
+  }
 }

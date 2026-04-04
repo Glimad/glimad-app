@@ -59,6 +59,12 @@
   "stat_posts_week": "Posts this week",
   "stat_credits_reset": "Days to reset",
   "no_stats": "—",
+  "monetization_heading": "Monetization",
+  "monetization_manage": "Manage →",
+  "kpi_total_revenue": "Total Revenue",
+  "kpi_this_month": "This Month",
+  "kpi_mrr": "MRR",
+  "kpi_active_streams": "Active Streams",
   "mission_types": {
     "discovery": "Discovery",
     "planning": "Planning",

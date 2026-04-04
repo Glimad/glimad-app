@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       name: body.name,
       type: body.type,
       price_amount: body.price_amount ?? null,
-      price_currency: body.price_currency ?? 'EUR',
+      price_currency: body.price_currency ?? process.env.DEFAULT_CURRENCY ?? 'EUR',
       status: body.status ?? 'active',
       platform: body.platform ?? null,
       url: body.url ?? null,

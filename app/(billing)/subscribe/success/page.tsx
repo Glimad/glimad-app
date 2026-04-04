@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 
 export default function SubscribeSuccessPage() {
-  const t = useTranslations('subscribe')
+  const t = useT('subscribe')
   const router = useRouter()
   const [timedOut, setTimedOut] = useState(false)
 

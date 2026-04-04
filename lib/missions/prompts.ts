@@ -14,8 +14,13 @@ export type PromptKey =
   | 'BATCH_CONFIG_V1'
   | 'BRAND_KIT_LITE_V1'
 
-export function buildPrompt(key: PromptKey, context: Record<string, unknown>): string {
-  switch (key) {
+const LANG_INSTRUCTION: Record<string, string> = {
+  es: '\n\nIMPORTANT: Write all text content (titles, descriptions, advice, hooks, scripts, captions, CTAs, rationale, etc.) in Spanish. JSON keys must remain in English exactly as specified in the structure above.',
+}
+
+export function buildPrompt(key: PromptKey, context: Record<string, unknown>, locale?: string): string {
+  const lang = locale && LANG_INSTRUCTION[locale] ? LANG_INSTRUCTION[locale] : ''
+  function core(): string { switch (key) {
     case 'VISION_PURPOSE_V1':
       return `You are Glimy, an AI creative strategist for content creators.
 
@@ -299,5 +304,6 @@ Make the brand kit specific to their niche and platform. Colors should reflect t
 
     default:
       return `Analyze the creator's situation and provide strategic recommendations. Return a JSON object with your analysis.`
-  }
+  } }
+  return core() + lang
 }

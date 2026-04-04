@@ -1,5 +1,7 @@
-import { getTranslations } from 'next-intl/server'
+import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { makeServerT } from '@/lib/i18n'
+import { defaultLocale } from '@/i18n.config'
 import CheckoutButton from './CheckoutButton'
 
 type Plan = {
@@ -9,7 +11,11 @@ type Plan = {
 }
 
 export default async function SubscribePage() {
-  const t = await getTranslations('subscribe')
+  const cookieStore = cookies()
+  const locale = cookieStore.get('NEXT_LOCALE')?.value ?? defaultLocale
+  const messages = (await import(`@/messages/${locale}/subscribe.json`)).default as Record<string, unknown>
+  const t = makeServerT(messages)
+
   const admin = createAdminClient()
 
   const { data: plans } = await admin

@@ -59,6 +59,12 @@
   "stat_posts_week": "Posts esta semana",
   "stat_credits_reset": "Días para reinicio",
   "no_stats": "—",
+  "monetization_heading": "Monetización",
+  "monetization_manage": "Gestionar →",
+  "kpi_total_revenue": "Ingresos Totales",
+  "kpi_this_month": "Este Mes",
+  "kpi_mrr": "MRR",
+  "kpi_active_streams": "Fuentes Activas",
   "mission_types": {
     "discovery": "Exploración",
     "planning": "Planificación",

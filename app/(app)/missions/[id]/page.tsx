@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 
 interface MissionStep {
   id: string
@@ -35,7 +35,7 @@ interface MissionInstance {
 export default function MissionPage() {
   const params = useParams()
   const router = useRouter()
-  const t = useTranslations('missions')
+  const t = useT('missions')
   const instanceId = params.id as string
 
   const [instance, setInstance] = useState<MissionInstance | null>(null)
@@ -98,7 +98,6 @@ export default function MissionPage() {
 
   const template = instance.mission_templates
 
-  // Read question/choices from the step row (written by runner when pausing)
   const waitingStep = steps.find(s => s.status === 'awaiting_input')
 
   const llmStepData = steps.find(s => s.step_type === 'llm_text' && s.status === 'completed')

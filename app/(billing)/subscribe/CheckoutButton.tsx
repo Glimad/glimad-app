@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 
 export default function CheckoutButton({ planCode }: { planCode: string }) {
-  const t = useTranslations('subscribe')
+  const t = useT('subscribe')
   const [loading, setLoading] = useState(false)
 
   async function handleClick() {

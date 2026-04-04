@@ -2,19 +2,21 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-
-const EVENT_TYPES = [
-  { value: 'sale', label: 'Sale' },
-  { value: 'refund', label: 'Refund' },
-  { value: 'subscription_start', label: 'Subscription Start' },
-  { value: 'subscription_cancel', label: 'Subscription Cancel' },
-  { value: 'lead', label: 'Lead' },
-  { value: 'inquiry', label: 'Inquiry' },
-]
+import { useT } from '@/lib/i18n'
 
 export default function AddEventForm({ productId }: { productId: string }) {
+  const t = useT('monetization')
   const router = useRouter()
   const [saving, setSaving] = useState(false)
+
+  const EVENT_TYPES = [
+    { value: 'sale',                 label: t('event_types.sale') },
+    { value: 'refund',               label: t('event_types.refund') },
+    { value: 'subscription_start',   label: t('event_types.subscription_start') },
+    { value: 'subscription_cancel',  label: t('event_types.subscription_cancel') },
+    { value: 'lead',                 label: t('event_types.lead') },
+    { value: 'inquiry',              label: t('event_types.inquiry') },
+  ]
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -42,19 +44,19 @@ export default function AddEventForm({ productId }: { productId: string }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-xs text-zinc-500 mb-1">Type</label>
+          <label className="block text-xs text-zinc-500 mb-1">{t('form_event_type')}</label>
           <select
             name="event_type"
             required
             className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm focus:outline-none focus:border-violet-500"
           >
-            {EVENT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {EVENT_TYPES.map(et => (
+              <option key={et.value} value={et.value}>{et.label}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Amount</label>
+          <label className="block text-xs text-zinc-500 mb-1">{t('form_amount')}</label>
           <input
             name="amount"
             type="number"
@@ -65,7 +67,7 @@ export default function AddEventForm({ productId }: { productId: string }) {
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Date</label>
+          <label className="block text-xs text-zinc-500 mb-1">{t('form_date')}</label>
           <input
             name="event_date"
             type="date"
@@ -76,10 +78,10 @@ export default function AddEventForm({ productId }: { productId: string }) {
       </div>
 
       <div>
-        <label className="block text-xs text-zinc-500 mb-1">Note (optional)</label>
+        <label className="block text-xs text-zinc-500 mb-1">{t('form_note')}</label>
         <input
           name="note"
-          placeholder="e.g. client name, campaign..."
+          placeholder={t('form_note_placeholder')}
           className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-white text-sm placeholder-zinc-600 focus:outline-none focus:border-violet-500"
         />
       </div>
@@ -89,7 +91,7 @@ export default function AddEventForm({ productId }: { productId: string }) {
         disabled={saving}
         className="px-5 py-2 rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white text-sm font-semibold"
       >
-        {saving ? 'Saving...' : 'Log Event'}
+        {saving ? t('saving') : t('log_event_btn')}
       </button>
     </form>
   )

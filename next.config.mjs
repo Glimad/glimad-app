@@ -1,7 +1,3 @@
-import createNextIntlPlugin from 'next-intl/plugin'
-
-const withNextIntl = createNextIntlPlugin('./i18n.ts')
-
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
@@ -21,7 +17,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'awaakurvnngazmnnmwza.supabase.co',
+        hostname: new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname,
         pathname: '/storage/v1/object/public/**',
       },
     ],
@@ -43,4 +39,4 @@ const nextConfig = {
   },
 }
 
-export default withNextIntl(nextConfig)
+export default nextConfig

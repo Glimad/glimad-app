@@ -23,5 +23,29 @@
   "lang": {
     "es": "Español",
     "en": "English"
+  },
+  "offline": "No internet connection — changes will be saved when you reconnect",
+  "progress": {
+    "level": "Lv.",
+    "xp": "XP"
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "missions": "Missions",
+    "calendar": "Calendar",
+    "studio": "Studio",
+    "monetization": "Monetization"
+  },
+  "errors": {
+    "try_again": "Try again",
+    "back_dashboard": "Back to dashboard",
+    "dashboard_title": "Something went wrong",
+    "dashboard_sub": "We couldn't load your dashboard. This is usually temporary.",
+    "calendar_title": "Couldn't load calendar",
+    "calendar_sub": "Your content is safe. Try refreshing.",
+    "mission_title": "Mission couldn't load",
+    "mission_sub": "Your progress is saved. You can retry or return to the dashboard.",
+    "studio_title": "Studio unavailable",
+    "studio_sub": "No content was generated yet. Try again."
   }
 }

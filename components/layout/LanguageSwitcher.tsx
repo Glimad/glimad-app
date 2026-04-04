@@ -1,13 +1,12 @@
 'use client'
 
-import { useTranslations } from 'next-intl'
 import { useState, useRef, useEffect } from 'react'
 import { locales } from '@/i18n.config'
-import { useLocaleSwitch } from './ClientLocaleProvider'
+import { useT, useLocaleSwitch } from '@/lib/i18n'
 
 export default function LanguageSwitcher() {
   const { locale, switchLocale } = useLocaleSwitch()
-  const t = useTranslations('common.lang')
+  const t = useT('common.lang')
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 

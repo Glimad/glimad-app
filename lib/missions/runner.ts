@@ -71,7 +71,8 @@ export async function createMissionInstance(
 
 export async function executeMission(
   admin: AdminClient,
-  instanceId: string
+  instanceId: string,
+  locale?: string
 ): Promise<void> {
   const { data: instance } = await admin
     .from('mission_instances')
@@ -158,7 +159,7 @@ export async function executeMission(
         if (!check.success) {
           let retried: Record<string, unknown>
           try {
-            retried = await callLlmStep(llmStepDef, brainContext)
+            retried = await callLlmStep(llmStepDef, brainContext, locale)
           } catch (retryErr) {
             const msg = retryErr instanceof Error ? retryErr.message : String(retryErr)
             await admin.from('mission_steps').upsert({
@@ -190,7 +191,7 @@ export async function executeMission(
 
     let stepOutput: unknown
     try {
-      stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext)
+      stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext, locale)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err)
       await admin.from('mission_steps').upsert({
@@ -304,7 +305,8 @@ export async function executeMission(
 // Used by executeStep (normal execution) and the end-of-mission output guard.
 async function callLlmStep(
   step: MissionStep,
-  brainContext: Record<string, unknown>
+  brainContext: Record<string, unknown>,
+  locale?: string
 ): Promise<Record<string, unknown>> {
   const promptKey = step.config.prompt_key as PromptKey
   const modelConfig = step.config.model ?? 'haiku'
@@ -314,7 +316,7 @@ async function callLlmStep(
       ? process.env.ANTHROPIC_MODEL_SONNET!
       : process.env.ANTHROPIC_MODEL_HAIKU!
   const maxTokens = model.includes('sonnet') || model.includes('opus') ? 2048 : 1024
-  const prompt = buildPrompt(promptKey, brainContext)
+  const prompt = buildPrompt(promptKey, brainContext, locale)
   const schema = PROMPT_SCHEMAS[promptKey]
 
   const attempt = async (): Promise<Record<string, unknown>> => {
@@ -342,7 +344,8 @@ async function executeStep(
   projectId: string,
   instanceId: string,
   step: MissionStep,
-  brainContext: Record<string, unknown>
+  brainContext: Record<string, unknown>,
+  locale?: string
 ): Promise<unknown> {
   switch (step.step_type) {
     case 'brain_read': {
@@ -358,7 +361,7 @@ async function executeStep(
     }
 
     case 'llm_text': {
-      return callLlmStep(step, brainContext)
+      return callLlmStep(step, brainContext, locale)
     }
 
     case 'user_input': {
@@ -470,7 +473,8 @@ async function executeStep(
 export async function resumeMissionAfterInput(
   admin: AdminClient,
   instanceId: string,
-  userInputs: Record<string, unknown>
+  userInputs: Record<string, unknown>,
+  locale?: string
 ): Promise<void> {
   const { data: instance } = await admin
     .from('mission_instances')
@@ -500,5 +504,5 @@ export async function resumeMissionAfterInput(
 
   // Continue execution — this will skip completed steps (including user_input),
   // reconstruct brainContext from their DB outputs, and run remaining steps
-  await executeMission(admin, instanceId)
+  await executeMission(admin, instanceId, locale)
 }

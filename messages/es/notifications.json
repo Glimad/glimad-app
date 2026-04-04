@@ -1,0 +1,33 @@
+{
+  "title": "Notificaciones",
+  "unread": "{count} sin leer",
+  "mark_all_read": "Marcar todo como leído",
+  "marking": "Marcando...",
+  "no_notifications": "Sin notificaciones aún",
+  "no_notifications_sub": "Las actualizaciones de misiones y resúmenes semanales aparecerán aquí",
+  "just_now": "Ahora mismo",
+  "hours_ago": "hace {hours}h",
+  "days_ago": "hace {days}d",
+  "types": {
+    "mission_reminder": {
+      "title": "Misión esperando tu respuesta",
+      "body": "Tu misión \"{template}\" necesita tu respuesta. Mantén tu ritmo de crecimiento."
+    },
+    "publish_success": {
+      "title": "Contenido publicado",
+      "body": "Tu {content_type} fue publicado en {platform}."
+    },
+    "publish_failed": {
+      "title": "Error al publicar",
+      "body": "No se pudo publicar en {platform}."
+    },
+    "weekly_digest": {
+      "title": "Tu resumen semanal de crecimiento",
+      "body": "{missions} misiones · {posts} posts · {followers_delta} seguidores"
+    },
+    "capability_followup": {
+      "title": "Nueva función disponible",
+      "body": "Una nueva función está lista para explorar."
+    }
+  }
+}

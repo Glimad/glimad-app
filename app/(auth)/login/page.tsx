@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
 
 export default function LoginPage() {
-  const t = useTranslations('auth.login')
+  const t = useT('auth.login')
   const router = useRouter()
   const supabase = createClient()
   const [email, setEmail] = useState('')

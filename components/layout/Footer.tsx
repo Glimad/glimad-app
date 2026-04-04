@@ -1,9 +1,11 @@
-import { getTranslations } from 'next-intl/server'
-import Image from 'next/image'
+'use client'
 
-export default async function Footer() {
+import Image from 'next/image'
+import { useT } from '@/lib/i18n'
+
+export default function Footer() {
+  const t = useT('common.footer')
   const logoIcon = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/public-assets/logo-icon.png`
-  const t = await getTranslations('common.footer')
 
   return (
     <footer className="border-t border-zinc-800 bg-black">

@@ -1,7 +1,9 @@
-import { useTranslations } from 'next-intl'
+'use client'
+
+import { useT } from '@/lib/i18n'
 
 export default function VerifyPage() {
-  const t = useTranslations('auth.verify')
+  const t = useT('auth.verify')
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-black">

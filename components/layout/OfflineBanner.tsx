@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useT } from '@/lib/i18n'
 
 export default function OfflineBanner() {
+  const t = useT('common')
   const [offline, setOffline] = useState(false)
 
   useEffect(() => {
@@ -22,7 +24,7 @@ export default function OfflineBanner() {
 
   return (
     <div className="fixed top-14 left-0 right-0 z-50 bg-amber-600 text-white text-center text-sm py-2 px-4 font-medium">
-      No internet connection — changes will be saved when you reconnect
+      {t('offline')}
     </div>
   )
 }

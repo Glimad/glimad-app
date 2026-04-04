@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 import { ONBOARDING_QUESTIONS, TOTAL_STEPS, FLOW_A_VALUE, FLOW_A_VALUE_EN } from '@/lib/onboarding/config'
 
 type Answers = Record<string, string | string[]>
@@ -15,7 +15,7 @@ function getBrowserMeta(): { locale: string; timezone: string } {
 }
 
 export default function OnboardingPage() {
-  const t = useTranslations('onboarding')
+  const t = useT('onboarding')
   const router = useRouter()
 
   const [sessionId, setSessionId] = useState<string | null>(null)
@@ -36,7 +36,6 @@ export default function OnboardingPage() {
     const visitorId = localStorage.getItem('glimad_visitor_id') ?? crypto.randomUUID()
     localStorage.setItem('glimad_visitor_id', visitorId)
 
-    // Resume existing session from cookie if present
     const existingSid = document.cookie
       .split('; ')
       .find(row => row.startsWith('glimad_onboarding_sid='))
@@ -56,7 +55,6 @@ export default function OnboardingPage() {
       .then(data => {
         const sid = data.onboarding_session_id
         setSessionId(sid)
-        // Persist session ID in cookie so page refresh doesn't lose it
         document.cookie = `glimad_onboarding_sid=${sid}; path=/; max-age=86400; SameSite=Lax`
       })
   }, [])
@@ -86,7 +84,6 @@ export default function OnboardingPage() {
     const isOnPlatformStep = step === TOTAL_STEPS - 1
 
     if (isOnPlatformStep) {
-      // Save platform answer via PATCH
       await fetch(`/api/onboarding/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -99,7 +96,6 @@ export default function OnboardingPage() {
         platformSelected === FLOW_A_VALUE_EN
 
       if (isNoPlatform) {
-        // Flow A: no platform → complete and go to signup
         await fetch(`/api/onboarding/${sessionId}/complete`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -108,11 +104,9 @@ export default function OnboardingPage() {
         document.cookie = 'glimad_onboarding_sid=; path=/; max-age=0'
         router.push(`/signup?sid=${sessionId}`)
       } else {
-        // Flow B: has a real platform → show handle collection step
         setShowHandleStep(true)
       }
     } else {
-      // Regular step: PATCH and advance
       await fetch(`/api/onboarding/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -154,7 +148,6 @@ export default function OnboardingPage() {
 
   const progressPct = Math.round(((step + 1) / TOTAL_STEPS) * 100)
 
-  // ── Handle step (Flow B) ──────────────────────────────────────────────────
   if (showHandleStep) {
     const platformSelected = answers['platform_current'] as string
     const handleT = t.raw('questions.handle_current') as Record<string, string>
@@ -171,7 +164,6 @@ export default function OnboardingPage() {
             <p className="text-zinc-400">{t('subtitle')}</p>
           </div>
 
-          {/* Progress: step 7 of 7 */}
           <div className="space-y-2">
             <p className="text-xs text-zinc-500 text-right">
               {t('step_of', { step: TOTAL_STEPS + 1, total: TOTAL_STEPS + 1 })}
@@ -214,7 +206,6 @@ export default function OnboardingPage() {
     )
   }
 
-  // ── Regular question steps ────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-lg space-y-8">

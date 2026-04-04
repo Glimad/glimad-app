@@ -23,11 +23,13 @@ export async function POST(req: NextRequest) {
 
   if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
+  const locale = req.cookies.get('NEXT_LOCALE')?.value ?? 'en'
+
   await onMissionStart(admin, project.id)
   const instanceId = await createMissionInstance(admin, project.id, template_code)
 
   // Execute mission synchronously — runs until completed or needs_user_input
-  await executeMission(admin, instanceId)
+  await executeMission(admin, instanceId, locale)
 
   return NextResponse.json({ instance_id: instanceId })
 }

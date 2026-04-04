@@ -3,17 +3,19 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, CalendarDays, Wand2, DollarSign, Target } from 'lucide-react'
-
-const NAV_ITEMS = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/missions', icon: Target, label: 'Missions' },
-  { href: '/calendar', icon: CalendarDays, label: 'Calendar' },
-  { href: '/studio', icon: Wand2, label: 'Studio' },
-  { href: '/monetization', icon: DollarSign, label: 'Monetization' },
-]
+import { useT } from '@/lib/i18n'
 
 export default function AppSidebar() {
   const pathname = usePathname()
+  const t = useT('common.sidebar')
+
+  const NAV_ITEMS = [
+    { href: '/dashboard', icon: LayoutDashboard, label: t('dashboard') },
+    { href: '/missions', icon: Target, label: t('missions') },
+    { href: '/calendar', icon: CalendarDays, label: t('calendar') },
+    { href: '/studio', icon: Wand2, label: t('studio') },
+    { href: '/monetization', icon: DollarSign, label: t('monetization') },
+  ]
 
   return (
     <nav className="fixed top-14 left-0 bottom-0 w-14 z-30 bg-zinc-950 border-r border-zinc-800 flex flex-col items-center py-3 gap-1">

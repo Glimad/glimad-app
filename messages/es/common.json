@@ -23,5 +23,29 @@
   "lang": {
     "es": "Español",
     "en": "English"
+  },
+  "offline": "Sin conexión a internet — los cambios se guardarán al reconectarte",
+  "progress": {
+    "level": "Nv.",
+    "xp": "XP"
+  },
+  "sidebar": {
+    "dashboard": "Panel",
+    "missions": "Misiones",
+    "calendar": "Calendario",
+    "studio": "Studio",
+    "monetization": "Monetización"
+  },
+  "errors": {
+    "try_again": "Intentar de nuevo",
+    "back_dashboard": "Volver al panel",
+    "dashboard_title": "Algo salió mal",
+    "dashboard_sub": "No pudimos cargar tu panel. Esto suele ser temporal.",
+    "calendar_title": "No se pudo cargar el calendario",
+    "calendar_sub": "Tu contenido está seguro. Intenta actualizar la página.",
+    "mission_title": "La misión no se pudo cargar",
+    "mission_sub": "Tu progreso está guardado. Puedes reintentar o volver al panel.",
+    "studio_title": "Studio no disponible",
+    "studio_sub": "No se generó contenido aún. Inténtalo de nuevo."
   }
 }

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useTranslations } from 'next-intl'
+import { useT } from '@/lib/i18n'
 import { useRouter } from 'next/navigation'
 
 interface CalendarItem {
@@ -32,7 +32,7 @@ const STATE_DOTS: Record<string, string> = {
 }
 
 export default function CalendarPage() {
-  const t = useTranslations('calendar')
+  const t = useT('calendar')
   const router = useRouter()
 
   const now = new Date()
@@ -97,7 +97,6 @@ export default function CalendarPage() {
     setUpdatingId(itemId)
     const scheduled_at = newScheduledAt ? new Date(newScheduledAt).toISOString() : null
     const body: Record<string, unknown> = { scheduled_at }
-    // Draft → scheduled transition when approving
     if (selected?.state === 'draft' && scheduled_at) body.state = 'scheduled'
     const res = await fetch(`/api/calendar/${itemId}`, {
       method: 'PATCH',

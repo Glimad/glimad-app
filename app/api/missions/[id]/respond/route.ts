@@ -10,9 +10,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const inputs = await req.json()
+  const locale = req.cookies.get('NEXT_LOCALE')?.value ?? 'en'
   const admin = createAdminClient()
 
-  await resumeMissionAfterInput(admin, params.id, inputs)
+  await resumeMissionAfterInput(admin, params.id, inputs, locale)
 
   return NextResponse.json({ status: 'completed' })
 }

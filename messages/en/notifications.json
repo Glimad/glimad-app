@@ -1,0 +1,33 @@
+{
+  "title": "Notifications",
+  "unread": "{count} unread",
+  "mark_all_read": "Mark all read",
+  "marking": "Marking...",
+  "no_notifications": "No notifications yet",
+  "no_notifications_sub": "Mission updates and digest summaries will appear here",
+  "just_now": "Just now",
+  "hours_ago": "{hours}h ago",
+  "days_ago": "{days}d ago",
+  "types": {
+    "mission_reminder": {
+      "title": "Mission waiting for your input",
+      "body": "Your \"{template}\" mission needs your response. Keep your growth on track."
+    },
+    "publish_success": {
+      "title": "Content published",
+      "body": "Your {content_type} was published on {platform}."
+    },
+    "publish_failed": {
+      "title": "Publishing failed",
+      "body": "Could not publish on {platform}."
+    },
+    "weekly_digest": {
+      "title": "Your weekly growth summary",
+      "body": "{missions} missions · {posts} posts · {followers_delta} followers"
+    },
+    "capability_followup": {
+      "title": "New capability available",
+      "body": "A new feature is ready for you to explore."
+    }
+  }
+}

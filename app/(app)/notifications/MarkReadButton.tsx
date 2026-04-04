@@ -2,8 +2,10 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useT } from '@/lib/i18n'
 
 export default function MarkReadButton({ ids }: { ids: string[] }) {
+  const t = useT('notifications')
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
@@ -24,7 +26,7 @@ export default function MarkReadButton({ ids }: { ids: string[] }) {
       disabled={loading}
       className="text-xs text-violet-400 hover:text-violet-300 disabled:opacity-50 transition-colors"
     >
-      {loading ? 'Marking...' : 'Mark all read'}
+      {loading ? t('marking') : t('mark_all_read')}
     </button>
   )
 }

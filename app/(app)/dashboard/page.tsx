@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
-import { getTranslations, getLocale } from 'next-intl/server'
+import { makeServerT } from '@/lib/i18n'
+import { defaultLocale } from '@/i18n.config'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
 import { runInflexionEngine } from '@/lib/engines/inflexion-engine'
 import { runPolicyEngine } from '@/lib/engines/policy-engine'
@@ -30,12 +31,10 @@ const PHASE_RANK: Record<string, number> = {
 }
 
 export default async function DashboardPage() {
-  const [t, locale] = await Promise.all([
-    getTranslations('dashboard'),
-    getLocale(),
-  ])
-
   const cookieStore = cookies()
+  const locale = cookieStore.get('NEXT_LOCALE')?.value ?? defaultLocale
+  const dashboardMessages = (await import(`@/messages/${locale}/dashboard.json`)).default as Record<string, unknown>
+  const t = makeServerT(dashboardMessages)
   const supabaseRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split('.')[0]
   const authCookie = cookieStore.get(`sb-${supabaseRef}-auth-token`)
   const admin = createAdminClient()
@@ -325,24 +324,24 @@ export default async function DashboardPage() {
         {monetizationKpis && (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-semibold text-zinc-300">Monetization</h2>
-              <a href="/monetization" className="text-xs text-violet-400 hover:text-violet-300">Manage →</a>
+              <h2 className="text-base font-semibold text-zinc-300">{t('monetization_heading')}</h2>
+              <a href="/monetization" className="text-xs text-violet-400 hover:text-violet-300">{t('monetization_manage')}</a>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-1">Total Revenue</p>
+                <p className="text-xs text-zinc-500 mb-1">{t('kpi_total_revenue')}</p>
                 <p className="text-xl font-bold text-white">€{monetizationKpis.totalRevenue.toFixed(0)}</p>
               </div>
               <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-1">This Month</p>
+                <p className="text-xs text-zinc-500 mb-1">{t('kpi_this_month')}</p>
                 <p className="text-xl font-bold text-white">€{monetizationKpis.thisMonthRevenue.toFixed(0)}</p>
               </div>
               <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-1">MRR</p>
+                <p className="text-xs text-zinc-500 mb-1">{t('kpi_mrr')}</p>
                 <p className="text-xl font-bold text-white">€{monetizationKpis.mrr.toFixed(0)}</p>
               </div>
               <div className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-1">Active Streams</p>
+                <p className="text-xs text-zinc-500 mb-1">{t('kpi_active_streams')}</p>
                 <p className="text-xl font-bold text-white">{monetizationKpis.activeStreams}</p>
               </div>
             </div>

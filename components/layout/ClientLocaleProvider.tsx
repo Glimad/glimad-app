@@ -1,24 +1,9 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { NextIntlClientProvider } from 'next-intl'
+import { useState } from 'react'
+import { LocaleContext } from '@/lib/i18n'
 
 type Messages = Record<string, unknown>
-
-interface LocaleContextValue {
-  locale: string
-  switchLocale: (next: string) => void
-}
-
-const LocaleContext = createContext<LocaleContextValue>({
-  locale: 'es',
-  switchLocale: () => {},
-})
-
-export function useLocaleSwitch() {
-  return useContext(LocaleContext)
-}
 
 export default function ClientLocaleProvider({
   locale: initialLocale,
@@ -30,20 +15,23 @@ export default function ClientLocaleProvider({
   children: React.ReactNode
 }) {
   const [locale, setLocale] = useState(initialLocale)
-  const router = useRouter()
+  const [messages, setMessages] = useState<Messages>(allMessages[initialLocale] ?? {})
 
   function switchLocale(next: string) {
     if (next === locale) return
     document.cookie = `NEXT_LOCALE=${next}; path=/; max-age=31536000`
     setLocale(next)
-    router.refresh()
+    setMessages(allMessages[next] ?? {})
+    fetch('/api/user/locale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale: next }),
+    })
   }
 
   return (
-    <LocaleContext.Provider value={{ locale, switchLocale }}>
-      <NextIntlClientProvider locale={locale} messages={allMessages[locale]}>
-        {children}
-      </NextIntlClientProvider>
+    <LocaleContext.Provider value={{ locale, messages, switchLocale }}>
+      {children}
     </LocaleContext.Provider>
   )
 }
