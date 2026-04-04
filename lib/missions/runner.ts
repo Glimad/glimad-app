@@ -436,7 +436,7 @@ async function executeStep(
             asset_id: null,
             content_type: (post['format'] as string) ?? 'post',
             platform,
-            state: 'draft',
+            status: 'draft',
             scheduled_at: null,
           })
         }

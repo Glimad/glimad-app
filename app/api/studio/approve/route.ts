@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       content_type,
       platform: content.platform ?? null,
       scheduled_at: scheduled_at ?? null,
-      state: scheduled_at ? 'scheduled' : 'draft',
+      status: scheduled_at ? 'scheduled' : 'draft',
     })
     .select('id')
     .single()

@@ -8,14 +8,14 @@ interface CalendarItem {
   id: string
   content_type: string
   platform: string | null
-  state: 'draft' | 'scheduled' | 'published' | 'failed' | 'paused'
+  status: 'draft' | 'scheduled' | 'published' | 'failed' | 'paused'
   scheduled_at: string | null
   created_at: string
   core_assets: { content: Record<string, unknown> } | null
   core_outputs: { content: Record<string, unknown> } | null
 }
 
-const STATE_COLORS: Record<string, string> = {
+const STATUS_COLORS: Record<string, string> = {
   scheduled: 'bg-blue-900 text-blue-300 border-blue-700',
   published: 'bg-green-900 text-green-300 border-green-700',
   failed: 'bg-red-900 text-red-300 border-red-700',
@@ -23,7 +23,7 @@ const STATE_COLORS: Record<string, string> = {
   paused: 'bg-yellow-900 text-yellow-300 border-yellow-700',
 }
 
-const STATE_DOTS: Record<string, string> = {
+const STATUS_DOTS: Record<string, string> = {
   scheduled: 'bg-blue-400',
   published: 'bg-green-400',
   failed: 'bg-red-400',
@@ -79,17 +79,17 @@ export default function CalendarPage() {
     })
   }
 
-  async function updateState(itemId: string, state: string) {
+  async function updateStatus(itemId: string, status: string) {
     setUpdatingId(itemId)
     const res = await fetch(`/api/calendar/${itemId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ state }),
+      body: JSON.stringify({ status }),
     })
     const data = await res.json()
-    setItems(prev => prev.map(i => i.id === itemId ? { ...i, state: data.item.state } : i))
-    setDrafts(prev => prev.map(i => i.id === itemId ? { ...i, state: data.item.state } : i))
-    if (selected?.id === itemId) setSelected(prev => prev ? { ...prev, state: data.item.state } : null)
+    setItems(prev => prev.map(i => i.id === itemId ? { ...i, status: data.item.status } : i))
+    setDrafts(prev => prev.map(i => i.id === itemId ? { ...i, status: data.item.status } : i))
+    if (selected?.id === itemId) setSelected(prev => prev ? { ...prev, status: data.item.status } : null)
     setUpdatingId(null)
   }
 
@@ -97,7 +97,7 @@ export default function CalendarPage() {
     setUpdatingId(itemId)
     const scheduled_at = newScheduledAt ? new Date(newScheduledAt).toISOString() : null
     const body: Record<string, unknown> = { scheduled_at }
-    if (selected?.state === 'draft' && scheduled_at) body.state = 'scheduled'
+    if (selected?.status === 'draft' && scheduled_at) body.status = 'scheduled'
     const res = await fetch(`/api/calendar/${itemId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -130,7 +130,7 @@ export default function CalendarPage() {
     new Date(2024, 0, i).toLocaleString(undefined, { weekday: 'short' })
   )
 
-  const STATE_LABELS: Record<string, string> = {
+  const STATUS_LABELS: Record<string, string> = {
     draft: t('state_draft'),
     scheduled: t('state_scheduled'),
     published: t('state_published'),
@@ -185,9 +185,9 @@ export default function CalendarPage() {
                         <button
                           key={item.id}
                           onClick={() => { setSelected(item); setRescheduling(false) }}
-                          className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 border ${STATE_COLORS[item.state]}`}
+                          className={`w-full text-left text-xs px-1.5 py-0.5 rounded truncate flex items-center gap-1 border ${STATUS_COLORS[item.status]}`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATE_DOTS[item.state]}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOTS[item.status]}`} />
                           {item.content_type}
                         </button>
                       ))}
@@ -208,9 +208,9 @@ export default function CalendarPage() {
                     <button
                       key={item.id}
                       onClick={() => { setSelected(item); setRescheduling(false) }}
-                      className={`w-full text-left px-4 py-3 rounded-xl border flex items-center gap-3 transition-colors hover:border-zinc-600 ${STATE_COLORS['draft']}`}
+                      className={`w-full text-left px-4 py-3 rounded-xl border flex items-center gap-3 transition-colors hover:border-zinc-600 ${STATUS_COLORS['draft']}`}
                     >
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${STATE_DOTS['draft']}`} />
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOTS['draft']}`} />
                       <span className="text-sm flex-1 capitalize">{item.content_type.replace(/_/g, ' ')}</span>
                       <span className="text-xs text-zinc-500">{t('state_draft')}</span>
                     </button>
@@ -224,8 +224,8 @@ export default function CalendarPage() {
             {selected ? (
               <div className="bg-zinc-900 rounded-xl border border-zinc-800 p-5 sticky top-4">
                 <div className="flex items-center justify-between mb-4">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATE_COLORS[selected.state]}`}>
-                    {STATE_LABELS[selected.state] ?? selected.state}
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATUS_COLORS[selected.status]}`}>
+                    {STATUS_LABELS[selected.status] ?? selected.status}
                   </span>
                   <button onClick={() => { setSelected(null); setRescheduling(false) }} className="text-zinc-500 hover:text-zinc-300 text-sm">✕</button>
                 </div>
@@ -274,10 +274,10 @@ export default function CalendarPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {selected.state === 'scheduled' && (
+                    {selected.status === 'scheduled' && (
                       <>
                         <button
-                          onClick={() => updateState(selected.id, 'published')}
+                          onClick={() => updateStatus(selected.id, 'published')}
                           disabled={!!updatingId}
                           className="w-full py-2 rounded-lg bg-green-800 hover:bg-green-700 text-green-200 text-sm font-medium disabled:opacity-40 transition-colors"
                         >
@@ -291,7 +291,7 @@ export default function CalendarPage() {
                           {t('reschedule')}
                         </button>
                         <button
-                          onClick={() => updateState(selected.id, 'paused')}
+                          onClick={() => updateStatus(selected.id, 'paused')}
                           disabled={!!updatingId}
                           className="w-full py-2 rounded-lg bg-yellow-900 hover:bg-yellow-800 text-yellow-200 text-sm font-medium disabled:opacity-40 transition-colors"
                         >
@@ -299,7 +299,7 @@ export default function CalendarPage() {
                         </button>
                       </>
                     )}
-                    {selected.state === 'draft' && (
+                    {selected.status === 'draft' && (
                       <button
                         onClick={() => { setRescheduling(true); setNewScheduledAt('') }}
                         disabled={!!updatingId}
@@ -308,19 +308,19 @@ export default function CalendarPage() {
                         {t('approve')}
                       </button>
                     )}
-                    {selected.state === 'paused' && (
+                    {selected.status === 'paused' && (
                       <button
-                        onClick={() => updateState(selected.id, 'scheduled')}
+                        onClick={() => updateStatus(selected.id, 'scheduled')}
                         disabled={!!updatingId}
                         className="w-full py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm font-medium disabled:opacity-40 transition-colors"
                       >
                         {updatingId === selected.id ? '...' : t('resume')}
                       </button>
                     )}
-                    {selected.state === 'failed' && (
+                    {selected.status === 'failed' && (
                       <>
                         <button
-                          onClick={() => updateState(selected.id, 'scheduled')}
+                          onClick={() => updateStatus(selected.id, 'scheduled')}
                           disabled={!!updatingId}
                           className="w-full py-2 rounded-lg bg-blue-900 hover:bg-blue-800 text-blue-200 text-sm font-medium disabled:opacity-40 transition-colors"
                         >
@@ -335,7 +335,7 @@ export default function CalendarPage() {
                         </button>
                       </>
                     )}
-                    {selected.state !== 'published' && (
+                    {selected.status !== 'published' && (
                       <button
                         onClick={() => deleteItem(selected.id)}
                         className="w-full py-2 rounded-lg bg-red-950 hover:bg-red-900 text-red-300 text-sm font-medium transition-colors"

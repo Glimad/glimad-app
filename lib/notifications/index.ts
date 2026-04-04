@@ -222,7 +222,7 @@ export async function sendWeeklyDigests(admin: AdminClient) {
       admin.from('mission_instances').select('id', { count: 'exact', head: true })
         .eq('project_id', project.id).eq('status', 'completed').gte('completed_at', weekAgo),
       admin.from('core_calendar_items').select('id', { count: 'exact', head: true })
-        .eq('project_id', project.id).eq('state', 'published').gte('published_at', weekAgo),
+        .eq('project_id', project.id).eq('status', 'published').gte('published_at', weekAgo),
       admin.from('platform_metrics').select('followers_count').eq('project_id', project.id)
         .order('fetched_at', { ascending: false }).limit(1).single(),
       admin.from('platform_metrics').select('followers_count').eq('project_id', project.id)

@@ -12,7 +12,6 @@ type AdminClient = ReturnType<typeof createAdminClient>
 export async function getMonetizationKpis(admin: AdminClient, projectId: string) {
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
 
   const [eventsResult, activeProductsResult] = await Promise.all([
     admin

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useT } from '@/lib/i18n'
 
-export default function NewProductPage() {
+function NewProductForm() {
   const t = useT('monetization')
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -154,5 +154,13 @@ export default function NewProductPage() {
         </div>
       </form>
     </div>
+  )
+}
+
+export default function NewProductPage() {
+  return (
+    <Suspense>
+      <NewProductForm />
+    </Suspense>
   )
 }

@@ -3,7 +3,8 @@
 
 import { getAuthUser } from '@/lib/supabase/extract-token'
 
-type AdminClient = { from: (table: string) => any }
+import { createAdminClient } from '@/lib/supabase/admin'
+type AdminClient = ReturnType<typeof createAdminClient>
 
 export async function getProjectId(req: Request, admin: AdminClient): Promise<string> {
   const user = await getAuthUser(req)

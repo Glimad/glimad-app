@@ -74,16 +74,16 @@ export async function computePhase(
       .single()
       .then(r => r.data ?? null),
     admin
-      .from('core_gamification')
+      .from('projects')
       .select('streak_days, energy')
-      .eq('project_id', projectId)
+      .eq('id', projectId)
       .single()
       .then(r => r.data ?? null),
     admin
       .from('core_calendar_items')
-      .select('id, state', { count: 'exact' })
+      .select('id, status', { count: 'exact' })
       .eq('project_id', projectId)
-      .in('state', ['scheduled', 'published'])
+      .in('status', ['scheduled', 'published'])
       .limit(100),
     admin
       .from('monetization_products')
@@ -113,8 +113,8 @@ export async function computePhase(
               .slice(-1)[0] ?? 0
   const streakDays: number =
     gamification?.streak_days ?? (facts['streak_days'] as number | null) ?? 0
-  const scheduledCalendarItems = (calendarResult.data ?? []).filter(i => i.state === 'scheduled').length
-  const publishedCalendarItems = (calendarResult.data ?? []).filter(i => i.state === 'published').length
+  const scheduledCalendarItems = (calendarResult.data ?? []).filter(i => i.status === 'scheduled').length
+  const publishedCalendarItems = (calendarResult.data ?? []).filter(i => i.status === 'published').length
 
   const monetizationProductsCount = monetizationProductsResult.count ?? 0
   const monetizationEvents = monetizationEventsResult.data ?? []

@@ -27,23 +27,23 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 
   const { data: current } = await admin
     .from('core_calendar_items')
-    .select('state')
+    .select('status')
     .eq('id', params.id)
     .eq('project_id', project!.id)
     .single()
 
-  if (body.state && current) {
-    const allowed = VALID_TRANSITIONS[current.state] ?? []
-    if (!allowed.includes(body.state)) {
+  if (body.status && current) {
+    const allowed = VALID_TRANSITIONS[current.status] ?? []
+    if (!allowed.includes(body.status)) {
       return NextResponse.json(
-        { error: `Cannot transition from ${current.state} to ${body.state}` },
+        { error: `Cannot transition from ${current.status} to ${body.status}` },
         { status: 422 },
       )
     }
   }
 
   const updates: Record<string, unknown> = {}
-  if (body.state) updates.state = body.state
+  if (body.status) updates.status = body.status
   if (body.scheduled_at !== undefined) updates.scheduled_at = body.scheduled_at
 
   const { data: item } = await admin
@@ -54,7 +54,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .select()
     .single()
 
-  if (body.state === 'published') {
+  if (body.status === 'published') {
     await appendSignal(admin, project!.id, 'content_published', {
       calendar_item_id: params.id,
       platform: item?.platform,

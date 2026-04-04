@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     ? new Date(parseInt(month.split('-')[0]), parseInt(month.split('-')[1]), 0, 23, 59, 59).toISOString()
     : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59).toISOString()
 
-  const selectFields = 'id, content_type, platform, state, scheduled_at, created_at, asset_id, output_id, core_assets(content), core_outputs(content)'
+  const selectFields = 'id, content_type, platform, status, scheduled_at, created_at, asset_id, output_id, core_assets(content), core_outputs(content)'
 
   const { data: scheduledItems } = await admin
     .from('core_calendar_items')
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     .from('core_calendar_items')
     .select(selectFields)
     .eq('project_id', project!.id)
-    .eq('state', 'draft')
+    .eq('status', 'draft')
     .is('scheduled_at', null)
     .order('created_at', { ascending: false })
 
