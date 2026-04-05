@@ -500,7 +500,7 @@ async function main() {
     buildSignal(aliceProjId, 'persona_defined',            { mission: 'AUDIENCE_PERSONA_V1' }, 'mission', 20),
     buildSignal(aliceProjId, 'content_style_defined',      { mission: 'CONTENT_COMFORT_STYLE_V1' }, 'mission', 25),
     buildSignal(aliceProjId, 'phase_changed',              { from: 'F2', to: 'F3' }, 'phase_engine', 10),
-    buildSignal(aliceProjId, 'monetization_ready',         { followers: 12400, avg_er: 3.2 }, 'inflexion', 5),
+    buildSignal(aliceProjId, 'monetize_ready',         { followers: 12400, avg_er: 3.2 }, 'inflexion', 5),
     buildSignal(aliceProjId, 'content_published',          { platform: 'instagram', content_type: 'carousel', scheduled_at: agoDate(1) }, 'calendar', 1),
     buildSignal(aliceProjId, 'content_published',          { platform: 'instagram', content_type: 'reel',     scheduled_at: agoDate(3) }, 'calendar', 3),
     buildSignal(aliceProjId, 'content_published',          { platform: 'instagram', content_type: 'carousel', scheduled_at: agoDate(5) }, 'calendar', 5),
@@ -526,7 +526,7 @@ async function main() {
     buildSignal(carolProjId, 'content_published',          { platform: 'instagram', content_type: 'reel', scheduled_at: agoDate(1) }, 'calendar', 1),
     buildSignal(carolProjId, 'content_published',          { platform: 'youtube', content_type: 'video', scheduled_at: agoDate(2) }, 'calendar', 2),
     buildSignal(carolProjId, 'collaboration.completed',    { partner: 'fitcoach_maria', platform: 'youtube', views: 85000 }, 'mission', 20),
-    buildSignal(carolProjId, 'monetization_ready',         { followers: 67000, avg_er: 4.8 }, 'inflexion', 20),
+    buildSignal(carolProjId, 'monetize_ready',         { followers: 67000, avg_er: 4.8 }, 'inflexion', 20),
     buildSignal(carolProjId, 'pulse_completed',            { action_items: 6 }, 'pulse', 0),
     buildSignal(carolProjId, 'pulse_completed',            { action_items: 4 }, 'pulse', 1),
   ]
@@ -760,6 +760,11 @@ async function main() {
 
   // ── 20. Core outputs (content assets) ───────────────────────────────────
   log('20. Core outputs')
+  // Delete calendar items first (FK dep), then outputs, so re-run is clean
+  await admin.from('core_calendar_items').delete().eq('project_id', aliceProjId)
+  await admin.from('core_calendar_items').delete().eq('project_id', carolProjId)
+  await admin.from('core_outputs').delete().eq('project_id', aliceProjId)
+  await admin.from('core_outputs').delete().eq('project_id', carolProjId)
   const aliceOut1 = uuid(); const aliceOut2 = uuid()
   const carolOut1 = uuid(); const carolOut2 = uuid(); const carolOut3 = uuid()
 

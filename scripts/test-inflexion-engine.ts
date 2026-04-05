@@ -5,15 +5,15 @@
 // then calling POST /api/engines and verifying the inflexion result.
 //
 // Inflexion types tested:
-//   1a. viral_spike     — content_perf.viral_spike signal in last 72h
-//   1b. viral_spike     — post reach 3x above 30d average
-//   1c. viral_spike     — follower growth 3x above 30d daily average
-//   2. crisis           — negative_sentiment signal in last 72h
-//   3. monetization_ready — followers >= 5000 + avg_er >= 3% + no prior signal
-//   4. engagement_plateau — no growth + avg_er < 2% for 14d
-//   5. burnout_risk     — consistency_gap + declining posts
-//   6. null (no inflexion) — clean state → engine returns null
-//   7. cooldown         — same inflexion type does not re-fire within 7 days
+//   1a. viral_spike          — content_perf.viral_spike signal in last 72h
+//   1b. viral_spike          — post reach 3x above 30d average
+//   1c. viral_spike          — follower growth 3x above 30d daily average
+//   2. consistency_break     — no recent post 7d + calendar empty (or consistency_gap)
+//   3. monetize_ready        — followers >= 5000 + avg_er >= 3% + no prior event
+//   4. plateau               — no growth + avg_er < 2% for 14d
+//   5. downgrade_candidate   — consistency_gap + declining posts
+//   6. null (no inflexion)   — clean state → engine returns null
+//   7. cooldown              — same inflexion type does not re-fire within 7 days
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -198,68 +198,51 @@ async function testViralSpike(projectId: string, token: string) {
   ok('evidence has follower_surge', !!(result3?.inflexion?.evidence?.follower_surge), `evidence: ${JSON.stringify(result3?.inflexion?.evidence)}`)
 }
 
-async function testCrisis(projectId: string, token: string) {
-  console.log('\n[2a] crisis — negative_sentiment signal in 72h')
+async function testConsistencyBreak(projectId: string, token: string) {
+  console.log('\n[2a] consistency_break — no recent post 7d + consistency_gap signal')
   await resetBrain(projectId)
-  await seedFact(projectId, 'followers_total', 5000)
+  await seedFact(projectId, 'followers_total', 800)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
-  await seedSignal(projectId, 'negative_sentiment', { reason: 'toxic_comments_spike', severity: 'high' }, 5)
+  // consistency_gap signal with days_since_last_post >= 7 (in 7d window)
+  await seedSignal(projectId, 'consistency_gap', { days_since_last_post: 9 }, 2)
+  // No content_published or consistency_maintained signals in 7d window
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
-  ok('inflexion type = crisis', result?.inflexion?.type === 'crisis', `got ${result?.inflexion?.type}`)
-  ok('confidence = 0.85 (negative_sentiment)', result?.inflexion?.confidence === 0.85, `got ${result?.inflexion?.confidence}`)
+  ok('inflexion type = consistency_break', result?.inflexion?.type === 'consistency_break', `got ${result?.inflexion?.type}`)
+  ok('confidence = 0.80', result?.inflexion?.confidence === 0.80, `got ${result?.inflexion?.confidence}`)
+  ok('evidence.no_recent_post = true', result?.inflexion?.evidence?.no_recent_post === true, `got ${result?.inflexion?.evidence?.no_recent_post}`)
 
   const event = await getLatestInflexionEvent(projectId)
   ok('core_inflexion_events row written', !!event, 'row missing')
-  ok('event_key = crisis', event?.event_key === 'crisis', `got ${event?.event_key}`)
-  ok('type = downgrade', event?.type === 'downgrade', `got ${event?.type}`)
-  ok('recommended_actions contains CRISIS_RESPONSE_V1', event?.recommended_actions?.includes('CRISIS_RESPONSE_V1'), JSON.stringify(event?.recommended_actions))
+  ok('event_key = consistency_break', event?.event_key === 'consistency_break', `got ${event?.event_key}`)
+  ok('type = alert', event?.type === 'alert', `got ${event?.type}`)
+  ok('severity = high', event?.severity === 'high', `got ${event?.severity}`)
+  ok('recommended_actions contains RESCUE_CONSISTENCY_V1', event?.recommended_actions?.includes('RESCUE_CONSISTENCY_V1'), JSON.stringify(event?.recommended_actions))
 
-  console.log('\n[2b] crisis — rapid follower loss (delta < -100) in 72h')
+  console.log('\n[2b] consistency_break suppressed — user posted recently (content_published in 7d)')
   await resetBrain(projectId)
-  await seedFact(projectId, 'followers_total', 5000)
+  await seedFact(projectId, 'followers_total', 800)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
-  await seedSignal(projectId, 'growth.followers_total', { value: 4800, delta: -200 }, 12)
+  await seedSignal(projectId, 'consistency_gap', { days_since_last_post: 9 }, 2)
+  // Recent post signal suppresses the inflexion
+  await seedSignal(projectId, 'content_published', { platform: 'instagram' }, 5) // 5 hours ago
 
   const result2 = await runEngines(token)
   ok('engines returns 200', !!result2, 'null response')
-  ok('inflexion type = crisis (follower loss)', result2?.inflexion?.type === 'crisis', `got ${result2?.inflexion?.type}`)
-  ok('confidence = 0.70 (follower_loss)', result2?.inflexion?.confidence === 0.70, `got ${result2?.inflexion?.confidence}`)
-  ok('evidence.follower_loss = true', result2?.inflexion?.evidence?.follower_loss === true, `got ${result2?.inflexion?.evidence?.follower_loss}`)
-
-  console.log('\n[2c] crisis — high block rate (> 5%) in 72h')
-  await resetBrain(projectId)
-  await seedFact(projectId, 'followers_total', 5000)
-  await seedFact(projectId, 'avg_engagement_rate', 0.03)
-  await seedSignal(projectId, 'block_rate', { rate: 0.08 }, 6)
-
-  const result3 = await runEngines(token)
-  ok('engines returns 200', !!result3, 'null response')
-  ok('inflexion type = crisis (block rate)', result3?.inflexion?.type === 'crisis', `got ${result3?.inflexion?.type}`)
-  ok('confidence = 0.80 (high block rate)', result3?.inflexion?.confidence === 0.80, `got ${result3?.inflexion?.confidence}`)
-  ok('evidence.high_block_rate = true', result3?.inflexion?.evidence?.high_block_rate === true, `got ${result3?.inflexion?.evidence?.high_block_rate}`)
-
-  console.log('\n[2d] crisis suppressed — follower loss delta = -50 (below threshold)')
-  await resetBrain(projectId)
-  await seedFact(projectId, 'current_followers', 2000)
-  await seedFact(projectId, 'avg_engagement_rate', 0.03)
-  await seedSignal(projectId, 'growth.followers_total', { value: 1950, delta: -50 }, 12)
-
-  const result4 = await runEngines(token)
-  ok('engines returns 200', !!result4, 'null response')
-  ok('crisis NOT triggered for delta=-50', result4?.inflexion?.type !== 'crisis', `got ${result4?.inflexion?.type}`)
+  ok('consistency_break suppressed when recent post exists', result2?.inflexion?.type !== 'consistency_break',
+    `got: ${result2?.inflexion?.type}`)
 }
 
-async function testMonetizationReady(projectId: string, token: string) {
-  console.log('\n[3] monetization_ready — current_followers >= 5000 + avg_er >= 3%')
+async function testMonetizeReady(projectId: string, token: string) {
+  console.log('\n[3] monetize_ready — current_followers >= 5000 + avg_er >= 3%')
   await resetBrain(projectId)
   await seedFact(projectId, 'current_followers', 7500)
   await seedFact(projectId, 'avg_engagement_rate', 0.045)
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
-  ok('inflexion type = monetization_ready', result?.inflexion?.type === 'monetization_ready', `got ${result?.inflexion?.type}`)
+  ok('inflexion type = monetize_ready', result?.inflexion?.type === 'monetize_ready', `got ${result?.inflexion?.type}`)
   ok('confidence = 0.8', result?.inflexion?.confidence === 0.8, `got ${result?.inflexion?.confidence}`)
 
   const event = await getLatestInflexionEvent(projectId)
@@ -267,16 +250,16 @@ async function testMonetizationReady(projectId: string, token: string) {
   ok('type = upgrade', event?.type === 'upgrade', `got ${event?.type}`)
   ok('recommended_actions contains DEFINE_OFFER_V1', event?.recommended_actions?.includes('DEFINE_OFFER_V1'), JSON.stringify(event?.recommended_actions))
 
-  console.log('\n[3b] monetization_ready suppressed — event already in last 90 days')
+  console.log('\n[3b] monetize_ready suppressed — event already in last 90 days')
   // Brain state still meets conditions but event already fired → should suppress
   const result2 = await runEngines(token)
   ok('engines returns 200', !!result2, 'null response')
-  ok('monetization_ready suppressed within 90d window', result2?.inflexion?.type !== 'monetization_ready',
+  ok('monetize_ready suppressed within 90d window', result2?.inflexion?.type !== 'monetize_ready',
     `got: ${result2?.inflexion?.type}`)
 }
 
-async function testEngagementPlateau(projectId: string, token: string) {
-  console.log('\n[4a] engagement_plateau — no growth (delta=0) + all ER signals < 2% for 14d')
+async function testPlateau(projectId: string, token: string) {
+  console.log('\n[4a] plateau — no growth (delta=0) + all ER signals < 2% for 14d')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 1200)
   await seedFact(projectId, 'avg_engagement_rate', 0.015)
@@ -289,15 +272,15 @@ async function testEngagementPlateau(projectId: string, token: string) {
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
-  ok('inflexion type = engagement_plateau', result?.inflexion?.type === 'engagement_plateau', `got ${result?.inflexion?.type}`)
+  ok('inflexion type = plateau', result?.inflexion?.type === 'plateau', `got ${result?.inflexion?.type}`)
   ok('confidence >= 0.7', (result?.inflexion?.confidence ?? 0) >= 0.7, `got ${result?.inflexion?.confidence}`)
 
   const event = await getLatestInflexionEvent(projectId)
   ok('core_inflexion_events row written', !!event, 'row missing')
-  ok('event_key = engagement_plateau', event?.event_key === 'engagement_plateau', `got ${event?.event_key}`)
+  ok('event_key = plateau', event?.event_key === 'plateau', `got ${event?.event_key}`)
   ok('severity = med', event?.severity === 'med', `got ${event?.severity}`)
 
-  console.log('\n[4b] engagement_plateau suppressed — positive delta present')
+  console.log('\n[4b] plateau suppressed — positive delta present')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 1200)
   await seedFact(projectId, 'avg_engagement_rate', 0.015)
@@ -309,10 +292,10 @@ async function testEngagementPlateau(projectId: string, token: string) {
 
   const result2 = await runEngines(token)
   ok('engines returns 200', !!result2, 'null response')
-  ok('engagement_plateau suppressed when delta > 0', result2?.inflexion?.type !== 'engagement_plateau',
+  ok('plateau suppressed when delta > 0', result2?.inflexion?.type !== 'plateau',
     `got: ${result2?.inflexion?.type}`)
 
-  console.log('\n[4c] engagement_plateau suppressed — ER spikes above 2% mid-window')
+  console.log('\n[4c] plateau suppressed — ER spikes above 2% mid-window')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 1200)
   await seedFact(projectId, 'avg_engagement_rate', 0.015)
@@ -323,12 +306,12 @@ async function testEngagementPlateau(projectId: string, token: string) {
 
   const result3 = await runEngines(token)
   ok('engines returns 200', !!result3, 'null response')
-  ok('engagement_plateau suppressed when any ER ≥ 2%', result3?.inflexion?.type !== 'engagement_plateau',
+  ok('plateau suppressed when any ER ≥ 2%', result3?.inflexion?.type !== 'plateau',
     `got: ${result3?.inflexion?.type}`)
 }
 
-async function testBurnoutRisk(projectId: string, token: string) {
-  console.log('\n[5a] burnout_risk — consistency_gap (6 days) + frequency dropping over 30d')
+async function testDowngradeCandidate(projectId: string, token: string) {
+  console.log('\n[5a] downgrade_candidate — consistency_gap (6 days) + frequency dropping over 30d')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 800)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
@@ -340,17 +323,17 @@ async function testBurnoutRisk(projectId: string, token: string) {
 
   const result = await runEngines(token)
   ok('engines returns 200', !!result, 'null response')
-  ok('inflexion type = burnout_risk', result?.inflexion?.type === 'burnout_risk', `got ${result?.inflexion?.type}`)
+  ok('inflexion type = downgrade_candidate', result?.inflexion?.type === 'downgrade_candidate', `got ${result?.inflexion?.type}`)
   ok('confidence >= 0.6', (result?.inflexion?.confidence ?? 0) >= 0.6, `got ${result?.inflexion?.confidence}`)
   ok('evidence has recent_posts_30d', result?.inflexion?.evidence?.recent_posts_30d === 8,
     `got: ${result?.inflexion?.evidence?.recent_posts_30d}`)
 
   const event = await getLatestInflexionEvent(projectId)
   ok('core_inflexion_events row written', !!event, 'row missing')
-  ok('event_key = burnout_risk', event?.event_key === 'burnout_risk', `got ${event?.event_key}`)
+  ok('event_key = downgrade_candidate', event?.event_key === 'downgrade_candidate', `got ${event?.event_key}`)
   ok('type = downgrade', event?.type === 'downgrade', `got ${event?.type}`)
 
-  console.log('\n[5b] burnout_risk suppressed — consistency_gap only 3 days (< 5)')
+  console.log('\n[5b] downgrade_candidate suppressed — consistency_gap only 3 days (< 5)')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 800)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
@@ -360,10 +343,10 @@ async function testBurnoutRisk(projectId: string, token: string) {
 
   const result2 = await runEngines(token)
   ok('engines returns 200', !!result2, 'null response')
-  ok('burnout_risk suppressed when gap < 5 days', result2?.inflexion?.type !== 'burnout_risk',
+  ok('downgrade_candidate suppressed when gap < 5 days', result2?.inflexion?.type !== 'downgrade_candidate',
     `got: ${result2?.inflexion?.type}`)
 
-  console.log('\n[5c] burnout_risk suppressed — frequency not dropping (stable or increasing)')
+  console.log('\n[5c] downgrade_candidate suppressed — frequency not dropping (stable or increasing)')
   await resetBrain(projectId)
   await seedFact(projectId, 'followers_total', 800)
   await seedFact(projectId, 'avg_engagement_rate', 0.03)
@@ -374,17 +357,17 @@ async function testBurnoutRisk(projectId: string, token: string) {
 
   const result3 = await runEngines(token)
   ok('engines returns 200', !!result3, 'null response')
-  ok('burnout_risk suppressed when frequency stable/increasing', result3?.inflexion?.type !== 'burnout_risk',
+  ok('downgrade_candidate suppressed when frequency stable/increasing', result3?.inflexion?.type !== 'downgrade_candidate',
     `got: ${result3?.inflexion?.type}`)
 }
 
 async function testNoInflexion(projectId: string, token: string) {
   console.log('\n[6] null (no inflexion) — clean state')
   await resetBrain(projectId)
-  // Low followers (< 5000 → no monetization_ready)
-  // avg_er > 2% → no engagement_plateau
-  // No negative signals → no crisis
-  // No consistency_gap → no burnout_risk
+  // Low followers (< 5000 → no monetize_ready)
+  // avg_er > 2% → no plateau
+  // No consistency_gap → no downgrade_candidate
+  // Recent post → no consistency_break
   // No viral signals → no viral_spike
   await seedFact(projectId, 'followers_total', 500)
   await seedFact(projectId, 'avg_engagement_rate', 0.025)
@@ -439,10 +422,10 @@ async function main() {
 
   try {
     await testViralSpike(projectId, token)
-    await testCrisis(projectId, token)
-    await testMonetizationReady(projectId, token)
-    await testEngagementPlateau(projectId, token)
-    await testBurnoutRisk(projectId, token)
+    await testConsistencyBreak(projectId, token)
+    await testMonetizeReady(projectId, token)
+    await testPlateau(projectId, token)
+    await testDowngradeCandidate(projectId, token)
     await testNoInflexion(projectId, token)
     await testCooldown(projectId, token)
   } catch (err) {

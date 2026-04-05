@@ -16,8 +16,12 @@ const env = Object.fromEntries(
 )
 const URL_BASE = 'http://localhost:3001'
 const SUPA_URL = env.NEXT_PUBLIC_SUPABASE_URL
+const SUPA_ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const SUPA_SERVICE = env.SUPABASE_SERVICE_ROLE_KEY
+// admin: service-role client for direct DB access — NEVER call auth.signInWithPassword on this
 const admin = createClient(SUPA_URL, SUPA_SERVICE, { auth: { persistSession: false } })
+// authClient: anon client used ONLY for signInWithPassword — keeps admin state clean
+const authClient = createClient(SUPA_URL, SUPA_ANON, { auth: { persistSession: false } })
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 let passed = 0, failed = 0, warns = 0
@@ -39,7 +43,7 @@ async function api(token, method, path, body) {
 }
 
 async function getToken(email, password) {
-  const { data, error } = await admin.auth.signInWithPassword({ email, password })
+  const { data, error } = await authClient.auth.signInWithPassword({ email, password })
   if (error || !data.session) throw new Error(`Login failed for ${email}: ${error?.message}`)
   return data.session.access_token
 }
@@ -296,12 +300,16 @@ async function testStep13_Calendar(token, project) {
     }
   } else fail('/api/calendar failed', JSON.stringify(data))
 
-  // PATCH test
-  const { data: calItems } = await admin.from('core_calendar_items').select('id, status').eq('project_id', project.id).limit(1).single()
-  if (calItems && calItems.status !== 'published') {
-    const { status: ps } = await api(token, 'PATCH', `/api/calendar/${calItems.id}`, { status: calItems.status })
-    if (ps === 200) ok(`PATCH /api/calendar/[id] → status update works`)
-    else warn(`PATCH /api/calendar/[id] responded ${ps}`)
+  // PATCH test — find a scheduled item and pause it, then restore (valid transition)
+  const { data: scheduledItem } = await admin.from('core_calendar_items').select('id, status')
+    .eq('project_id', project.id).eq('status', 'scheduled').limit(1).single()
+  if (scheduledItem) {
+    const { status: ps } = await api(token, 'PATCH', `/api/calendar/${scheduledItem.id}`, { status: 'paused' })
+    if (ps === 200) {
+      ok(`PATCH /api/calendar/[id] → status update works (scheduled→paused)`)
+      // Restore
+      await api(token, 'PATCH', `/api/calendar/${scheduledItem.id}`, { status: 'scheduled' })
+    } else warn(`PATCH /api/calendar/[id] responded ${ps}`)
   }
 }
 
@@ -313,8 +321,7 @@ async function testStep14_Pulse(token, project) {
   else warn('No pulse_runs — will trigger now')
 
   const { status, data } = await api(token, 'POST', '/api/pulse/run')
-  if (status === 200 && data.insights) ok('/api/pulse/run → insights generated')
-  else if (status === 200 && data.cached) ok('/api/pulse/run → served from cache')
+  if (status === 200 && data.pulse?.id) ok('/api/pulse/run → pulse generated (id: ' + data.pulse.id.slice(0,8) + ')')
   else if (status === 429) warn('/api/pulse/run → rate limited (< 6h since last run, expected)')
   else fail('/api/pulse/run failed', JSON.stringify(data).slice(0,200))
 }

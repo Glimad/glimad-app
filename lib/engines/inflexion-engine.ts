@@ -8,10 +8,10 @@ type AdminClient = ReturnType<typeof createAdminClient>
 
 export type InflexionType =
   | 'viral_spike'
-  | 'engagement_plateau'
-  | 'burnout_risk'
-  | 'monetization_ready'
-  | 'consistency_risk'
+  | 'plateau'
+  | 'downgrade_candidate'
+  | 'monetize_ready'
+  | 'consistency_break'
 
 export interface InflexionResult {
   type: InflexionType
@@ -32,7 +32,7 @@ export async function detectInflexion(
   const followers = currentFollowers ?? (await readFact(admin, projectId, 'followers_total') as number | null) ?? 0
   const avgEr = (await readFact(admin, projectId, 'avg_engagement_rate') as number | null) ?? 0
 
-  // ── consistency_risk detection ────────────────────────────────────────────
+  // ── consistency_break detection ───────────────────────────────────────────
   // SSOT §7: calendar empty + no post signal for 7+ days
   // Blocks creative missions, prioritizes system missions
   const signals7d = await readSignals(admin, projectId, 7 * 24)
@@ -56,7 +56,7 @@ export async function detectInflexion(
 
   if (!hasRecentPost && (hasConsistencyGap7d || calendarEmpty)) {
     return {
-      type: 'consistency_risk',
+      type: 'consistency_break',
       confidence: 0.80,
       evidence: {
         no_recent_post: !hasRecentPost,
@@ -118,26 +118,26 @@ export async function detectInflexion(
     }
   }
 
-  // ── monetization_ready detection ──────────────────────────────────────────
-  // Spec: no monetization_ready inflexion event in the last 90 days
+  // ── monetize_ready detection ──────────────────────────────────────────────
+  // Spec: no monetize_ready inflexion event in the last 90 days
   const { data: recentMonetization } = await admin
     .from('core_inflexion_events')
     .select('id')
     .eq('project_id', projectId)
-    .eq('event_key', 'monetization_ready')
+    .eq('event_key', 'monetize_ready')
     .gte('created_at', new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString())
     .limit(1)
     .single()
 
   if (!recentMonetization && followers >= 5000 && avgEr >= 0.03) {
     return {
-      type: 'monetization_ready',
+      type: 'monetize_ready',
       confidence: 0.8,
       evidence: { followers, avg_engagement_rate: avgEr },
     }
   }
 
-  // ── engagement_plateau detection ──────────────────────────────────────────
+  // ── plateau detection ─────────────────────────────────────────────────────
   // Condition: no positive follower change AND all recent ER signals below 2% for 14d
   const erSignals14d = signals14d.filter(s => s.signal_key === 'engagement.avg_er_7d')
   const hasPositiveGrowth14d = signals14d.some(s => {
@@ -152,14 +152,14 @@ export async function detectInflexion(
     if (allErLow) {
       const latestEr = (erSignals14d[0].value as { value: number }).value ?? 0
       return {
-        type: 'engagement_plateau',
+        type: 'plateau',
         confidence: 0.7,
         evidence: { avg_er: latestEr, days_without_growth: 14 },
       }
     }
   }
 
-  // ── burnout_risk detection ────────────────────────────────────────────────
+  // ── downgrade_candidate detection ────────────────────────────────────────
   // Spec: consistency_gap signal (no post for 5+ days) AND posting frequency dropping over 30 days
   const hasConsistencyGap = signals14d.some(s => {
     if (s.signal_key !== 'consistency_gap') return false
@@ -178,7 +178,7 @@ export async function detectInflexion(
 
   if (hasConsistencyGap && isFrequencyDropping) {
     return {
-      type: 'burnout_risk',
+      type: 'downgrade_candidate',
       confidence: 0.65,
       evidence: {
         recent_posts_30d: posts30dSignals[0],
@@ -220,26 +220,26 @@ export async function runInflexionEngine(
   // Persist inflexion event
   const missionMap: Record<InflexionType, string> = {
     viral_spike: 'VIRAL_RESPONSE_V1',
-    engagement_plateau: 'ENGAGEMENT_RECOVERY_V1',
-    burnout_risk: 'RESCUE_CONSISTENCY_V1',
-    monetization_ready: 'DEFINE_OFFER_V1',
-    consistency_risk: 'RESCUE_CONSISTENCY_V1',
+    plateau: 'ENGAGEMENT_RECOVERY_V1',
+    downgrade_candidate: 'RESCUE_CONSISTENCY_V1',
+    monetize_ready: 'DEFINE_OFFER_V1',
+    consistency_break: 'RESCUE_CONSISTENCY_V1',
   }
 
   const typeMap: Record<InflexionType, 'alert' | 'upgrade' | 'downgrade' | 'mode_change'> = {
     viral_spike: 'alert',
-    engagement_plateau: 'alert',
-    burnout_risk: 'downgrade',
-    monetization_ready: 'upgrade',
-    consistency_risk: 'alert',
+    plateau: 'alert',
+    downgrade_candidate: 'downgrade',
+    monetize_ready: 'upgrade',
+    consistency_break: 'alert',
   }
 
   const severityMap: Record<InflexionType, 'low' | 'med' | 'high'> = {
     viral_spike: 'high',
-    engagement_plateau: 'med',
-    burnout_risk: 'high',
-    monetization_ready: 'med',
-    consistency_risk: 'high',
+    plateau: 'med',
+    downgrade_candidate: 'high',
+    monetize_ready: 'med',
+    consistency_break: 'high',
   }
 
   await admin.from('core_inflexion_events').insert({

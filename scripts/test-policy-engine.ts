@@ -14,7 +14,7 @@
 //   7. Daily LLM limit — 50 ledger debits today → all LLM missions score 0
 //   8. No premium credits — premium missions filtered out
 //   9. activeMode — viral_spike inflexion → 'scale'
-//  10. activeMode — monetization_ready inflexion → 'monetize'
+//  10. activeMode — monetize_ready inflexion → 'monetize'
 //  11. Completed >30 days ago → +10 bonus
 //  12. Active missions filtered out
 //  13. Cooldown window — mission completed within 7 days is filtered
@@ -388,19 +388,19 @@ async function testActiveModeViralSpike(projectId: string, userId: string, token
 }
 
 async function testActiveModeMonetization(projectId: string, userId: string, token: string) {
-  console.log('\n[10] activeMode — monetization_ready inflexion → monetize')
+  console.log('\n[10] activeMode — monetize_ready inflexion → monetize')
   await resetState(projectId)
   await seedWallet(projectId, 2000, 500)
   // Seed F3+ brain state so DEFINE_OFFER_V1 (phase_min=F3) passes the phase gate
   await seedF3BrainState(projectId)
-  // Override followers to trigger monetization_ready (≥5000 + avg_er≥3%)
+  // Override followers to trigger monetize_ready (≥5000 + avg_er≥3%)
   await seedFact(projectId, 'current_followers', 8000)
 
   const data = await runEngines(token)
   ok('phase is F3 or above', ['F3', 'F4', 'F5', 'F6', 'F7'].includes(data.phaseResult?.phase),
     `got: ${data.phaseResult?.phase} (score: ${data.phaseResult?.capabilityScore})`)
   ok('activeMode is monetize', data.policy?.activeMode === 'monetize', `got: ${data.policy?.activeMode}`)
-  ok('inflexion is monetization_ready', data.inflexion?.type === 'monetization_ready', `got: ${data.inflexion?.type}`)
+  ok('inflexion is monetize_ready', data.inflexion?.type === 'monetize_ready', `got: ${data.inflexion?.type}`)
   ok('topMission is DEFINE_OFFER_V1', data.policy?.topMission === 'DEFINE_OFFER_V1', `got: ${data.policy?.topMission}`)
 }
 

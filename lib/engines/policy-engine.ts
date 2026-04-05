@@ -23,10 +23,10 @@ const CORE_FLOW: string[] = [
 // Inflexion → mission mapping
 const INFLEXION_MISSIONS: Record<string, string> = {
   viral_spike: 'CONTENT_BATCH_3D_V1',
-  engagement_plateau: 'ENGAGEMENT_RESCUE_V1',
-  burnout_risk: 'ENGAGEMENT_RESCUE_V1',
-  monetization_ready: 'DEFINE_OFFER_V1',
-  crisis: 'ENGAGEMENT_RESCUE_V1',
+  plateau: 'ENGAGEMENT_RESCUE_V1',
+  downgrade_candidate: 'ENGAGEMENT_RESCUE_V1',
+  monetize_ready: 'DEFINE_OFFER_V1',
+  consistency_break: 'ENGAGEMENT_RESCUE_V1',
 }
 
 // Phase → recommended missions
@@ -125,8 +125,8 @@ export async function runPolicyEngine(
 
   const dailyLimitReached = (dailyUsed ?? 0) >= dailyLlmLimit
 
-  // burnout_risk signal check
-  const hasBurnoutRisk = signals30d.some(s => s.signal_key === 'consistency_gap' || s.signal_key === 'burnout_risk')
+  // downgrade_candidate signal check (consistency gap or explicit inflexion)
+  const hasBurnoutRisk = signals30d.some(s => s.signal_key === 'consistency_gap' || s.signal_key === 'downgrade_candidate')
 
   // Get completed missions
   const { data: completedInstances } = await admin
@@ -153,7 +153,7 @@ export async function runPolicyEngine(
   const activeCodes = new Set((activeInstances ?? []).map(i => i.template_code))
 
   // ── Determine active mode ───────────────────────────────────────────────
-  // Per spec: viral_spike→scale | F4+→monetize | monetization_ready→monetize
+  // Per spec: viral_spike→scale | F4+→monetize | monetize_ready→monetize
   //           F3+ with winner_format→scale | plateau→test | default by phase
   let activeMode: 'test' | 'scale' | 'monetize' = 'test'
 
@@ -162,13 +162,13 @@ export async function runPolicyEngine(
   const offerDefined = !!(facts['offer_title'] ?? facts['offer_defined'])
   const isF4Plus = ['F4', 'F5', 'F6', 'F7'].includes(phaseResult.phase)
   const isF3Plus = ['F3', 'F4', 'F5', 'F6', 'F7'].includes(phaseResult.phase)
-  const hasEngagementPlateau = inflexion?.type === 'engagement_plateau'
+  const hasEngagementPlateau = inflexion?.type === 'plateau'
     || signals30d.some(s => s.signal_key === 'inflexion_detected'
-      && (s.value as { type?: string })?.type === 'engagement_plateau')
+      && (s.value as { type?: string })?.type === 'plateau')
 
   if (inflexion?.type === 'viral_spike') {
     activeMode = 'scale'
-  } else if (isF4Plus || inflexion?.type === 'monetization_ready' || offerDefined) {
+  } else if (isF4Plus || inflexion?.type === 'monetize_ready' || offerDefined) {
     activeMode = 'monetize'
   } else if (isF3Plus && hasWinnerFormat && !hasEngagementPlateau) {
     activeMode = 'scale'
@@ -254,7 +254,7 @@ export async function runPolicyEngine(
       if (daysAgo > 30) score += 10
     }
 
-    // burnout_risk penalty: high-energy missions (cost > 10 allowance) −30
+    // downgrade_candidate penalty: high-energy missions (cost > 10 allowance) −30
     if (hasBurnoutRisk && template.credit_cost_allowance > 10) score -= 30
 
     // Low wallet credits penalty: if premium balance < 50, premium missions −40
@@ -267,7 +267,7 @@ export async function runPolicyEngine(
     if (inflexion && INFLEXION_MISSIONS[inflexion.type] === code) reasons.push(`inflexion:${inflexion.type}`)
     if (PHASE_MISSIONS[phaseResult.phase]?.includes(code)) reasons.push(`phase:${phaseResult.phase}`)
     if (!completedMap.has(code)) reasons.push('new')
-    if (hasBurnoutRisk && template.credit_cost_allowance > 10) reasons.push('burnout_penalized')
+    if (hasBurnoutRisk && template.credit_cost_allowance > 10) reasons.push('downgrade_penalized')
     if (dailyLimitReached) reasons.push('daily_limit')
 
     scored.push({ templateCode: code, priorityScore: score, reason: reasons.join(', ') || 'available' })
