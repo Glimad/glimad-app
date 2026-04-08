@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { appendSignal } from '@/lib/brain'
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  draft: ['scheduled'],
-  scheduled: ['published', 'paused', 'failed'],
-  failed: ['scheduled'],
-  paused: ['scheduled'],
-  published: [],
-}
+import { isValidTransition, updateCalendarItem, deleteCalendarItem } from '@/lib/calendar'
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   const user = await getAuthUser(request)
@@ -25,16 +17,15 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .neq('status', 'archived')
     .single()
 
-  const { data: current } = await admin
-    .from('core_calendar_items')
-    .select('status')
-    .eq('id', params.id)
-    .eq('project_id', project!.id)
-    .single()
+  if (body.status) {
+    const { data: current } = await admin
+      .from('core_calendar_items')
+      .select('status')
+      .eq('id', params.id)
+      .eq('project_id', project!.id)
+      .single()
 
-  if (body.status && current) {
-    const allowed = VALID_TRANSITIONS[current.status] ?? []
-    if (!allowed.includes(body.status)) {
+    if (current && !isValidTransition(current.status, body.status)) {
       return NextResponse.json(
         { error: `Cannot transition from ${current.status} to ${body.status}` },
         { status: 422 },
@@ -42,26 +33,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     }
   }
 
-  const updates: Record<string, unknown> = {}
-  if (body.status) updates.status = body.status
-  if (body.scheduled_at !== undefined) updates.scheduled_at = body.scheduled_at
+  const fields: Record<string, unknown> = {}
+  if (body.scheduled_at !== undefined) fields.scheduled_at = body.scheduled_at
 
-  const { data: item } = await admin
-    .from('core_calendar_items')
-    .update(updates)
-    .eq('id', params.id)
-    .eq('project_id', project!.id)
-    .select()
-    .single()
-
-  if (body.status === 'published') {
-    await appendSignal(admin, project!.id, 'content_published', {
-      calendar_item_id: params.id,
-      platform: item?.platform,
-      date: new Date().toISOString(),
-    })
-  }
-
+  const item = await updateCalendarItem(admin, project!.id, params.id, body.status, fields)
   return NextResponse.json({ item })
 }
 
@@ -78,11 +53,6 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     .neq('status', 'archived')
     .single()
 
-  await admin
-    .from('core_calendar_items')
-    .delete()
-    .eq('id', params.id)
-    .eq('project_id', project!.id)
-
+  await deleteCalendarItem(admin, project!.id, params.id)
   return NextResponse.json({ success: true })
 }

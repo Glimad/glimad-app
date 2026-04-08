@@ -43,8 +43,9 @@ export async function shouldRunPulse(admin: SupabaseClient, projectId: string): 
   const latest = await getLatestPulse(admin, projectId)
   if (!latest) return true
 
-  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000)
-  return new Date(latest.started_at) < sixHoursAgo
+  // Max 1 pulse per 24h (per spec Step 14)
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  return new Date(latest.started_at) < twentyFourHoursAgo
 }
 
 export async function runPulse(
@@ -75,8 +76,10 @@ export async function runPulse(
 
   const facts = await readAllFacts(admin, projectId)
   const phase = (facts['current_phase'] as string) ?? 'F0'
-  const niche = (facts['niche_raw'] ?? facts['niche'] ?? 'content creator') as string
-  const platform = (facts['focus_platform'] ?? 'instagram') as string
+  const nicheFact = facts['identity.niche'] as { niche?: string } | string | null
+  const niche = (typeof nicheFact === 'object' && nicheFact !== null ? nicheFact.niche : nicheFact as string) ?? 'content creator'
+  const platformFact = facts['platforms.focus'] as { platform?: string } | null
+  const platform = platformFact?.platform ?? 'instagram'
 
   const { data: recentMissions } = await admin
     .from('mission_instances')

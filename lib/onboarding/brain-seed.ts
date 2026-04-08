@@ -4,36 +4,20 @@ import { runPhaseEngine } from '@/lib/engines/phase-engine'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
-// Platform options that mean "no platform"
-const NO_PLATFORM_VALUES = ['ninguna por ahora', 'none', 'none yet', 'no platforms yet']
-
-// Normalize platform string to our internal key
 function normalizePlatform(raw: string): string | null {
-  const lower = raw.toLowerCase()
-  if (NO_PLATFORM_VALUES.includes(lower)) return null
+  const lower = raw.toLowerCase().trim()
+  if (!lower) return null
   if (lower.includes('instagram')) return 'instagram'
   if (lower.includes('tiktok')) return 'tiktok'
   if (lower.includes('youtube')) return 'youtube'
-  if (lower.includes('twitter') || lower.includes('x')) return 'twitter'
+  if (lower.includes('twitter') || lower.includes('x (twitter)')) return 'twitter'
+  if (lower.includes('linkedin')) return 'linkedin'
+  if (lower.includes('facebook')) return 'facebook'
   if (lower.includes('spotify')) return 'spotify'
+  if (lower.includes('behance')) return 'behance'
+  if (lower.includes('pinterest')) return 'pinterest'
+  if (lower.includes('website') || lower.includes('sitio web')) return 'website'
   return lower
-}
-
-function parseFaceVisibility(raw: string): string {
-  const lower = raw.toLowerCase()
-  if (lower.includes('no') || lower.includes('prefiero no')) return 'no'
-  if (lower.includes('depende') || lower.includes('depends')) return 'maybe'
-  return 'yes'
-}
-
-function parseAvailabilityHours(raw: string): number {
-  const lower = raw.toLowerCase()
-  if (lower.includes('menos de 1') || lower.includes('less than 1')) return 1
-  if (lower.includes('1-2') || lower.includes('1–2')) return 2
-  if (lower.includes('3-5') || lower.includes('3–5')) return 4
-  if (lower.includes('6-10') || lower.includes('6–10')) return 8
-  if (lower.includes('más de 10') || lower.includes('more than 10')) return 12
-  return 2
 }
 
 export async function seedBrainFromOnboarding(
@@ -41,10 +25,9 @@ export async function seedBrainFromOnboarding(
   userId: string,
   projectId: string
 ) {
-  // 1. Get onboarding session for this user
   const { data: session } = await admin
     .from('onboarding_sessions')
-    .select('id, responses_json')
+    .select('id, responses_json, experiment_variant')
     .eq('converted_to_user_id', userId)
     .eq('status', 'completed')
     .single()
@@ -53,79 +36,116 @@ export async function seedBrainFromOnboarding(
 
   const r = (session.responses_json ?? {}) as Record<string, unknown>
 
-  // 2. Write Brain Facts from each answer
-  const interestsRaw = r['interests']
-  const goal90d = String(r['goal_90d'] ?? '')
-  const blocker1 = String(r['blocker_1'] ?? '')
-  const facePref = String(r['face_pref'] ?? '')
-  const timeBudget = String(r['time_budget_week'] ?? '')
-  const platformRaw = String(r['platform_current'] ?? '')
-  const handleRaw = String(r['handle_current'] ?? '').trim()
-  const locale = r['locale'] ? String(r['locale']) : null
+  // New fields from the dynamic assessment
+  const projectType   = String(r['project_type'] ?? '')
+  const projectName   = String(r['project_name'] ?? '')
+  const journeyStage  = String(r['journey_stage'] ?? 'starting')
+  const vision        = String(r['vision'] ?? '')
+  const goals         = Array.isArray(r['goals']) ? r['goals'] as string[] : []
+  const blockers      = Array.isArray(r['blockers']) ? r['blockers'] as string[] : []
+  const revenueStatus = String(r['revenue_status'] ?? '')
+  const supportNeeds  = Array.isArray(r['support_needs']) ? r['support_needs'] as string[] : []
+  const fullName      = String(r['full_name'] ?? '')
+  const noPresence    = Boolean(r['no_presence'])
+
+  const selectedPlatformsRaw = Array.isArray(r['selected_platforms']) ? r['selected_platforms'] as string[] : []
+  const platformUrls = (r['platform_urls'] ?? {}) as Record<string, string>
+
+  const locale   = r['locale']   ? String(r['locale'])   : null
   const timezone = r['timezone'] ? String(r['timezone']) : null
 
-  const focusPlatform = normalizePlatform(platformRaw)
+  // Determine focus platform (first selected platform)
+  const focusPlatformRaw = selectedPlatformsRaw[0] ?? null
+  const focusPlatform    = focusPlatformRaw ? normalizePlatform(focusPlatformRaw) : null
+  const focusHandle      = focusPlatformRaw ? (platformUrls[focusPlatformRaw] ?? '').trim() : ''
 
+  const flowVariant = (session.experiment_variant as string | null) ?? `A_${journeyStage}`
+
+  // Build platforms.all array
+  const platformsAll = selectedPlatformsRaw.map(pid => ({
+    platform: normalizePlatform(pid) ?? pid,
+    handle: (platformUrls[pid] ?? '').trim() || null,
+    follower_count: 0,
+  }))
+
+  // Write canonical Brain Facts
   await Promise.all([
-    writeFact(admin, projectId, 'niche_raw', interestsRaw, 'onboarding'),
-    writeFact(admin, projectId, 'primary_goal', goal90d, 'onboarding'),
-    writeFact(admin, projectId, 'main_blocker', blocker1, 'onboarding'),
-    writeFact(admin, projectId, 'on_camera_comfort', facePref, 'onboarding'),
-    writeFact(admin, projectId, 'hours_per_week', timeBudget, 'onboarding'),
-    writeFact(admin, projectId, 'current_platforms', platformRaw, 'onboarding'),
-    ...(handleRaw && focusPlatform
-      ? [writeFact(admin, projectId, 'focus_platform_handle', handleRaw, 'onboarding')]
-      : []),
+    // identity.*
+    writeFact(admin, projectId, 'identity.project_type',  projectType,  'brain-seed'),
+    writeFact(admin, projectId, 'identity.project_name',  projectName,  'brain-seed'),
+    writeFact(admin, projectId, 'identity.journey_stage', journeyStage, 'brain-seed'),
+    writeFact(admin, projectId, 'identity.vision',        vision,       'brain-seed'),
+    writeFact(admin, projectId, 'identity.goals',         goals,        'brain-seed'),
+    writeFact(admin, projectId, 'identity.blockers',      blockers,     'brain-seed'),
+    writeFact(admin, projectId, 'identity.revenue_status', revenueStatus, 'brain-seed'),
+    writeFact(admin, projectId, 'identity.support_needs',  supportNeeds,  'brain-seed'),
+    writeFact(admin, projectId, 'identity.flow_variant',   flowVariant,   'brain-seed'),
+
+    // identity.niche — derived from projectType + vision for compatibility with studio routes
+    writeFact(admin, projectId, 'identity.niche', {
+      niche: projectType || null,
+      subniche: null,
+      target_audience: null,
+      unique_angle: vision || null,
+    }, 'brain-seed'),
+
+    // capabilities.current — always reset to 0 at onboarding
+    writeFact(admin, projectId, 'capabilities.current', {
+      execution: 0, audienceSignal: 0, clarity: 0, readiness: 0,
+    }, 'brain-seed'),
+
+    // platforms.focus
+    writeFact(admin, projectId, 'platforms.focus', focusPlatform
+      ? { platform: focusPlatform, handle: focusHandle || null, follower_count: 0 }
+      : null,
+    'brain-seed'),
+
+    // platforms.all
+    writeFact(admin, projectId, 'platforms.all', platformsAll.length > 0 ? platformsAll : null, 'brain-seed'),
   ])
 
-  // 3. Write user_preferences
+  // Write user_preferences
   await admin.from('user_preferences').upsert(
     {
       project_id: projectId,
-      face_visibility: parseFaceVisibility(facePref),
-      availability_hours_week: parseAvailabilityHours(timeBudget),
-      ...(locale ? { locale } : {}),
+      ...(locale   ? { locale }   : {}),
       ...(timezone ? { timezone } : {}),
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'project_id' }
   )
 
-  // 4. Update project with focus platform + handle + onboarding session link
+  // Update project
   await admin.from('projects').update({
+    name: projectName || undefined,
     onboarding_session_id: session.id,
     focus_platform: focusPlatform,
-    ...(handleRaw && focusPlatform ? { focus_platform_handle: handleRaw } : {}),
+    ...(focusHandle && focusPlatform ? { focus_platform_handle: focusHandle } : {}),
     updated_at: new Date().toISOString(),
   }).eq('id', projectId)
 
-  // 5. Write signals
+  // Brain Signals
   if (focusPlatform) {
     await appendSignal(admin, projectId, 'platform_declared', {
       platform: focusPlatform,
-      raw: platformRaw,
+      all_platforms: platformsAll.map(p => p.platform),
     }, 'onboarding')
-  }
-
-  // missing_evidence: only when handle is not known — scrape cannot run without handle
-  if (!handleRaw) {
+  } else if (noPresence) {
     await appendSignal(admin, projectId, 'missing_evidence', {
-      reason: focusPlatform
-        ? 'scrape_skipped — handle not yet provided (platform known)'
-        : 'scrape_skipped — no platform selected at onboarding',
+      reason: 'scrape_skipped — no platform presence at onboarding (Starting from Zero)',
     }, 'onboarding')
   }
 
   await appendSignal(admin, projectId, 'onboarding_completed', {
     session_id: session.id,
+    flow_variant: flowVariant,
+    journey_stage: journeyStage,
   }, 'onboarding')
 
-  // 6. Trigger full Phase Engine — writes current_phase fact, stores core_phase_runs record,
-  //    updates projects.phase_code
+  // Phase Engine
   const phaseResult = await runPhaseEngine(admin, projectId)
 
-  // 7. Create initial Brain Snapshot — always written for new users after onboarding
-  //    (runPhaseEngine only snapshots on phase CHANGE; this is the first-ever phase assignment)
+  // Brain Snapshot
   const allFacts = await readAllFacts(admin, projectId)
   await createSnapshot(admin, projectId, 'onboarding_completed', { phase: phaseResult.phase, facts: allFacts })
 }

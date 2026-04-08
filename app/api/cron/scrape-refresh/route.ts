@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       continue
     }
 
-    const result = await requestScrapeLight(admin, project.id, project.user_id, focusPlatform, handle)
+    const result = await requestScrapeLight(admin, project.id, project.user_id, focusPlatform, handle, 'cron')
     queued++
     results.push({ project_id: project.id, status: result.status })
   }

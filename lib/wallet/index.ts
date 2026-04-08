@@ -52,6 +52,40 @@ export async function grantPremiumCredits(
   })
 }
 
+export async function debitPremiumCredits(
+  admin: SupabaseClient,
+  projectId: string,
+  amount: number,
+  idempotencyKey: string,
+  reasonKey: string
+) {
+  const { data: wallet } = await admin
+    .from('core_wallets')
+    .select('wallet_id, premium_credits_balance')
+    .eq('project_id', projectId)
+    .single()
+  if (!wallet) return
+
+  const { data: existing } = await admin
+    .from('core_ledger')
+    .select('ledger_id')
+    .eq('idempotency_key', idempotencyKey)
+    .single()
+  if (existing) return
+
+  await admin
+    .from('core_wallets')
+    .update({ premium_credits_balance: wallet.premium_credits_balance - amount, updated_at: new Date().toISOString() })
+    .eq('wallet_id', wallet.wallet_id)
+  await admin.from('core_ledger').insert({
+    project_id: projectId,
+    kind: 'debit',
+    amount_premium: amount,
+    reason_key: reasonKey,
+    idempotency_key: idempotencyKey,
+  })
+}
+
 export async function debitLlmCall(admin: SupabaseClient, projectId: string, idempotencyKey: string) {
   const { data: wallet } = await admin
     .from('core_wallets')

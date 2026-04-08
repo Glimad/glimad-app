@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'history_entry_not_found' }, { status: 404 })
   }
 
-  // Roll back: write the old_value as the new fact value
-  await writeFact(admin, project_id, fact_key, historyEntry.old_value, 'rollback')
+  // Roll back: write the old_value as the new fact value (changedBy = 'user_rollback' per spec §6)
+  await writeFact(admin, project_id, fact_key, historyEntry.old_value, 'user_rollback')
 
   // Return the updated fact
   const { data: updatedFact } = await admin

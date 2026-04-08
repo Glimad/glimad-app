@@ -1,6 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
-import { TOTAL_STEPS } from '@/lib/onboarding/config'
 import { checkAuthRateLimit, getClientIp } from '@/lib/security/rate-limit'
 
 export async function POST(request: Request) {
@@ -17,9 +16,9 @@ export async function POST(request: Request) {
     .from('onboarding_sessions')
     .insert({
       visitor_id: visitor_id ?? null,
-      experiment_variant: 'control',
+      experiment_variant: null,
       step_current: 1,
-      step_total: TOTAL_STEPS,
+      step_total: 12,
       status: 'in_progress',
       started_at: new Date().toISOString(),
       responses_json: {},

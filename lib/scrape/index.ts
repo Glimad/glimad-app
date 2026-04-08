@@ -1,11 +1,29 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { appendSignal, writeFact, readFact } from '@/lib/brain'
+import { appendSignal, writeFact, readFact, createSnapshot, readAllFacts } from '@/lib/brain'
+import { debitPremiumCredits } from '@/lib/wallet'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
 import { scrapeYouTube } from './youtube'
 import { scrapeInstagram } from './instagram'
 import { scrapeTikTok } from './tiktok'
 import { scrapeSpotify } from './spotify'
 import { scrapeTwitter } from './twitter'
+import { createHash } from 'crypto'
+
+type ScrapeSource = 'bootstrap' | 'cron' | 'on_demand'
+
+// Credit cost per source (bootstrap = free initial scrape after first payment)
+const CREDIT_COST: Record<ScrapeSource, number> = {
+  bootstrap: 0,
+  cron: 5,
+  on_demand: 10,
+}
+
+// Plan-tier rate limits: max scrapes per 24h window
+const RATE_LIMIT: Record<string, number> = {
+  BASE: 1,
+  PRO: 2,
+  ELITE: 4,
+}
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -92,8 +110,7 @@ export async function executeScrapeLightJob(
     .eq('job_id', jobId)
 
   const { project_id, payload_json } = jobBefore
-  const platform = (payload_json as { platform: string; handle: string }).platform
-  const handle = (payload_json as { platform: string; handle: string }).handle
+  const { platform, handle, source = 'cron' } = payload_json as { platform: string; handle: string; source?: ScrapeSource }
 
   const today = new Date().toISOString().slice(0, 10)
   const scrapeIdempotencyKey = `${platform}:${handle}:${today}`
@@ -198,13 +215,21 @@ export async function executeScrapeLightJob(
 
     // 3. Write Brain Facts
     await writeFact(admin, project_id, 'followers_total', normalized.followers_total, 'scrape')
-    await writeFact(admin, project_id, 'current_followers', normalized.followers_total, 'scrape')
     await writeFact(admin, project_id, 'avg_engagement_rate', normalized.avg_er_estimated, 'scrape')
     await writeFact(admin, project_id, 'posts_last_30d', normalized.posts_last_30d, 'scrape')
     await writeFact(admin, project_id, 'last_post_date', normalized.last_post_date, 'scrape')
     await writeFact(admin, project_id, 'posts_per_week_average', normalized.posts_per_week_average, 'scrape')
     if (normalized.avg_views > 0) {
       await writeFact(admin, project_id, 'avg_views_last10', normalized.avg_views, 'scrape')
+    }
+
+    // Update platforms.focus.follower_count in the nested fact (spec §5 step 6)
+    const focusFact = await readFact(admin, project_id, 'platforms.focus') as Record<string, unknown> | null
+    if (focusFact && focusFact.platform === platform) {
+      await writeFact(admin, project_id, 'platforms.focus', {
+        ...focusFact,
+        follower_count: normalized.followers_total,
+      }, 'scrape')
     }
 
     // 4. Write Brain Signals
@@ -259,6 +284,15 @@ export async function executeScrapeLightJob(
       posts_7d: normalized.posts_last_7d,
     }, 'scrape')
 
+    // 8. Brain Snapshot — immutable capture of state after scrape (spec §7 step 8)
+    const allFacts = await readAllFacts(admin, project_id)
+    const { data: projectRow2 } = await admin.from('projects').select('current_phase').eq('id', project_id).single()
+    await createSnapshot(admin, project_id, 'scrape_light_completed', {
+      facts: allFacts,
+      phase: projectRow2?.current_phase ?? 'F0',
+      signals: [],
+    })
+
   } else {
     await appendSignal(admin, project_id, 'scrape_skipped', {
       platform,
@@ -267,36 +301,10 @@ export async function executeScrapeLightJob(
     }, 'scrape')
   }
 
-  // 6. Debit premium credits (5 per scrape) — idempotent
-  const { data: wallet } = await admin
-    .from('core_wallets')
-    .select('wallet_id, premium_credits_balance')
-    .eq('project_id', project_id)
-    .single()
-
-  if (wallet && wallet.premium_credits_balance >= 5) {
-    const ledgerKey = `job:${jobId}:scrape_debit`
-    const { data: existingDebit } = await admin
-      .from('core_ledger')
-      .select('ledger_id')
-      .eq('idempotency_key', ledgerKey)
-      .single()
-
-    if (!existingDebit) {
-      const newBalance = wallet.premium_credits_balance - 5
-      await admin.from('core_ledger').insert({
-        project_id,
-        kind: 'debit',
-        amount_premium: -5,
-        reason_key: 'SCRAPE_LIGHT_DEBIT',
-        idempotency_key: ledgerKey,
-        metadata_json: { platform },
-      })
-      await admin
-        .from('core_wallets')
-        .update({ premium_credits_balance: newBalance, updated_at: new Date().toISOString() })
-        .eq('wallet_id', wallet.wallet_id)
-    }
+  // 6. Debit premium credits — cost depends on source (bootstrap=0, cron=5, on_demand=10)
+  const creditCost = CREDIT_COST[source]
+  if (creditCost > 0) {
+    await debitPremiumCredits(admin, project_id, creditCost, `job:${jobId}:scrape_debit`, 'SCRAPE_LIGHT_DEBIT')
   }
 
   // 7. Mark job done
@@ -323,7 +331,7 @@ export async function executeScrapeLightJob(
 
     for (const sat of satellites ?? []) {
       if (sat.handle) {
-        void requestScrapeLight(admin, project_id, projectRow.user_id, sat.platform, sat.handle)
+        void requestScrapeLight(admin, project_id, projectRow.user_id, sat.platform, sat.handle, 'cron')
       }
     }
   }
@@ -339,7 +347,8 @@ export async function requestScrapeLight(
   projectId: string,
   userId: string,
   platform: string,
-  handle: string
+  handle: string,
+  source: ScrapeSource = 'on_demand'
 ): Promise<{ job_id: string; status: string }> {
   // Handle missing handle — write signal, don't queue a job
   if (!handle?.trim()) {
@@ -350,25 +359,34 @@ export async function requestScrapeLight(
     return { job_id: '', status: 'skipped_no_handle' }
   }
 
-  // Rate limit: reject if a completed job exists for this project+platform within the last 24 hours
-  const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-  const { data: recentDone } = await admin
-    .from('core_jobs')
-    .select('job_id, finished_at, normalized_json:payload_json')
-    .eq('project_id', projectId)
-    .eq('job_type', 'scrape_light')
-    .eq('status', 'done')
-    .filter('payload_json->>platform', 'eq', platform)
-    .gte('finished_at', since24h)
-    .order('finished_at', { ascending: false })
-    .limit(1)
-    .single()
+  // Get plan code for rate limit check (bootstrap bypasses rate limit — it's the first ever scrape)
+  if (source !== 'bootstrap') {
+    const { data: wallet } = await admin
+      .from('core_wallets')
+      .select('plan_code')
+      .eq('project_id', projectId)
+      .single()
 
-  if (recentDone) {
-    return { job_id: recentDone.job_id, status: 'rate_limited' }
+    const planCode = wallet?.plan_code ?? 'BASE'
+    const maxPerDay = RATE_LIMIT[planCode] ?? 1
+
+    // Count done jobs for this project+platform in last 24h
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { count: doneCount } = await admin
+      .from('core_jobs')
+      .select('job_id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('job_type', 'scrape_light')
+      .eq('status', 'done')
+      .filter('payload_json->>platform', 'eq', platform)
+      .gte('finished_at', since24h)
+
+    if ((doneCount ?? 0) >= maxPerDay) {
+      return { job_id: '', status: 'rate_limited' }
+    }
   }
 
-  // Also skip if already queued or running for this project+platform (DB partial unique index enforces this too)
+  // Skip if already queued or running for this project+platform
   const { data: activeJob } = await admin
     .from('core_jobs')
     .select('job_id, status')
@@ -382,7 +400,12 @@ export async function requestScrapeLight(
   if (activeJob) return { job_id: activeJob.job_id, status: activeJob.status }
 
   const today = new Date().toISOString().slice(0, 10)
-  const idempotencyKey = `${projectId}:scrape_light:${platform}:${today}`
+  // Idempotency key: SHA-256 hash per spec
+  const idempotencyKey = createHash('sha256')
+    .update(`${projectId}:scrape_light:${platform}:${today}`)
+    .digest('hex')
+
+  const creditCost = CREDIT_COST[source]
 
   const { data: newJob } = await admin
     .from('core_jobs')
@@ -393,8 +416,8 @@ export async function requestScrapeLight(
       status: 'queued',
       priority: 'normal',
       idempotency_key: idempotencyKey,
-      cost_premium_credits: 5,
-      payload_json: { platform, handle },
+      cost_premium_credits: creditCost,
+      payload_json: { platform, handle, source },
     })
     .select('job_id, status')
     .single()

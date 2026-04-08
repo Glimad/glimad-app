@@ -5,6 +5,8 @@ import { grantPremiumCredits } from '@/lib/wallet'
 import { buildPrompt, type PromptKey } from './prompts'
 import { PROMPT_SCHEMAS } from './schemas'
 import { onMissionComplete } from '@/lib/gamification'
+import { runPhaseEngine } from '@/lib/engines/phase-engine'
+import { runPolicyEngine } from '@/lib/engines/policy-engine'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -14,6 +16,10 @@ interface MissionStep {
   name: string
   config: {
     facts?: string[]
+    // fact_extract: maps canonical brain fact keys → template variable names
+    // field: optional nested field to extract from object values (e.g. 'niche' from identity.niche)
+    // as_array: wrap scalar value in array (for prompt templates expecting arrays)
+    fact_extract?: Record<string, { as: string; field?: string; as_array?: boolean }>
     signals_hours?: number
     prompt_key?: string
     model?: string
@@ -53,6 +59,9 @@ export async function createMissionInstance(
 
   if (existing) return existing.id
 
+  // Use a timestamp-scoped unique key so a failed instance never blocks re-creation
+  const uniqueKeyFinal = `${projectId}:${templateCode}:${today}:${Date.now()}`
+
   const { data: instance } = await admin
     .from('mission_instances')
     .insert({
@@ -60,7 +69,7 @@ export async function createMissionInstance(
       template_code: templateCode,
       status: 'queued',
       params,
-      unique_key: uniqueKey,
+      unique_key: uniqueKeyFinal,
       current_step: 0,
     })
     .select('id')
@@ -259,11 +268,17 @@ export async function executeMission(
     })
     .eq('id', instanceId)
 
-  // Write mission_completed signal
+  // Write mission_completed signal + event_log (per spec §5.3)
+  const completedAt = new Date().toISOString()
   await appendSignal(admin, instance.project_id, 'mission_completed', {
     template_code: instance.template_code,
     instance_id: instanceId,
   }, 'mission_runner')
+  await admin.from('event_log').insert({
+    project_id: instance.project_id,
+    event_type: 'mission_completed',
+    event_data: { template_code: instance.template_code, instance_id: instanceId, completed_at: completedAt },
+  })
 
   // Gamification: award XP, update streak, restore energy
   await onMissionComplete(admin, instance.project_id, instance.template_code)
@@ -298,6 +313,22 @@ export async function executeMission(
         .update({ allowance_llm_balance: newBalance, updated_at: new Date().toISOString() })
         .eq('wallet_id', wallet.wallet_id)
     }
+  }
+
+  // Call Policy Engine immediately after mission completion (per spec Step 11 + Step 10 compute frequency)
+  // force=true: mission completion is a significant event — bypass 60-min cache
+  const phaseResult = await runPhaseEngine(admin, instance.project_id, true)
+  const policyResult = await runPolicyEngine(admin, instance.project_id, phaseResult, null, true)
+
+  // Write active_mode to project
+  await admin
+    .from('projects')
+    .update({ active_mode: policyResult.activeMode, updated_at: new Date().toISOString() })
+    .eq('id', instance.project_id)
+
+  // Instantiate next recommended missions (idempotent — createMissionInstance returns existing if already open)
+  for (const m of policyResult.missionQueue.slice(0, 3)) {
+    await createMissionInstance(admin, instance.project_id, m.templateCode)
   }
 }
 
@@ -350,9 +381,20 @@ async function executeStep(
   switch (step.step_type) {
     case 'brain_read': {
       const keys = step.config.facts ?? []
+      const factExtract = step.config.fact_extract ?? {}
       const facts = await readAllFacts(admin, projectId)
       const result: Record<string, unknown> = {}
+      // Direct key reads (flat fact names)
       for (const key of keys) result[key] = facts[key] ?? null
+      // Canonical key extraction with optional field drilling and array wrapping
+      for (const [canonKey, { as, field, as_array }] of Object.entries(factExtract)) {
+        const val = facts[canonKey]
+        let extracted: unknown = val ?? null
+        if (field && val !== null && val !== undefined && typeof val === 'object') {
+          extracted = (val as Record<string, unknown>)[field] ?? null
+        }
+        result[as] = as_array ? (extracted != null ? [extracted] : []) : extracted
+      }
       if (step.config.signals_hours) {
         const signals = await readSignals(admin, projectId, step.config.signals_hours)
         result['__signals'] = signals

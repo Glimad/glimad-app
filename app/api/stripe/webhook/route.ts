@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
 import { createMissionInstance, executeMission } from '@/lib/missions/runner'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
+import { runPolicyEngine } from '@/lib/engines/policy-engine'
 import { requestScrapeLight } from '@/lib/scrape'
 import { readAllFacts } from '@/lib/brain'
 import { NextResponse } from 'next/server'
@@ -40,24 +41,24 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient()
 
-  // Idempotency: skip already-processed events
+  // Deduplication (non-negotiable per spec): if stripe_event_id already exists → return 200 immediately
   const { data: existing } = await admin
     .from('stripe_events')
-    .select('id, processed')
+    .select('id')
     .eq('stripe_event_id', event.id)
     .single()
 
-  if (existing?.processed) {
+  if (existing) {
     return NextResponse.json({ received: true })
   }
 
-  // Save raw event
-  await admin.from('stripe_events').upsert({
+  // Insert raw event before processing
+  await admin.from('stripe_events').insert({
     stripe_event_id: event.id,
     event_type: event.type,
     data: event.data,
     processed: false,
-  }, { onConflict: 'stripe_event_id' })
+  })
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
@@ -68,7 +69,9 @@ export async function POST(request: Request) {
     await handleSubscriptionActivated(admin, event.id, session)
   }
 
-  if (event.type === 'invoice.paid') {
+  // Handle both event types: invoice.paid fires for $0 trials too; invoice.payment_succeeded for real payments
+  // Both use the same handler with idempotency protection (invoice ID deduplication)
+  if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
     const invoice = event.data.object as Stripe.Invoice
     await handleInvoicePaid(admin, event.id, invoice)
   }
@@ -129,24 +132,31 @@ async function handleSubscriptionActivated(
     reference_id: stripeSub.id,
   }, { onConflict: 'reference_id' })
 
-  // Initialize wallet + grant credits
-  await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end)
+  // Step 2+3: wallet + ledger grant with spec idempotency key `invoice_{invoice.id}_grant`
+  const invoiceId = typeof session.invoice === 'string' ? session.invoice : (session.invoice as { id?: string })?.id ?? undefined
+  await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end, invoiceId)
 
-  // Seed Brain Facts from onboarding answers
+  // Step 5: Seed Brain Facts from onboarding answers
   await seedBrainFromOnboarding(admin, userId, projectId)
 
-  // Trigger Phase Engine (Step 4 item 7) — sets initial phase (F0) and writes capabilities.current
-  await runPhaseEngine(admin, projectId, true)
-
-  // Queue Scrape Light if platform handle exists (Step 4 item 6) — FOCO only
+  // Step 6: Queue Scrape Light if platform handle exists — FOCO only (before Phase Engine per spec order)
   const facts = await readAllFacts(admin, projectId)
   const focusFact = facts['platforms.focus'] as { platform?: string; handle?: string } | null
   if (focusFact?.platform && focusFact?.handle) {
-    void requestScrapeLight(admin, projectId, userId, focusFact.platform, focusFact.handle)
+    void requestScrapeLight(admin, projectId, userId, focusFact.platform, focusFact.handle, 'bootstrap')
   }
 
-  // JIT mission instantiation (Step 4 item 8) — create all 5 Core Flow missions as queued
-  // Order is canonical per implementation plan Step 10
+  // Step 7: Phase Engine — sets initial phase (F0) and writes capabilities.current
+  const phaseResult = await runPhaseEngine(admin, projectId, true)
+
+  // Policy Engine — determines active_mode and topMission (Core Flow Gate for F0 → VISION_PURPOSE_MOODBOARD_V1)
+  const policyResult = await runPolicyEngine(admin, projectId, phaseResult, null, true)
+
+  // Write active_mode to project
+  await admin.from('projects').update({ active_mode: policyResult.activeMode }).eq('id', projectId)
+
+  // JIT mission instantiation — create all 5 Core Flow missions in canonical order
+  // Execute topMission first so it reaches needs_user_input on Dashboard; queue the rest
   const CORE_FLOW_TEMPLATES = [
     'VISION_PURPOSE_MOODBOARD_V1',
     'CONTENT_COMFORT_STYLE_V1',
@@ -154,13 +164,16 @@ async function handleSubscriptionActivated(
     'NICHE_CONFIRM_V1',
     'PREFERENCES_CAPTURE_V1',
   ]
-  for (const templateCode of CORE_FLOW_TEMPLATES) {
-    await createMissionInstance(admin, projectId, templateCode)
-  }
-
-  // Execute first mission immediately so it reaches needs_user_input on Dashboard
-  const firstInstanceId = await createMissionInstance(admin, projectId, 'VISION_PURPOSE_MOODBOARD_V1')
+  const firstTemplate = policyResult.topMission ?? 'VISION_PURPOSE_MOODBOARD_V1'
+  const firstInstanceId = await createMissionInstance(admin, projectId, firstTemplate)
   await executeMission(admin, firstInstanceId)
+
+  // Queue remaining missions (skip the one already executed)
+  for (const templateCode of CORE_FLOW_TEMPLATES) {
+    if (templateCode !== firstTemplate) {
+      await createMissionInstance(admin, projectId, templateCode)
+    }
+  }
 }
 
 async function handleInvoicePaid(
@@ -313,13 +326,29 @@ async function grantMonthlyCredits(
     ? `invoice_${invoiceId}_grant`
     : `subscription_grant_${subscriptionId}_${periodEnd}`
 
-  // Upsert wallet
+  // Self-protecting idempotency: if this key was already granted, skip entirely
+  const { data: existingGrant } = await admin
+    .from('core_ledger')
+    .select('ledger_id')
+    .eq('idempotency_key', idempKey)
+    .single()
+  if (existingGrant) return
+
+  // Read existing premium balance so we ADD to it (unused credits roll over)
+  // LLM allowance always resets to plan amount (spec: "Reset monthly LLM balance")
+  const { data: existingWallet } = await admin
+    .from('core_wallets')
+    .select('premium_credits_balance')
+    .eq('project_id', projectId)
+    .single()
+  const existingPremium = existingWallet?.premium_credits_balance ?? 0
+
   await admin.from('core_wallets').upsert({
     project_id: projectId,
     plan_code: planCode,
-    allowance_llm_balance: credits.allowance,
+    allowance_llm_balance: credits.allowance,      // reset per spec
     credits_allowance: credits.allowance,
-    premium_credits_balance: credits.premium,
+    premium_credits_balance: existingPremium + credits.premium,  // grant (add) per spec
     premium_daily_cap_remaining: credits.premium,
     allowance_reset_at: resetAt,
     premium_reset_at: resetAt,
@@ -327,7 +356,7 @@ async function grantMonthlyCredits(
     updated_at: new Date().toISOString(),
   }, { onConflict: 'project_id' })
 
-  // Ledger credit entry
+  // Ledger credit entry (append-only — never update)
   await admin.from('core_ledger').insert({
     project_id: projectId,
     kind: 'credit',

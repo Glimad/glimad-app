@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createAdminClient } from '@/lib/supabase/admin'
-import Anthropic from '@anthropic-ai/sdk'
 import { readAllFacts } from '@/lib/brain'
 import { checkLlmRateLimit } from '@/lib/security/rate-limit'
 import { sanitizeText } from '@/lib/security/sanitize'
+import { generateTopics, PLATFORM_LIMITS } from '@/lib/studio'
 
-// GET /api/studio/topics — returns the user's focus platform and caption limits (no LLM)
+// GET /api/studio/topics — returns focus platform + caption limit (no LLM)
 export async function GET(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -20,22 +20,16 @@ export async function GET(request: Request) {
     .single()
 
   const facts = await readAllFacts(admin, project!.id)
-  const platform = (facts['focus_platform'] as string) ?? 'instagram'
-
-  const captionLimits: Record<string, number> = {
-    instagram: 2200,
-    tiktok: 2200,
-    youtube: 5000,
-    twitter: 280,
-    spotify: 1500,
-  }
+  const focusObj = facts['platforms.focus'] as Record<string, unknown> | null
+  const platform = String(focusObj?.platform ?? 'instagram')
 
   return NextResponse.json({
     platform,
-    caption_limit: captionLimits[platform] ?? 2200,
+    caption_limit: PLATFORM_LIMITS[platform]?.caption ?? 2200,
   })
 }
 
+// POST /api/studio/topics — generate 6 topic ideas with Claude Haiku
 export async function POST(request: Request) {
   const user = await getAuthUser(request)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -56,30 +50,15 @@ export async function POST(request: Request) {
     .single()
 
   const facts = await readAllFacts(admin, project!.id)
-  const niche = facts['niche_raw'] ?? facts['niche'] ?? 'content creator'
-  const platform = facts['focus_platform'] ?? 'instagram'
-  const audienceRaw = facts['audience_persona']
+  const nicheObj = facts['identity.niche'] as Record<string, unknown> | null
+  const niche = String(nicheObj?.niche ?? nicheObj?.value ?? 'content creator')
+  const focusObj2 = facts['platforms.focus'] as Record<string, unknown> | null
+  const platform = String(focusObj2?.platform ?? 'instagram')
+  const audienceRaw = facts['identity.audience_persona']
   const audience = typeof audienceRaw === 'object' && audienceRaw !== null
     ? JSON.stringify(audienceRaw).slice(0, 200)
-    : (audienceRaw as string) ?? ''
+    : String(audienceRaw ?? '')
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-  const message = await client.messages.create({
-    model: process.env.ANTHROPIC_MODEL_HAIKU!,
-    max_tokens: 512,
-    messages: [{
-      role: 'user',
-      content: `You are a content strategist. Generate exactly 6 topic ideas for a ${content_type} post for a creator in the niche: "${niche}" on ${platform}.${audience ? ` Target audience: ${audience}.` : ''}
-
-Return ONLY a JSON array of 6 strings, each a short topic idea (max 10 words). No explanation. Example: ["Topic 1", "Topic 2", ...]`,
-    }],
-  })
-
-  const text = (message.content[0] as { type: string; text: string }).text
-  const stripped = text.replace(/^```(?:json)?\s*/m, '').replace(/\s*```\s*$/m, '').trim()
-  const start = stripped.indexOf('[')
-  const end = stripped.lastIndexOf(']') + 1
-  const topics = JSON.parse(stripped.slice(start, end)) as string[]
-
+  const topics = await generateTopics(content_type, niche, platform, audience)
   return NextResponse.json({ topics })
 }

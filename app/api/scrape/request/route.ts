@@ -25,7 +25,8 @@ export async function POST(request: Request) {
     project.id,
     user.id,
     project.focus_platform,
-    project.focus_platform_handle
+    project.focus_platform_handle,
+    'on_demand'
   )
 
   // Trigger worker immediately after queuing — don't wait for daily cron

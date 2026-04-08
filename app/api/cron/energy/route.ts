@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   const admin = createAdminClient()
 
-  // Add 20 energy to all active projects (capped at 100)
+  // Deplete 10 energy per day (floor = 0) per spec Step 16
   const { data: projects } = await admin
     .from('projects')
     .select('id, energy')
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   if (projects) {
     for (const project of projects) {
-      const newEnergy = Math.min(100, (project.energy ?? 0) + 20)
+      const newEnergy = Math.max(0, (project.energy ?? 0) - 10)
       await admin.from('projects').update({ energy: newEnergy }).eq('id', project.id)
     }
   }

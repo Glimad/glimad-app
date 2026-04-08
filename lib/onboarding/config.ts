@@ -1,21 +1,9 @@
-export type QuestionType = 'multi_select' | 'text' | 'select'
+// Journey stage values
+export const JOURNEY_STAGE_STARTING  = 'starting'
+export const JOURNEY_STAGE_EXISTING  = 'existing'
+export const JOURNEY_STAGE_LEGACY    = 'legacy'
 
-export interface Question {
-  key: string
-  type: QuestionType
-}
-
-export const ONBOARDING_QUESTIONS: Question[] = [
-  { key: 'interests', type: 'multi_select' },
-  { key: 'goal_90d', type: 'text' },
-  { key: 'blocker_1', type: 'select' },
-  { key: 'face_pref', type: 'select' },
-  { key: 'time_budget_week', type: 'select' },
-  { key: 'platform_current', type: 'select' },
-]
-
-export const TOTAL_STEPS = ONBOARDING_QUESTIONS.length
-
-// platform_current value that means Flow A (no presence)
-export const FLOW_A_VALUE = 'Ninguna por ahora'
-export const FLOW_A_VALUE_EN = 'None yet'
+// Experiment variant codes
+export const VARIANT_ZERO_START  = 'A_zero_start'
+export const VARIANT_HAS_PRESENCE = 'B_has_presence'
+export const VARIANT_LEGACY       = 'C_legacy_builder'

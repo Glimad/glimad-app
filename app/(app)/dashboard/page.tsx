@@ -3,12 +3,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { makeServerT } from '@/lib/i18n'
 import { defaultLocale } from '@/i18n.config'
-import { runPhaseEngine } from '@/lib/engines/phase-engine'
-import { runInflexionEngine } from '@/lib/engines/inflexion-engine'
-import { runPolicyEngine } from '@/lib/engines/policy-engine'
 import { getLatestPulse } from '@/lib/pulse'
 import { readAllFacts } from '@/lib/brain'
 import { getMonetizationKpis } from '@/lib/monetization'
+import type { PhaseCode, DimensionScores } from '@/lib/engines/phase-engine'
 import MissionMap from './MissionMap'
 import DailyPulseCard from './DailyPulseCard'
 import CalendarPreview from './CalendarPreview'
@@ -51,7 +49,7 @@ export default async function DashboardPage() {
 
   const { data: project } = await admin
     .from('projects')
-    .select('id, phase_code')
+    .select('id, phase_code, xp, energy, streak_days')
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
@@ -60,9 +58,22 @@ export default async function DashboardPage() {
 
   const currentPhaseRank = PHASE_RANK[project.phase_code ?? 'F0'] ?? 0
 
-  const [phaseResult, inflexion, wallet, latestPulse, facts, monetizationKpis] = await Promise.all([
-    runPhaseEngine(admin, project.id),
-    runInflexionEngine(admin, project.id),
+  // Dashboard reads latest core_phase_runs + core_policy_runs — never calls engines directly (per spec Step 8)
+  const [latestPhaseRun, latestPolicyRun, wallet, latestPulse, facts, monetizationKpis] = await Promise.all([
+    admin.from('core_phase_runs')
+      .select('phase_code, capability_score, dimension_scores, reason_summary')
+      .eq('project_id', project.id)
+      .order('computed_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(r => r.data),
+    admin.from('core_policy_runs')
+      .select('output_json')
+      .eq('project_id', project.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(r => r.data),
     admin.from('core_wallets')
       .select('allowance_llm_balance, premium_credits_balance, plan_code')
       .eq('project_id', project.id)
@@ -73,7 +84,20 @@ export default async function DashboardPage() {
     currentPhaseRank >= 3 ? getMonetizationKpis(admin, project.id) : Promise.resolve(null),
   ])
 
-  const policy = await runPolicyEngine(admin, project.id, phaseResult, inflexion)
+  // Synthesize phase result from DB row (fallback to F0 if no run yet)
+  const phaseResult = {
+    phase: (latestPhaseRun?.phase_code ?? project.phase_code ?? 'F0') as PhaseCode,
+    capabilityScore: latestPhaseRun?.capability_score ?? 0,
+    dimensionScores: (latestPhaseRun?.dimension_scores ?? { execution: 0, audienceSignal: 0, clarity: 0, readiness: 0 }) as DimensionScores,
+    reasonSummary: latestPhaseRun?.reason_summary ?? '',
+  }
+
+  // Synthesize policy output from DB row (fallback to defaults)
+  const policyOutput = latestPolicyRun?.output_json as { active_mode?: string; top_mission?: string } | null
+  const policy = {
+    activeMode: (policyOutput?.active_mode ?? 'test') as 'test' | 'scale' | 'monetize',
+    topMission: policyOutput?.top_mission ?? null,
+  }
 
   // ── Mission map data ──────────────────────────────────────────────────────
   const [allTemplatesResult, completedInstancesResult, activeInstancesResult] = await Promise.all([
@@ -191,7 +215,9 @@ export default async function DashboardPage() {
   }))
 
   // ── Quick stats ───────────────────────────────────────────────────────────
-  const followerCount = (facts['followers_total'] ?? facts['current_followers']) as number | null
+  // Prefer canonical nested fact keys; fall back to flat scrape-written keys for backward compat
+  const platformsFocus = facts['platforms.focus'] as { follower_count?: number } | null
+  const followerCount = (platformsFocus?.follower_count ?? facts['followers_total'] ?? facts['current_followers']) as number | null
   const engagementRate = facts['avg_engagement_rate'] as number | null
 
   // Posts this week

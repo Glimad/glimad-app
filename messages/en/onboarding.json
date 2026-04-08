@@ -1,41 +1,210 @@
 {
-  "title": "Tell us about yourself",
-  "subtitle": "We personalize your experience based on your answers",
-  "next": "Next",
-  "back": "Back",
-  "finish": "Create my account",
-  "loading": "Saving...",
-  "step_of": "Step {step} of {total}",
-  "questions": {
-    "interests": {
-      "text": "What topics are you passionate about?",
-      "hint": "You can pick several",
-      "options": ["Psychology", "Fitness", "Business", "Tech", "Art", "Fashion", "Food", "Travel", "Other"]
+  "assessment": {
+    "back": "Back",
+    "continue": "Continue",
+    "welcome": {
+      "title": "Hi! 👋",
+      "subtitle": "Your AI co-pilot to grow your idea, brand, project or business",
+      "tagline": "Stop guessing. Start earning. 🚀",
+      "cta": "Build My Evolution Map",
+      "duration": "3–5 min · Custom strategy for YOUR niche"
     },
-    "goal_90d": {
-      "text": "What is your goal for the next 90 days?",
-      "placeholder": "E.g. Grow on Instagram and reach my first 1000 followers"
+    "project": {
+      "question": "What project do you want to boost?",
+      "subtitle": "If you have several projects, let's start with the one you prioritize first",
+      "nameLabel": "What's the name of your project, artist or business?",
+      "namePlaceholder": "Enter your name"
     },
-    "blocker_1": {
-      "text": "What is your biggest obstacle right now?",
-      "options": ["I don't know what to post", "I don't have time", "I can't edit video", "Fear of being on camera", "I have no audience", "Other"]
+    "projectTypes": {
+      "music": "Music",
+      "visual": "Visual (Photo / Art)",
+      "creator": "Creator",
+      "personalBrand": "Brand / Business"
     },
-    "face_pref": {
-      "text": "Are you comfortable showing your face in content?",
-      "options": ["Yes, no problem", "No, I prefer not to", "Depends on the content"]
+    "journeyStage": {
+      "title": "Where Are You Right Now?",
+      "subtitle": "Pick where you are today. I'll guide you from there.",
+      "starting": {
+        "title": "Starting from Zero",
+        "description": "I have an idea but haven't launched yet. I need a clear roadmap."
+      },
+      "existing": {
+        "title": "Already Out There",
+        "description": "I'm active online with some audience. Ready to grow strategically."
+      },
+      "legacy": {
+        "title": "Building Legacy",
+        "description": "I have an established brand with revenue. Ready to scale big."
+      },
+      "helpNote": "Pick the closest one."
     },
-    "time_budget_week": {
-      "text": "How much time can you dedicate to content creation per week?",
-      "options": ["Less than 1h", "1-2h", "3-5h", "6-10h", "More than 10h"]
+    "yourIdea": {
+      "title": "Tell Us About Your Vision",
+      "subtitle": "Let's bring your idea to life",
+      "specificity": "The more specific you are, the better we can guide you 🎯",
+      "describeLabel": "Describe your idea",
+      "placeholder": "Example: I want to create content about sustainable fashion for Gen Z, mixing educational videos with behind-the-scenes of my design process...",
+      "feedbackShort": "✍️ Keep going! Share more details.",
+      "feedbackMedium": "👍 Good start! Add more details for better recommendations.",
+      "feedbackGood": "✨ Excellent! We have everything we need.",
+      "thinkAbout": "💭 Think about:",
+      "switchToAIHelp": "💭 Not sure yet? Let AI help you →",
+      "aiHelpTitle": "AI will help you",
+      "aiHelpDescription": "Just tell us your niche or interest",
+      "nichePlaceholder": "e.g., Fitness, Travel, Tech Reviews, Cooking...",
+      "aiHelpSuccess": "🎯 Great! We'll suggest ideas in your niche.",
+      "switchToOwnIdea": "← I have my own idea"
     },
-    "platform_current": {
-      "text": "Which platform are you on (or want to focus on)?",
-      "options": ["Instagram", "TikTok", "YouTube", "Twitter / X", "Spotify", "None yet"]
+    "goals": {
+      "growCommunity": "Grow my community",
+      "professionalize": "Professionalize my project",
+      "collaborations": "Get collaborations or sponsorships",
+      "monetize": "Monetize my content",
+      "automate": "Automate my growth",
+      "startIdea": "Start and activate my idea"
     },
-    "handle_current": {
-      "text": "What is your username on {platform}?",
-      "hint": "We'll use it to analyze your account and compute your growth phase.",
-      "placeholder": "@yourusername"
+    "legacyGoals": {
+      "scaleRevenue": "Scale revenue 10x+",
+      "buildSystems": "Build automated systems",
+      "expandMarkets": "Expand to new markets",
+      "multipleStreams": "Create multiple income streams",
+      "licenseIP": "License my IP & methodology",
+      "buildTeam": "Build & lead a team"
+    },
+    "goalsBlockers": {
+      "title": "Your Goals",
+      "subtitle": "What's your main goal right now?",
+      "goalsHint": "Select all that apply",
+      "customGoalLabel": "Or add your own goal:",
+      "addButton": "Add",
+      "blockerLabel": "What's your biggest current blocker?",
+      "blockerLabelLegacy": "Biggest growth barrier?",
+      "customBlockerLabel": "Or add your own blocker:"
+    },
+    "blockers": {
+      "lackTime": "Lack of time",
+      "dontKnow": "Don't know what to do",
+      "noBudget": "Not enough budget",
+      "dontUnderstandAlgorithms": "Don't understand algorithms",
+      "inconsistentPosting": "Inconsistent posting",
+      "noStrategy": "No clear strategy",
+      "lowEngagement": "Low engagement",
+      "technicalChallenges": "Technical challenges"
+    },
+    "legacyBlockers": {
+      "scalingQuality": "Scaling without losing quality",
+      "teamBuilding": "Team building & delegation",
+      "operations": "Complex operations management",
+      "creativeControl": "Maintaining creative control",
+      "timeSplit": "Time split across projects",
+      "systemsIntegration": "Systems integration",
+      "marketSaturation": "Market saturation",
+      "sustainingInnovation": "Sustaining innovation"
+    },
+    "platforms": {
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "youtube": "YouTube",
+      "twitter": "X (Twitter)",
+      "linkedin": "LinkedIn",
+      "facebook": "Facebook",
+      "spotify": "Spotify",
+      "behance": "Behance",
+      "pinterest": "Pinterest",
+      "website": "Website / Portfolio",
+      "other": "Other Platform"
+    },
+    "placeholders": {
+      "instagram": "@yourhandle",
+      "tiktok": "@yourhandle",
+      "youtube": "@yourchannel",
+      "twitter": "@yourhandle",
+      "linkedin": "yourname",
+      "facebook": "yourpage",
+      "spotify": "Artist name or spotify.com/artist/...",
+      "behance": "yourportfolio",
+      "pinterest": "@yourhandle",
+      "website": "yourwebsite.com",
+      "other": "Your link or username"
+    },
+    "digitalPresence": {
+      "titleStarting": "Any site / platform you want to start from?",
+      "titleExisting": "What are your active platforms?",
+      "subtitleStarting": "Optional. Add 1–3 existing accounts to leverage",
+      "subtitleExisting": "Add 1–3 of your most active platforms. Just your username or profile link.",
+      "maxPlatformsNote": "Choose up to 3 platforms for now. You can add more later.",
+      "noPresenceLabel": "I have no digital presence yet",
+      "urlPlaceholder": "Enter your username or link"
+    },
+    "monetization": {
+      "title": "Revenue Status",
+      "subtitle": "Where are you with monetization?",
+      "yesTitle": "Making money",
+      "yesDescription": "Active revenue streams",
+      "notYetTitle": "Planning to monetize",
+      "notYetDescription": "Building audience first",
+      "noTitle": "Not focused on money yet",
+      "noDescription": "Growth & community first",
+      "detailsLabel": "How? (optional)",
+      "detailsPlaceholder": "e.g., Sponsorships, products, services..."
+    },
+    "accompaniment": {
+      "titleStarting": "How Can We Help You Most?",
+      "titleExisting": "What Do You Need Most Right Now?",
+      "titleLegacy": "Where Do You Need Strategic Support?",
+      "subtitleStarting": "Select all that apply",
+      "subtitleExisting": "Select all that apply",
+      "subtitleLegacy": "Select all that apply",
+      "customLabel": "Or tell us something else:",
+      "addButton": "Add",
+      "startingHelp": {
+        "clearRoadmap": { "label": "A Clear Step-by-Step Roadmap", "desc": "Show me exactly what to do first" },
+        "nichePositioning": { "label": "Define My Niche & Positioning", "desc": "Help me find my unique angle" },
+        "contentStrategy": { "label": "Content Strategy & Ideas", "desc": "What to post and when" },
+        "platformGuidance": { "label": "Platform Selection & Setup", "desc": "Where to start and how to set up" },
+        "firstFollowers": { "label": "Getting My First Followers", "desc": "Build initial audience from scratch" },
+        "accountability": { "label": "Accountability & Support", "desc": "Someone to keep me on track" }
+      },
+      "existingHelp": {
+        "breakPlateau": { "label": "Break Through My Plateau", "desc": "Get past stagnant growth" },
+        "monetization": { "label": "Monetization Strategies", "desc": "Turn followers into revenue" },
+        "contentOptimization": { "label": "Content Optimization", "desc": "Improve engagement & reach" },
+        "collabOpportunities": { "label": "Brand Collaborations", "desc": "Connect with brands & sponsors" },
+        "automationSystems": { "label": "Automation & Systems", "desc": "Save time with smart tools" },
+        "growthStrategy": { "label": "Advanced Growth Strategy", "desc": "Scale to the next level" }
+      },
+      "legacyHelp": {
+        "scaleOperations": { "label": "Scale Operations & Team", "desc": "Build systems that work without you" },
+        "multipleRevenue": { "label": "Multiple Revenue Streams", "desc": "Diversify income sources" },
+        "ipLicensing": { "label": "IP & Methodology Licensing", "desc": "Package & sell your knowledge" },
+        "marketExpansion": { "label": "New Market Expansion", "desc": "Enter new territories & audiences" },
+        "empireSystems": { "label": "Empire-Level Systems", "desc": "Automated infrastructure for scale" },
+        "strategicPartnerships": { "label": "Strategic Partnerships", "desc": "High-level collaborations & deals" }
+      }
+    },
+    "final": {
+      "nameStepTitle": "What's your name?",
+      "nameStepDescription": "Just so we know who we're helping",
+      "namePlaceholder": "John Doe",
+      "passwordStepTitle": "Create a password",
+      "passwordStepDescription": "You'll use this to access your roadmap",
+      "passwordPlaceholder": "Minimum 8 characters",
+      "passwordError": "Password must be at least 8 characters",
+      "emailStepTitle": "Your email",
+      "emailStepDescription": "Where should we send your roadmap?",
+      "emailPlaceholder": "your@email.com",
+      "gdprConsentLabel": "I accept that GLIMAD uses my data to deliver personalised roadmaps, insights, and platform updates for my benefit. Unsubscribe anytime. Read our",
+      "termsLink": "Terms & Conditions"
+    },
+    "verifyEmail": {
+      "emailSentTitle": "Verification Email Sent!",
+      "emailSentMessage": "We've sent a verification link to your email. Please check your inbox.",
+      "sentTo": "Sent to:",
+      "checkSpam": "Don't see it? Check your spam folder.",
+      "verified": "I Already Verified My Email",
+      "resend": "Resend Email",
+      "sending": "Sending...",
+      "note": "You can verify later from your account settings."
     }
   }
 }

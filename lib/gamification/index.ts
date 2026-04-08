@@ -1,12 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { writeFact, readAllFacts } from '@/lib/brain'
 
-const XP_PER_LEVEL = 500
-
+// Level N requires N² × 100 cumulative XP (per spec Step 16)
+// Level 1 = 100 XP, Level 2 = 400 XP, Level 3 = 900 XP, etc.
 export function getLevel(xp: number): { level: number; xpInLevel: number; xpForNext: number } {
-  const level = Math.floor(xp / XP_PER_LEVEL) + 1
-  const xpInLevel = xp % XP_PER_LEVEL
-  return { level, xpInLevel, xpForNext: XP_PER_LEVEL }
+  const level = Math.max(1, Math.floor(Math.sqrt(xp / 100)))
+  const xpForThisLevel = level * level * 100
+  const xpForNextLevel = (level + 1) * (level + 1) * 100
+  const xpInLevel = xp - xpForThisLevel
+  const xpForNext = xpForNextLevel - xpForThisLevel
+  return { level, xpInLevel, xpForNext }
 }
 
 export async function getGamificationState(admin: SupabaseClient, projectId: string) {
@@ -98,7 +101,7 @@ export async function onMissionComplete(
     .from('projects')
     .update({
       xp: project.xp + xpReward,
-      energy: Math.min(100, project.energy + 5),
+      energy: Math.min(100, project.energy + 10),  // +10 on mission completion per spec
       streak_days: newStreak,
     })
     .eq('id', projectId)

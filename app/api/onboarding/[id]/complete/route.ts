@@ -32,10 +32,21 @@ export async function POST(
   const startedAt = new Date(session!.started_at)
   const timeToComplete = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000)
 
+  const mergedResponses = { ...session!.responses_json, ...final_responses }
+
+  // Determine experiment_variant from journey_stage (new flow) or platform_current (legacy fallback)
+  const journeyStage = mergedResponses['journey_stage'] as string | undefined
+  const experimentVariant = journeyStage === 'existing'
+    ? 'B_has_presence'
+    : journeyStage === 'legacy'
+    ? 'C_legacy_builder'
+    : 'A_zero_start'
+
   await admin
     .from('onboarding_sessions')
     .update({
-      responses_json: { ...session!.responses_json, ...final_responses },
+      responses_json: mergedResponses,
+      experiment_variant: experimentVariant,
       status: 'completed',
       completed_at: completedAt.toISOString(),
       time_to_complete_seconds: timeToComplete,

@@ -10,14 +10,32 @@ export async function writeFact(
   projectId: string,
   key: string,
   value: unknown,
-  source = 'system'
+  changedBy = 'system'
 ) {
+  // Read old value for history (non-negotiable per spec §4.4)
+  const { data: existing } = await admin
+    .from('brain_facts')
+    .select('value')
+    .eq('project_id', projectId)
+    .eq('fact_key', key)
+    .single()
+
+  // Insert history row before overwriting
+  await admin.from('brain_facts_history').insert({
+    project_id: projectId,
+    fact_key: key,
+    old_value: existing?.value ?? null,
+    new_value: value,
+    changed_by: changedBy,
+    changed_at: new Date().toISOString(),
+  })
+
   await admin.from('brain_facts').upsert(
     {
       project_id: projectId,
       fact_key: key,
       value: value,
-      source,
+      source: changedBy,
       updated_at: new Date().toISOString(),
     },
     { onConflict: 'project_id,fact_key' }

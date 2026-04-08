@@ -1,41 +1,210 @@
 {
-  "title": "Cuéntanos sobre ti",
-  "subtitle": "Personalizamos tu experiencia según tus respuestas",
-  "next": "Siguiente",
-  "back": "Atrás",
-  "finish": "Crear mi cuenta",
-  "loading": "Guardando...",
-  "step_of": "Paso {step} de {total}",
-  "questions": {
-    "interests": {
-      "text": "¿Qué temas te apasionan?",
-      "hint": "Puedes elegir varios",
-      "options": ["Psicología", "Fitness", "Negocios", "Tech", "Arte", "Moda", "Gastronomía", "Viajes", "Otro"]
+  "assessment": {
+    "back": "Atrás",
+    "continue": "Continuar",
+    "welcome": {
+      "title": "¡Bienvenido! 👋",
+      "subtitle": "Tu co-piloto de IA para hacer crecer tu idea, marca, proyecto o negocio",
+      "tagline": "Deja de adivinar. Comienza a ganar. 🚀",
+      "cta": "Construir Mi Mapa de Evolución",
+      "duration": "3–5 min · Estrategia personalizada para TU realidad"
     },
-    "goal_90d": {
-      "text": "¿Cuál es tu objetivo a 90 días?",
-      "placeholder": "Ej: Crecer en Instagram y conseguir mis primeros 1000 seguidores"
+    "project": {
+      "question": "¿Qué proyecto quieres impulsar?",
+      "subtitle": "Si tienes varios proyectos, comencemos con el que priorizas primero",
+      "nameLabel": "¿Cuál es el nombre de tu proyecto, artístico o negocio?",
+      "namePlaceholder": "Ingresa el nombre de tu proyecto"
     },
-    "blocker_1": {
-      "text": "¿Cuál es tu mayor obstáculo ahora mismo?",
-      "options": ["No sé qué publicar", "No tengo tiempo", "No sé editar video", "Miedo a exponerme", "No tengo audiencia", "Otro"]
+    "projectTypes": {
+      "music": "Música",
+      "visual": "Visual (Foto / Arte)",
+      "creator": "Creador",
+      "personalBrand": "Marca / Negocio"
     },
-    "face_pref": {
-      "text": "¿Te sientes cómodo mostrando tu cara en el contenido?",
-      "options": ["Sí, sin problema", "No, prefiero no salir", "Depende del contenido"]
+    "journeyStage": {
+      "title": "¿En Dónde Estás Ahora?",
+      "subtitle": "Elige dónde estás hoy. Te guiaré desde ahí.",
+      "starting": {
+        "title": "Empezando desde Cero",
+        "description": "Tengo una idea pero aún no he lanzado. Necesito una hoja de ruta clara."
+      },
+      "existing": {
+        "title": "Ya Estoy Presente",
+        "description": "Estoy activo en línea con algo de audiencia. Listo para crecer estratégicamente."
+      },
+      "legacy": {
+        "title": "Construyendo Legado",
+        "description": "Tengo una marca establecida con ingresos. Listo para escalar en grande."
+      },
+      "helpNote": "Elige la más cercana a tu situación."
     },
-    "time_budget_week": {
-      "text": "¿Cuánto tiempo puedes dedicar por semana a crear contenido?",
-      "options": ["Menos de 1h", "1-2h", "3-5h", "6-10h", "Más de 10h"]
+    "yourIdea": {
+      "title": "Cuéntanos Sobre Tu Visión",
+      "subtitle": "Hagamos realidad tu idea",
+      "specificity": "Cuanto más específico seas, mejor podremos guiarte 🎯",
+      "describeLabel": "Describe tu idea",
+      "placeholder": "Ejemplo: Quiero crear contenido sobre moda sostenible para la Generación Z, mezclando videos educativos con detrás de cámaras...",
+      "feedbackShort": "✍️ ¡Sigue así! Comparte más detalles.",
+      "feedbackMedium": "👍 ¡Buen comienzo! Agrega más detalles para mejores recomendaciones.",
+      "feedbackGood": "✨ ¡Excelente! Tenemos todo lo necesario.",
+      "thinkAbout": "💭 Piensa en:",
+      "switchToAIHelp": "💭 ¿No estás seguro? Deja que la IA te ayude →",
+      "aiHelpTitle": "La IA te ayudará",
+      "aiHelpDescription": "Solo cuéntanos tu nicho o interés",
+      "nichePlaceholder": "ej., Fitness, Viajes, Reseñas de Tecnología, Cocina...",
+      "aiHelpSuccess": "🎯 ¡Genial! Te sugeriremos ideas en tu nicho.",
+      "switchToOwnIdea": "← Tengo mi propia idea"
     },
-    "platform_current": {
-      "text": "¿En qué plataforma estás ahora (o quieres enfocarte)?",
-      "options": ["Instagram", "TikTok", "YouTube", "Twitter / X", "Spotify", "Ninguna por ahora"]
+    "goals": {
+      "growCommunity": "Hacer crecer mi comunidad",
+      "professionalize": "Profesionalizar mi proyecto",
+      "collaborations": "Conseguir colaboraciones o patrocinios",
+      "monetize": "Monetizar mi contenido",
+      "automate": "Automatizar mi crecimiento",
+      "startIdea": "Iniciar y activar mi idea"
     },
-    "handle_current": {
-      "text": "¿Cuál es tu usuario en {platform}?",
-      "hint": "Lo usaremos para analizar tu cuenta y calcular tu fase de crecimiento.",
-      "placeholder": "@tuusuario"
+    "legacyGoals": {
+      "scaleRevenue": "Escalar ingresos 10x+",
+      "buildSystems": "Construir sistemas automatizados",
+      "expandMarkets": "Expandir a nuevos mercados",
+      "multipleStreams": "Crear múltiples fuentes de ingresos",
+      "licenseIP": "Licenciar mi propiedad intelectual",
+      "buildTeam": "Construir y liderar un equipo"
+    },
+    "goalsBlockers": {
+      "title": "Tus Metas",
+      "subtitle": "¿Cuál es tu meta principal ahora mismo?",
+      "goalsHint": "Selecciona todos los que apliquen",
+      "customGoalLabel": "O agrega tu propia meta:",
+      "addButton": "Agregar",
+      "blockerLabel": "¿Cuál es tu mayor obstáculo actual?",
+      "blockerLabelLegacy": "¿Cuál es la mayor barrera de crecimiento?",
+      "customBlockerLabel": "O agrega tu propio obstáculo:"
+    },
+    "blockers": {
+      "lackTime": "Falta de tiempo",
+      "dontKnow": "No sé qué hacer",
+      "noBudget": "Presupuesto insuficiente",
+      "dontUnderstandAlgorithms": "No entiendo los algoritmos",
+      "inconsistentPosting": "Publicación inconsistente",
+      "noStrategy": "No tengo una estrategia clara",
+      "lowEngagement": "Bajo engagement",
+      "technicalChallenges": "Desafíos técnicos"
+    },
+    "legacyBlockers": {
+      "scalingQuality": "Escalar sin perder calidad",
+      "teamBuilding": "Construcción de equipo y delegación",
+      "operations": "Gestión de operaciones complejas",
+      "creativeControl": "Mantener el control creativo",
+      "timeSplit": "Tiempo dividido entre proyectos",
+      "systemsIntegration": "Integración de sistemas",
+      "marketSaturation": "Saturación del mercado",
+      "sustainingInnovation": "Mantener la innovación"
+    },
+    "platforms": {
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "youtube": "YouTube",
+      "twitter": "X (Twitter)",
+      "linkedin": "LinkedIn",
+      "facebook": "Facebook",
+      "spotify": "Spotify",
+      "behance": "Behance",
+      "pinterest": "Pinterest",
+      "website": "Sitio Web / Portafolio",
+      "other": "Otra Plataforma"
+    },
+    "placeholders": {
+      "instagram": "@tuusuario",
+      "tiktok": "@tuusuario",
+      "youtube": "@tucanal",
+      "twitter": "@tuusuario",
+      "linkedin": "tunombre",
+      "facebook": "tupagina",
+      "spotify": "Nombre del artista o spotify.com/artist/...",
+      "behance": "tuportfolio",
+      "pinterest": "@tuusuario",
+      "website": "tusitioweb.com",
+      "other": "Tu enlace o usuario"
+    },
+    "digitalPresence": {
+      "titleStarting": "¿Algún sitio / plataforma desde donde quieres partir?",
+      "titleExisting": "¿Cuáles son tus plataformas activas?",
+      "subtitleStarting": "Opcional. Agrega de 1 a 3 cuentas existentes para aprovechar",
+      "subtitleExisting": "Agrega de 1 a 3 de tus plataformas más activas. Solo tu usuario o enlace.",
+      "maxPlatformsNote": "Elige hasta 3 plataformas por ahora. Luego podrás agregar más.",
+      "noPresenceLabel": "Aún no tengo presencia digital",
+      "urlPlaceholder": "Ingresa tu usuario o enlace"
+    },
+    "monetization": {
+      "title": "Estado de Ingresos",
+      "subtitle": "¿Dónde estás con la monetización?",
+      "yesTitle": "Ganando dinero",
+      "yesDescription": "Fuentes de ingresos activas",
+      "notYetTitle": "Planeando monetizar",
+      "notYetDescription": "Construyendo audiencia primero",
+      "noTitle": "Aún no enfocado en dinero",
+      "noDescription": "Crecimiento y comunidad primero",
+      "detailsLabel": "¿Cómo? (opcional)",
+      "detailsPlaceholder": "ej., Patrocinios, productos, servicios..."
+    },
+    "accompaniment": {
+      "titleStarting": "¿Cómo Podemos Ayudarte Más?",
+      "titleExisting": "¿Qué Necesitas Más Ahora?",
+      "titleLegacy": "¿Dónde Necesitas Apoyo Estratégico?",
+      "subtitleStarting": "Selecciona todos los que apliquen",
+      "subtitleExisting": "Selecciona todos los que apliquen",
+      "subtitleLegacy": "Selecciona todos los que apliquen",
+      "customLabel": "O cuéntanos algo más:",
+      "addButton": "Agregar",
+      "startingHelp": {
+        "clearRoadmap": { "label": "Una Hoja de Ruta Paso a Paso", "desc": "Muéstrame exactamente qué hacer primero" },
+        "nichePositioning": { "label": "Definir Mi Nicho y Posicionamiento", "desc": "Ayúdame a encontrar mi ángulo único" },
+        "contentStrategy": { "label": "Estrategia de Contenido e Ideas", "desc": "Qué publicar y cuándo" },
+        "platformGuidance": { "label": "Selección y Configuración de Plataforma", "desc": "Dónde empezar y cómo configurar" },
+        "firstFollowers": { "label": "Conseguir Mis Primeros Seguidores", "desc": "Construir audiencia inicial desde cero" },
+        "accountability": { "label": "Responsabilidad y Apoyo", "desc": "Alguien que me mantenga en camino" }
+      },
+      "existingHelp": {
+        "breakPlateau": { "label": "Superar Mi Estancamiento", "desc": "Pasar el crecimiento estancado" },
+        "monetization": { "label": "Estrategias de Monetización", "desc": "Convertir seguidores en ingresos" },
+        "contentOptimization": { "label": "Optimización de Contenido", "desc": "Mejorar engagement y alcance" },
+        "collabOpportunities": { "label": "Colaboraciones con Marcas", "desc": "Conectar con marcas y patrocinadores" },
+        "automationSystems": { "label": "Automatización y Sistemas", "desc": "Ahorrar tiempo con herramientas inteligentes" },
+        "growthStrategy": { "label": "Estrategia de Crecimiento Avanzada", "desc": "Escalar al siguiente nivel" }
+      },
+      "legacyHelp": {
+        "scaleOperations": { "label": "Escalar Operaciones y Equipo", "desc": "Construir sistemas que funcionen sin ti" },
+        "multipleRevenue": { "label": "Múltiples Fuentes de Ingresos", "desc": "Diversificar fuentes de ingresos" },
+        "ipLicensing": { "label": "Licenciamiento de PI y Metodología", "desc": "Empaquetar y vender tu conocimiento" },
+        "marketExpansion": { "label": "Expansión a Nuevos Mercados", "desc": "Entrar en nuevos territorios y audiencias" },
+        "empireSystems": { "label": "Sistemas a Nivel Imperio", "desc": "Infraestructura automatizada para escalar" },
+        "strategicPartnerships": { "label": "Alianzas Estratégicas", "desc": "Colaboraciones y acuerdos de alto nivel" }
+      }
+    },
+    "final": {
+      "nameStepTitle": "¿Cuál es tu nombre?",
+      "nameStepDescription": "Para saber a quién estamos ayudando",
+      "namePlaceholder": "Juan García",
+      "passwordStepTitle": "Crea una contraseña",
+      "passwordStepDescription": "La usarás para acceder a tu hoja de ruta",
+      "passwordPlaceholder": "Mínimo 8 caracteres",
+      "passwordError": "La contraseña debe tener al menos 8 caracteres",
+      "emailStepTitle": "Tu email",
+      "emailStepDescription": "¿Dónde debemos enviar tu hoja de ruta?",
+      "emailPlaceholder": "tu@email.com",
+      "gdprConsentLabel": "Acepto que GLIMAD use mis datos para ofrecer hojas de ruta, información y actualizaciones personalizadas. Cancela cuando quieras. Lee nuestros",
+      "termsLink": "Términos y Condiciones"
+    },
+    "verifyEmail": {
+      "emailSentTitle": "¡Email de Verificación Enviado!",
+      "emailSentMessage": "Te hemos enviado un enlace de verificación a tu email. Por favor revisa tu bandeja de entrada.",
+      "sentTo": "Enviado a:",
+      "checkSpam": "¿No lo ves? Revisa tu carpeta de spam.",
+      "verified": "Ya Verifiqué Mi Email",
+      "resend": "Reenviar Email",
+      "sending": "Enviando...",
+      "note": "Puedes verificar más tarde desde la configuración de tu cuenta."
     }
   }
 }
