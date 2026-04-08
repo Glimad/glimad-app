@@ -45,7 +45,6 @@ export async function seedBrainFromOnboarding(
   const blockers      = Array.isArray(r['blockers']) ? r['blockers'] as string[] : []
   const revenueStatus = String(r['revenue_status'] ?? '')
   const supportNeeds  = Array.isArray(r['support_needs']) ? r['support_needs'] as string[] : []
-  const fullName      = String(r['full_name'] ?? '')
   const noPresence    = Boolean(r['no_presence'])
 
   const selectedPlatformsRaw = Array.isArray(r['selected_platforms']) ? r['selected_platforms'] as string[] : []

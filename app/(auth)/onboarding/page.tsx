@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useT } from '@/lib/i18n'
 import { createClient } from '@/lib/supabase/client'
 
@@ -152,7 +153,7 @@ export default function OnboardingPage() {
     await fetch(`/api/onboarding/${sessionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step: step + 1, responses }),
+      body: JSON.stringify({ step, responses }),
     })
   }
 
@@ -827,7 +828,9 @@ export default function OnboardingPage() {
               />
               <label htmlFor="gdpr" className="text-white/80 text-sm cursor-pointer leading-relaxed">
                 {t('assessment.final.gdprConsentLabel')}{' '}
-                <span className="text-cyan-400 underline">{t('assessment.final.termsLink')}</span>
+                <Link href="/terms" className="text-cyan-400 underline">
+                  {t('assessment.final.termsLink')}
+                </Link>
               </label>
             </div>
             {signupError && <p className="text-red-400 text-sm mt-4">{signupError}</p>}

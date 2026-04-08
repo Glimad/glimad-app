@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   const canRun = await shouldRunPulse(admin, project.id)
   if (!canRun) {
-    return NextResponse.json({ error: 'Rate limit: pulse ran less than 6 hours ago' }, { status: 429 })
+    return NextResponse.json({ error: 'Rate limit: pulse ran less than 24 hours ago' }, { status: 429 })
   }
 
   const result = await runPulse(admin, project.id, 'manual')

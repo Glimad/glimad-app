@@ -101,8 +101,9 @@ export async function approveContent(
     })
     .select('id')
     .single()
+  if (!asset) throw new Error('Failed to create asset')
 
-  const platform = (content.platform as string) ?? null
+  const platform = typeof content.platform === 'string' ? content.platform : null
   const scheduledDate = scheduledAt ? scheduledAt.slice(0, 10) : null
   const idempotencyKey = scheduledDate && platform
     ? `${projectId}:${platform}:${scheduledDate}:${contentType}`
@@ -112,7 +113,7 @@ export async function approveContent(
     .from('core_calendar_items')
     .insert({
       project_id: projectId,
-      asset_id: asset!.id,
+      asset_id: asset.id,
       content_type: contentType,
       platform,
       scheduled_at: scheduledAt ?? null,
@@ -121,14 +122,15 @@ export async function approveContent(
     })
     .select('id')
     .single()
+  if (!calendarItem) throw new Error('Failed to create calendar item')
 
   if (scheduledAt) {
     // Spec: append content_scheduled signal + write event_log on approve+schedule
     await appendSignal(admin, projectId, 'content_scheduled', {
       content_type: contentType,
       topic,
-      asset_id: asset!.id,
-      calendar_item_id: calendarItem!.id,
+      asset_id: asset.id,
+      calendar_item_id: calendarItem.id,
       scheduled_at: scheduledAt,
     })
     await admin.from('event_log').insert({
@@ -136,7 +138,7 @@ export async function approveContent(
       event_type: 'content_scheduled',
       event_data: {
         asset_id: asset!.id,
-        calendar_item_id: calendarItem!.id,
+        calendar_item_id: calendarItem.id,
         content_type: contentType,
         platform,
         scheduled_at: scheduledAt,
@@ -146,10 +148,10 @@ export async function approveContent(
     await appendSignal(admin, projectId, 'content_created', {
       content_type: contentType,
       topic,
-      asset_id: asset!.id,
-      calendar_item_id: calendarItem!.id,
+      asset_id: asset.id,
+      calendar_item_id: calendarItem.id,
     })
   }
 
-  return { asset_id: asset!.id, calendar_item_id: calendarItem!.id }
+  return { asset_id: asset.id, calendar_item_id: calendarItem.id }
 }

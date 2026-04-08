@@ -7,9 +7,21 @@ import { getProjectId } from '@/lib/supabase/project'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 200)
+  const parsed = parseInt(searchParams.get('limit') ?? '50', 10)
+  const limit = Number.isFinite(parsed) ? Math.min(Math.max(parsed, 1), 200) : 50
   const admin = createAdminClient()
-  const projectId = await getProjectId(req, admin)
+  let projectId: string
+  try {
+    projectId = await getProjectId(req, admin)
+  } catch (error) {
+    const status = (error as { status?: number })?.status ?? 500
+    return NextResponse.json({ error: (error as Error).message }, { status })
+  }
+  const { data: project } = await admin.from('projects').select('phase_code').eq('id', projectId).single()
+  const phaseRank: Record<string, number> = { F0: 0, F1: 1, F2: 2, F3: 3, F4: 4, F5: 5, F6: 6, F7: 7 }
+  if (!project || (phaseRank[project.phase_code ?? 'F0'] ?? 0) < 3) {
+    return NextResponse.json({ error: 'requires_f3_plus' }, { status: 403 })
+  }
 
   const { data } = await admin
     .from('monetization_events')
@@ -24,7 +36,18 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json()
   const admin = createAdminClient()
-  const projectId = await getProjectId(req, admin)
+  let projectId: string
+  try {
+    projectId = await getProjectId(req, admin)
+  } catch (error) {
+    const status = (error as { status?: number })?.status ?? 500
+    return NextResponse.json({ error: (error as Error).message }, { status })
+  }
+  const { data: project } = await admin.from('projects').select('phase_code').eq('id', projectId).single()
+  const phaseRank: Record<string, number> = { F0: 0, F1: 1, F2: 2, F3: 3, F4: 4, F5: 5, F6: 6, F7: 7 }
+  if (!project || (phaseRank[project.phase_code ?? 'F0'] ?? 0) < 3) {
+    return NextResponse.json({ error: 'requires_f3_plus' }, { status: 403 })
+  }
 
   const { data: event } = await admin
     .from('monetization_events')

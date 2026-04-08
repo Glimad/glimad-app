@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     .single()
 
   if (!grant) {
-    return NextResponse.json({ access_state: 'needs_payment', plan_tier: null, wallet_balance: 0 })
+    return NextResponse.json({ access_state: 'inactive', plan_tier: null, wallet_balance: 0 })
   }
 
   // Get subscription
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     .single()
 
   if (!sub || sub.status !== 'active') {
-    return NextResponse.json({ access_state: 'needs_payment', plan_tier: null, wallet_balance: 0 })
+    return NextResponse.json({ access_state: 'inactive', plan_tier: null, wallet_balance: 0 })
   }
 
   // Get wallet balance
@@ -39,11 +39,14 @@ export async function GET(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) {
+    return NextResponse.json({ access_state: 'inactive', plan_tier: null, wallet_balance: 0 })
+  }
 
   const { data: wallet } = await admin
     .from('core_wallets')
     .select('premium_credits_balance, allowance_llm_balance, status')
-    .eq('project_id', project!.id)
+    .eq('project_id', project.id)
     .single()
 
   return NextResponse.json({

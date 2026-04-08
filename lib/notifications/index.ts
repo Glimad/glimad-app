@@ -6,8 +6,8 @@ import { Resend } from 'resend'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
-const resend = new Resend(process.env.RESEND_API_KEY!)
-const FROM_EMAIL = process.env.EMAIL_FROM!
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+const FROM_EMAIL = process.env.EMAIL_FROM ?? ''
 
 // ── Email copy (bilingual) ────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export async function sendNotification(
   })
 
   // Send email if requested
-  if (channel === 'email' && opts.emailSubject && opts.emailHtml) {
+  if (channel === 'email' && opts.emailSubject && opts.emailHtml && resend && FROM_EMAIL) {
     await resend.emails.send({
       from: FROM_EMAIL,
       to: opts.userEmail,

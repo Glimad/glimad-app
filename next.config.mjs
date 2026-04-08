@@ -1,3 +1,6 @@
+const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname
+  : null
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
@@ -16,13 +19,13 @@ const nextConfig = {
     serverComponentsExternalPackages: ['stripe'],
   },
   images: {
-    remotePatterns: [
+    remotePatterns: supabaseHost ? [
       {
         protocol: 'https',
-        hostname: new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname,
+        hostname: supabaseHost,
         pathname: '/storage/v1/object/public/**',
       },
-    ],
+    ] : [],
   },
   async headers() {
     return [

@@ -8,7 +8,11 @@ import { readAllFacts } from '@/lib/brain'
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+function getStripeClient() {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) return null
+  return new Stripe(key)
+}
 
 async function stripeGet(path: string) {
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
@@ -33,11 +37,24 @@ async function getPlanCredits(
 }
 
 export async function POST(request: Request) {
-  const body = await request.text()
-  const sig = request.headers.get('stripe-signature')!
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+  const stripe = getStripeClient()
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 })
+  }
 
-  const event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+  const body = await request.text()
+  const sig = request.headers.get('stripe-signature')
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  if (!sig || !webhookSecret) {
+    return NextResponse.json({ error: 'Missing stripe signature/secret' }, { status: 400 })
+  }
+
+  let event: Stripe.Event
+  try {
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+  } catch {
+    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 })
+  }
 
   const admin = createAdminClient()
 

@@ -8,7 +8,13 @@ import { getProjectId } from '@/lib/supabase/project'
 
 export async function POST(req: NextRequest) {
   const admin = createAdminClient()
-  const projectId = await getProjectId(req, admin)
+  let projectId: string
+  try {
+    projectId = await getProjectId(req, admin)
+  } catch (error) {
+    const status = (error as { status?: number })?.status ?? 500
+    return NextResponse.json({ error: (error as Error).message }, { status })
+  }
 
   const { data: project } = await admin
     .from('projects')

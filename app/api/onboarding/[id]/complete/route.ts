@@ -6,6 +6,13 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const cookie = request.headers.get('cookie') ?? ''
+  const sidMatch = cookie.match(/(?:^|;\s*)glimad_onboarding_sid=([^;]+)/)
+  const cookieSid = sidMatch?.[1]
+  if (!cookieSid || cookieSid !== params.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const body = await request.json()
   const raw = body.final_responses ?? {}
 
@@ -28,18 +35,24 @@ export async function POST(
     .eq('id', params.id)
     .single()
 
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  }
+
   const completedAt = new Date()
-  const startedAt = new Date(session!.started_at)
+  const startedAt = new Date(session.started_at)
   const timeToComplete = Math.round((completedAt.getTime() - startedAt.getTime()) / 1000)
 
-  const mergedResponses = { ...session!.responses_json, ...final_responses }
+  const mergedResponses = { ...session.responses_json, ...final_responses }
 
-  // Determine experiment_variant from journey_stage (new flow) or platform_current (legacy fallback)
+  // Determine experiment_variant by platform presence (source-of-truth for funnel split)
+  const selectedPlatforms = mergedResponses['selected_platforms']
+  const noPresence = Boolean(mergedResponses['no_presence'])
+  const hasPresence = Array.isArray(selectedPlatforms) ? selectedPlatforms.length > 0 : false
+
   const journeyStage = mergedResponses['journey_stage'] as string | undefined
-  const experimentVariant = journeyStage === 'existing'
+  const experimentVariant = (hasPresence && !noPresence) || journeyStage === 'existing'
     ? 'B_has_presence'
-    : journeyStage === 'legacy'
-    ? 'C_legacy_builder'
     : 'A_zero_start'
 
   await admin

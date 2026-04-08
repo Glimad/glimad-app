@@ -7,6 +7,7 @@ import { useT } from '@/lib/i18n'
 type Step = 'type' | 'topic' | 'generating' | 'review' | 'schedule' | 'done'
 
 interface GeneratedContent {
+  platform?: string
   hook: string
   caption: string
   talking_points: string[]
@@ -46,75 +47,113 @@ export default function StudioPage() {
   const [editedContent, setEditedContent] = useState<GeneratedContent | null>(null)
   const [scheduledAt, setScheduledAt] = useState('')
   const [regeneratingField, setRegeneratingField] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/studio/topics')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error('Failed to load studio context')
+        return r.json()
+      })
       .then(data => {
         if (data.platform) setPlatform(data.platform)
         if (data.caption_limit) setCaptionLimit(data.caption_limit)
       })
+      .catch(() => setError('Could not load studio settings.'))
   }, [])
 
   const availableTypes = CONTENT_TYPES.filter(ct => ct.platforms.includes(platform))
 
 
   async function handleTypeSelect(type: string) {
+    setError(null)
     setContentType(type)
     setStep('topic')
-    const res = await fetch('/api/studio/topics', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content_type: type }),
-    })
-    const data = await res.json()
-    setTopics(data.topics)
+    try {
+      const res = await fetch('/api/studio/topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_type: type }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setTopics(data.topics ?? [])
+    } catch {
+      setError('Could not generate topics. Please try again.')
+      setStep('type')
+    }
   }
 
   async function handleTopicSelect(topic: string) {
+    setError(null)
     const finalTopic = topic || customTopic
     setSelectedTopic(finalTopic)
     setStep('generating')
-    const res = await fetch('/api/studio/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content_type: contentType, topic: finalTopic }),
-    })
-    const data = await res.json()
-    setEditedContent(data.content)
-    setStep('review')
+    try {
+      const res = await fetch('/api/studio/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_type: contentType, topic: finalTopic }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setEditedContent(data.content)
+      setStep('review')
+    } catch {
+      setError('Generation failed. Please try again.')
+      setStep('topic')
+    }
   }
 
   async function handleRegenerateField(field: string) {
     setRegeneratingField(field)
-    const res = await fetch('/api/studio/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content_type: contentType, topic: selectedTopic }),
-    })
-    const data = await res.json()
-    setEditedContent(prev => ({ ...prev!, [field]: data.content[field] }))
-    setRegeneratingField(null)
+    setError(null)
+    try {
+      const res = await fetch('/api/studio/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content_type: contentType, topic: selectedTopic }),
+      })
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      setEditedContent(prev => (prev ? { ...prev, [field]: data.content[field] } : prev))
+    } catch {
+      setError('Could not regenerate this field.')
+    } finally {
+      setRegeneratingField(null)
+    }
   }
 
   async function handleApprove() {
-    await fetch('/api/studio/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    setError(null)
+    try {
+      const payload = {
         content_type: contentType,
         topic: selectedTopic,
-        content: editedContent,
+        content: { ...(editedContent ?? {}), platform },
         scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-      }),
-    })
-    setStep('done')
+      }
+      const res = await fetch('/api/studio/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) throw new Error()
+      setStep('done')
+    } catch {
+      setError('Could not save content. Please try again.')
+    }
   }
 
   const captionWarning = editedContent && editedContent.caption.length > captionLimit * 0.9
 
   return (
     <div className="text-white max-w-2xl mx-auto px-4 pt-8 pb-12">
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-900 bg-red-950/30 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
 
       {step === 'type' && (
         <div>

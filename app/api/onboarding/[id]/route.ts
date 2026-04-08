@@ -5,6 +5,13 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
+  const cookie = request.headers.get('cookie') ?? ''
+  const sidMatch = cookie.match(/(?:^|;\s*)glimad_onboarding_sid=([^;]+)/)
+  const cookieSid = sidMatch?.[1]
+  if (!cookieSid || cookieSid !== params.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const { step, responses } = await request.json()
   const admin = createAdminClient()
 
@@ -14,21 +21,25 @@ export async function PATCH(
     .eq('id', params.id)
     .single()
 
-  const merged = { ...session!.responses_json, ...responses }
+  if (!session) {
+    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  }
+
+  const merged = { ...session.responses_json, ...responses }
 
   await admin
     .from('onboarding_sessions')
     .update({
       responses_json: merged,
-      step_current: step + 1,
+      step_current: step,
       updated_at: new Date().toISOString(),
     })
     .eq('id', params.id)
 
   return NextResponse.json({
     success: true,
-    step_current: step + 1,
-    step_total: session!.step_total,
-    progress_pct: Math.round(((step + 1) / session!.step_total) * 100),
+    step_current: step,
+    step_total: session.step_total,
+    progress_pct: Math.round((step / session.step_total) * 100),
   })
 }

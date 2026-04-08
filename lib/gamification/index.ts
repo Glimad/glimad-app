@@ -1,12 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { writeFact, readAllFacts } from '@/lib/brain'
 
-// Level N requires N² × 100 cumulative XP (per spec Step 16)
-// Level 1 = 100 XP, Level 2 = 400 XP, Level 3 = 900 XP, etc.
+// Level progression used by product/QA:
+// level = floor(xp / 500) + 1
 export function getLevel(xp: number): { level: number; xpInLevel: number; xpForNext: number } {
-  const level = Math.max(1, Math.floor(Math.sqrt(xp / 100)))
-  const xpForThisLevel = level * level * 100
-  const xpForNextLevel = (level + 1) * (level + 1) * 100
+  const level = Math.max(1, Math.floor(xp / 500) + 1)
+  const xpForThisLevel = (level - 1) * 500
+  const xpForNextLevel = level * 500
   const xpInLevel = xp - xpForThisLevel
   const xpForNext = xpForNextLevel - xpForThisLevel
   return { level, xpInLevel, xpForNext }

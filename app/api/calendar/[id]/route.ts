@@ -16,13 +16,14 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
   if (body.status) {
     const { data: current } = await admin
       .from('core_calendar_items')
       .select('status')
       .eq('id', params.id)
-      .eq('project_id', project!.id)
+      .eq('project_id', project.id)
       .single()
 
     if (current && !isValidTransition(current.status, body.status)) {
@@ -36,7 +37,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   const fields: Record<string, unknown> = {}
   if (body.scheduled_at !== undefined) fields.scheduled_at = body.scheduled_at
 
-  const item = await updateCalendarItem(admin, project!.id, params.id, body.status, fields)
+  const item = await updateCalendarItem(admin, project.id, params.id, body.status, fields)
   return NextResponse.json({ item })
 }
 
@@ -52,7 +53,8 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
-  await deleteCalendarItem(admin, project!.id, params.id)
+  await deleteCalendarItem(admin, project.id, params.id)
   return NextResponse.json({ success: true })
 }

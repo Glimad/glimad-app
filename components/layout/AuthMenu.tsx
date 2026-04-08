@@ -26,7 +26,7 @@ export default function AuthMenu({ user }: Props) {
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/onboarding')
+    router.push('/login')
     router.refresh()
   }
 

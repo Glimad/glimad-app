@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createMissionInstance, executeMission } from '@/lib/missions/runner'
 import { onMissionStart } from '@/lib/gamification'
+import { resolveLocale } from '@/i18n.config'
 
 export const maxDuration = 120
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
-  const locale = req.cookies.get('NEXT_LOCALE')?.value ?? 'en'
+  const locale = resolveLocale(req.cookies.get('NEXT_LOCALE')?.value)
 
   await onMissionStart(admin, project.id)
   const instanceId = await createMissionInstance(admin, project.id, template_code)

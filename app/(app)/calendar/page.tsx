@@ -42,18 +42,27 @@ export default function CalendarPage() {
   const [drafts, setDrafts] = useState<CalendarItem[]>([])
   const [selected, setSelected] = useState<CalendarItem | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [rescheduling, setRescheduling] = useState(false)
   const [newScheduledAt, setNewScheduledAt] = useState('')
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     const monthStr = `${year}-${String(month).padStart(2, '0')}`
     fetch(`/api/calendar?month=${monthStr}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error('Failed to load calendar')
+        return r.json()
+      })
       .then(data => {
         setItems(data.items ?? [])
         setDrafts(data.drafts ?? [])
+        setLoading(false)
+      })
+      .catch(() => {
+        setError('Failed to load calendar')
         setLoading(false)
       })
   }, [year, month])
@@ -161,6 +170,8 @@ export default function CalendarPage() {
 
       {loading ? (
         <div className="flex items-center justify-center py-24 text-zinc-400">{t('loading')}</div>
+      ) : error ? (
+        <div className="flex items-center justify-center py-24 text-red-400 text-sm">Could not load calendar data.</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">

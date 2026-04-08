@@ -44,7 +44,6 @@ export async function createMissionInstance(
   params: Record<string, unknown> = {}
 ): Promise<string> {
   const today = new Date().toISOString().slice(0, 10)
-  const uniqueKey = `${projectId}:${templateCode}:${today}`
 
   // Idempotency: return any open instance for this template regardless of date
   const { data: existing } = await admin

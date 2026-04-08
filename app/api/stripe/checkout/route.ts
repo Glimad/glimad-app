@@ -40,6 +40,9 @@ export async function POST(request: Request) {
   }
 
   const priceId = PRICE_MAP[plan_code]
+  if (!priceId) {
+    return NextResponse.json({ error: 'Invalid plan_code' }, { status: 400 })
+  }
   const origin = new URL(request.url).origin
 
   const { data: existing } = await admin
@@ -58,6 +61,10 @@ export async function POST(request: Request) {
         'metadata[user_id]': user.id,
       }),
     })
+    if (!res.ok) {
+      const errText = await res.text()
+      return NextResponse.json({ error: 'stripe_customer_create_failed', details: errText }, { status: 502 })
+    }
     const customer = await res.json()
     customerId = customer.id
     await admin.from('core_stripe_customers').insert({
@@ -81,7 +88,14 @@ export async function POST(request: Request) {
       cancel_url: `${origin}/subscribe`,
     }),
   })
+  if (!res.ok) {
+    const errText = await res.text()
+    return NextResponse.json({ error: 'stripe_checkout_create_failed', details: errText }, { status: 502 })
+  }
   const session = await res.json()
+  if (!session?.url) {
+    return NextResponse.json({ error: 'stripe_checkout_missing_url' }, { status: 502 })
+  }
 
   return NextResponse.json({ url: session.url })
 }

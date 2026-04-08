@@ -10,11 +10,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const admin = createAdminClient()
 
-  await admin
+  const { data: updated } = await admin
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('id', params.id)
     .eq('user_id', user.id)
+    .select('id')
+    .single()
+
+  if (!updated) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
 
   return NextResponse.json({ ok: true })
 }

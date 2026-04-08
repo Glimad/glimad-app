@@ -102,9 +102,11 @@ export async function debitLlmCall(admin: SupabaseClient, projectId: string, ide
     .single()
   if (existing) return
 
+  if (wallet.allowance_llm_balance <= 0) return
+
   await admin
     .from('core_wallets')
-    .update({ allowance_llm_balance: wallet.allowance_llm_balance - 1 })
+    .update({ allowance_llm_balance: Math.max(0, wallet.allowance_llm_balance - 1) })
     .eq('wallet_id', wallet.wallet_id)
   await admin.from('core_ledger').insert({
     project_id: projectId,

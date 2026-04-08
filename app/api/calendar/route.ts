@@ -16,6 +16,7 @@ export async function GET(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
   const start = month
     ? `${month}-01T00:00:00Z`
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
   const { data: scheduledItems } = await admin
     .from('core_calendar_items')
     .select(selectFields)
-    .eq('project_id', project!.id)
+    .eq('project_id', project.id)
     .gte('scheduled_at', start)
     .lte('scheduled_at', end)
     .order('scheduled_at', { ascending: true })
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   const { data: draftItems } = await admin
     .from('core_calendar_items')
     .select(selectFields)
-    .eq('project_id', project!.id)
+    .eq('project_id', project.id)
     .eq('status', 'draft')
     .is('scheduled_at', null)
     .order('created_at', { ascending: false })

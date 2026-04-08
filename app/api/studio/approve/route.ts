@@ -16,9 +16,10 @@ export async function POST(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
   const result = await approveContent(
-    admin, project!.id, content_type, topic, content, scheduled_at ?? null
+    admin, project.id, content_type, topic, content, scheduled_at ?? null
   )
 
   return NextResponse.json(result)

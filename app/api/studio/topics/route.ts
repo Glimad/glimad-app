@@ -18,8 +18,9 @@ export async function GET(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
-  const facts = await readAllFacts(admin, project!.id)
+  const facts = await readAllFacts(admin, project.id)
   const focusObj = facts['platforms.focus'] as Record<string, unknown> | null
   const platform = String(focusObj?.platform ?? 'instagram')
 
@@ -48,8 +49,9 @@ export async function POST(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
-  const facts = await readAllFacts(admin, project!.id)
+  const facts = await readAllFacts(admin, project.id)
   const nicheObj = facts['identity.niche'] as Record<string, unknown> | null
   const niche = String(nicheObj?.niche ?? nicheObj?.value ?? 'content creator')
   const focusObj2 = facts['platforms.focus'] as Record<string, unknown> | null

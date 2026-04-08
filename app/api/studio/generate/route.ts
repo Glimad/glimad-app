@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAuthUser } from '@/lib/supabase/extract-token'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { readAllFacts } from '@/lib/brain'
-import { debitLlmCall } from '@/lib/wallet'
+import { debitLlmCall, hasLlmCalls } from '@/lib/wallet'
 import { checkLlmRateLimitDb } from '@/lib/security/rate-limit'
 import { sanitizeText } from '@/lib/security/sanitize'
 import { generateContent } from '@/lib/studio'
@@ -24,12 +24,16 @@ export async function POST(request: Request) {
     .eq('user_id', user.id)
     .neq('status', 'archived')
     .single()
+  if (!project) return NextResponse.json({ error: 'No project' }, { status: 404 })
 
-  if (!await checkLlmRateLimitDb(admin, project!.id)) {
+  if (!await checkLlmRateLimitDb(admin, project.id)) {
     return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
   }
+  if (!await hasLlmCalls(admin, project.id)) {
+    return NextResponse.json({ error: 'No allowance credits left' }, { status: 402 })
+  }
 
-  const facts = await readAllFacts(admin, project!.id)
+  const facts = await readAllFacts(admin, project.id)
   const nicheObj = facts['identity.niche'] as Record<string, unknown> | null
   const niche = String(nicheObj?.niche ?? nicheObj?.value ?? 'content creator')
   const focusObj = facts['platforms.focus'] as Record<string, unknown> | null
@@ -42,9 +46,21 @@ export async function POST(request: Request) {
     : String(audienceRaw ?? 'general audience')
 
   const content = await generateContent(content_type, topic, niche, platform, tone, audience)
+  const contentWithPlatform = { ...content, platform }
 
-  const idempotencyKey = `studio:${project!.id}:${content_type}:${Buffer.from(topic).toString('base64').slice(0, 32)}`
-  await debitLlmCall(admin, project!.id, idempotencyKey)
+  await admin
+    .from('core_outputs')
+    .insert({
+      project_id: project.id,
+      output_type: 'content',
+      format: content_type,
+      content: contentWithPlatform,
+      status: 'draft',
+      idempotency_key: `studio:output:${project.id}:${content_type}:${Buffer.from(topic).toString('base64').slice(0, 32)}`,
+    })
 
-  return NextResponse.json({ content })
+  const idempotencyKey = `studio:${project.id}:${content_type}:${Buffer.from(topic).toString('base64').slice(0, 32)}:${Date.now()}`
+  await debitLlmCall(admin, project.id, idempotencyKey)
+
+  return NextResponse.json({ content: contentWithPlatform })
 }

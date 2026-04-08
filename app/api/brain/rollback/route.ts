@@ -6,21 +6,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeFact } from '@/lib/brain'
+import { getAuthUser } from '@/lib/supabase/extract-token'
 
 export async function POST(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { project_id, fact_key, history_id } = await req.json()
 
   const admin = createAdminClient()
 
-  // Verify the project exists (also serves as basic ownership check in admin context)
+  // Verify ownership
   const { data: project } = await admin
     .from('projects')
     .select('id')
     .eq('id', project_id)
+    .eq('user_id', user.id)
+    .neq('status', 'archived')
     .single()
 
   if (!project) {
-    return NextResponse.json({ error: 'project_not_found' }, { status: 404 })
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   // Fetch the history entry to roll back to

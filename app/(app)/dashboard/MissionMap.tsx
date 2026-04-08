@@ -51,17 +51,29 @@ const STATUS_ICON: Record<MissionNode['status'], string> = {
 export default function MissionMap({ missions, t }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   async function startMission(templateCode: string) {
     setStarting(templateCode)
-    const resp = await fetch('/api/missions/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template_code: templateCode }),
-    })
-    const { instance_id } = await resp.json()
-    router.push(`/missions/${instance_id}`)
+    setError(null)
+    try {
+      const resp = await fetch('/api/missions/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_code: templateCode }),
+      })
+      const data = await resp.json()
+      if (!resp.ok || !data?.instance_id) {
+        setError('Could not start mission. Please try again.')
+        return
+      }
+      router.push(`/missions/${data.instance_id}`)
+    } catch {
+      setError('Could not start mission. Please try again.')
+    } finally {
+      setStarting(null)
+    }
   }
 
   function resumeMission(instanceId: string) {
@@ -74,6 +86,11 @@ export default function MissionMap({ missions, t }: Props) {
       <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-zinc-800" />
 
       <div className="space-y-3">
+        {error && (
+          <div className="rounded-lg border border-red-900 bg-red-950/30 px-3 py-2 text-xs text-red-300">
+            {error}
+          </div>
+        )}
         {missions.map((mission) => (
           <div key={mission.template_code} className="relative flex gap-4">
             {/* Node dot */}

@@ -22,24 +22,32 @@ export async function GET(req: NextRequest) {
     .neq('status', 'archived')
 
   let processed = 0
+  const errors: Array<{ project_id: string; error: string }> = []
   for (const project of projects ?? []) {
-    const phaseResult = await runPhaseEngine(admin, project.id)
-    const inflexion = await runInflexionEngine(admin, project.id)
-    const policyResult = await runPolicyEngine(admin, project.id, phaseResult, inflexion)
+    try {
+      const phaseResult = await runPhaseEngine(admin, project.id)
+      const inflexion = await runInflexionEngine(admin, project.id)
+      const policyResult = await runPolicyEngine(admin, project.id, phaseResult, inflexion)
 
-    // Write active_mode
-    await admin
-      .from('projects')
-      .update({ active_mode: policyResult.activeMode, updated_at: new Date().toISOString() })
-      .eq('id', project.id)
+      // Write active_mode
+      await admin
+        .from('projects')
+        .update({ active_mode: policyResult.activeMode, updated_at: new Date().toISOString() })
+        .eq('id', project.id)
 
-    // Instantiate top recommended missions (idempotent)
-    for (const m of policyResult.missionQueue.slice(0, 3)) {
-      await createMissionInstance(admin, project.id, m.templateCode)
+      // Instantiate top recommended missions (idempotent)
+      for (const m of policyResult.missionQueue.slice(0, 3)) {
+        await createMissionInstance(admin, project.id, m.templateCode)
+      }
+
+      processed++
+    } catch (error) {
+      errors.push({
+        project_id: project.id,
+        error: error instanceof Error ? error.message : String(error),
+      })
     }
-
-    processed++
   }
 
-  return NextResponse.json({ processed })
+  return NextResponse.json({ processed, errors })
 }
