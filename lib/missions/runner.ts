@@ -1,333 +1,420 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { readAllFacts, readSignals, writeFact, appendSignal, createSnapshot } from '@/lib/brain'
-import { grantPremiumCredits } from '@/lib/wallet'
-import { buildPrompt, type PromptKey } from './prompts'
-import { PROMPT_SCHEMAS } from './schemas'
-import { onMissionComplete } from '@/lib/gamification'
-import { runPhaseEngine } from '@/lib/engines/phase-engine'
-import { runPolicyEngine } from '@/lib/engines/policy-engine'
+import Anthropic from "@anthropic-ai/sdk";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  readAllFacts,
+  readSignals,
+  writeFact,
+  appendSignal,
+  createSnapshot,
+} from "@/lib/brain";
+import { grantPremiumCredits } from "@/lib/wallet";
+import { buildPrompt, type PromptKey } from "./prompts";
+import { PROMPT_SCHEMAS } from "./schemas";
+import { onMissionComplete } from "@/lib/gamification";
+import { runPhaseEngine } from "@/lib/engines/phase-engine";
+import { runPolicyEngine } from "@/lib/engines/policy-engine";
 
-type AdminClient = ReturnType<typeof createAdminClient>
+type AdminClient = ReturnType<typeof createAdminClient>;
 
 interface MissionStep {
-  step_number: number
-  step_type: string
-  name: string
+  step_number: number;
+  step_type: string;
+  name: string;
   config: {
-    facts?: string[]
+    facts?: string[];
     // fact_extract: maps canonical brain fact keys → template variable names
     // field: optional nested field to extract from object values (e.g. 'niche' from identity.niche)
     // as_array: wrap scalar value in array (for prompt templates expecting arrays)
-    fact_extract?: Record<string, { as: string; field?: string; as_array?: boolean }>
-    signals_hours?: number
-    prompt_key?: string
-    model?: string
-    fields?: string[]
-    signals?: string[]
-    full_output_key?: string  // save entire __llm_output as this fact key
-  }
-  timeout_seconds: number
-  retry_max: number
-  skip_on_failure: boolean
-  requires_credit: boolean
-  credit_type: 'allowance' | 'premium' | null
-  credit_amount: number
+    fact_extract?: Record<
+      string,
+      { as: string; field?: string; as_array?: boolean }
+    >;
+    signals_hours?: number;
+    prompt_key?: string;
+    model?: string;
+    fields?: string[];
+    signals?: string[];
+    full_output_key?: string; // save entire __llm_output as this fact key
+  };
+  timeout_seconds: number;
+  retry_max: number;
+  skip_on_failure: boolean;
+  requires_credit: boolean;
+  credit_type: "allowance" | "premium" | null;
+  credit_amount: number;
 }
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
 export async function createMissionInstance(
   admin: AdminClient,
   projectId: string,
   templateCode: string,
-  params: Record<string, unknown> = {}
+  params: Record<string, unknown> = {},
 ): Promise<string> {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10);
 
   // Idempotency: return any open instance for this template regardless of date
   const { data: existing } = await admin
-    .from('mission_instances')
-    .select('id, status')
-    .eq('project_id', projectId)
-    .eq('template_code', templateCode)
-    .in('status', ['queued', 'running', 'needs_user_input'])
-    .order('created_at', { ascending: false })
+    .from("mission_instances")
+    .select("id, status")
+    .eq("project_id", projectId)
+    .eq("template_code", templateCode)
+    .in("status", ["queued", "running", "waiting_input"])
+    .order("created_at", { ascending: false })
     .limit(1)
-    .single()
+    .single();
 
-  if (existing) return existing.id
+  if (existing) return existing.id;
 
   // Use a timestamp-scoped unique key so a failed instance never blocks re-creation
-  const uniqueKeyFinal = `${projectId}:${templateCode}:${today}:${Date.now()}`
+  const uniqueKeyFinal = `${projectId}:${templateCode}:${today}:${Date.now()}`;
 
   const { data: instance } = await admin
-    .from('mission_instances')
+    .from("mission_instances")
     .insert({
       project_id: projectId,
       template_code: templateCode,
-      status: 'queued',
+      status: "queued",
       params,
       unique_key: uniqueKeyFinal,
       current_step: 0,
     })
-    .select('id')
-    .single()
+    .select("id")
+    .single();
 
-  return instance!.id
+  return instance!.id;
 }
 
 export async function executeMission(
   admin: AdminClient,
   instanceId: string,
-  locale?: string
+  locale?: string,
 ): Promise<void> {
   const { data: instance } = await admin
-    .from('mission_instances')
-    .select('*, mission_templates(steps_json, credit_cost_allowance, credit_cost_premium)')
-    .eq('id', instanceId)
-    .single()
+    .from("mission_instances")
+    .select(
+      "*, mission_templates(steps_json, credit_cost_allowance, credit_cost_premium)",
+    )
+    .eq("id", instanceId)
+    .single();
 
-  if (!instance) return
-  if (instance.status === 'completed' || instance.status === 'failed') return
-  if (instance.status === 'needs_user_input') return
+  if (!instance) return;
+  if (instance.status === "completed" || instance.status === "failed") return;
+  if (instance.status === "waiting_input") return;
 
-  const template = instance.mission_templates as { steps_json: MissionStep[]; credit_cost_allowance: number; credit_cost_premium: number }
-  const steps: MissionStep[] = template.steps_json
+  const template = instance.mission_templates as {
+    steps_json: MissionStep[];
+    credit_cost_allowance: number;
+    credit_cost_premium: number;
+  };
+  const steps: MissionStep[] = template.steps_json;
 
   // Check wallet has sufficient allowance before starting
   if (template.credit_cost_allowance > 0) {
     const { data: wallet } = await admin
-      .from('core_wallets')
-      .select('allowance_llm_balance')
-      .eq('project_id', instance.project_id)
-      .single()
+      .from("core_wallets")
+      .select("allowance_llm_balance")
+      .eq("project_id", instance.project_id)
+      .single();
 
-    if (!wallet || wallet.allowance_llm_balance < template.credit_cost_allowance) {
+    if (
+      !wallet ||
+      wallet.allowance_llm_balance < template.credit_cost_allowance
+    ) {
       await admin
-        .from('mission_instances')
-        .update({ status: 'failed', completed_at: new Date().toISOString() })
-        .eq('id', instanceId)
-      return
+        .from("mission_instances")
+        .update({ status: "failed", completed_at: new Date().toISOString() })
+        .eq("id", instanceId);
+      return;
     }
   }
 
   // Mark as running
   await admin
-    .from('mission_instances')
-    .update({ status: 'running', started_at: new Date().toISOString() })
-    .eq('id', instanceId)
+    .from("mission_instances")
+    .update({ status: "running", started_at: new Date().toISOString() })
+    .eq("id", instanceId);
 
-  let brainContext: Record<string, unknown> = {}
+  let brainContext: Record<string, unknown> = {};
 
   for (const step of steps) {
     if (step.step_number <= (instance.current_step ?? 0)) {
       // Reconstruct brainContext from previously completed steps so resumed missions have full context
       const { data: completedStep } = await admin
-        .from('mission_steps')
-        .select('output')
-        .eq('mission_instance_id', instanceId)
-        .eq('step_number', step.step_number)
-        .single()
+        .from("mission_steps")
+        .select("output")
+        .eq("mission_instance_id", instanceId)
+        .eq("step_number", step.step_number)
+        .single();
 
       if (completedStep?.output) {
-        if (step.step_type === 'brain_read') {
-          brainContext = completedStep.output as Record<string, unknown>
+        if (step.step_type === "brain_read") {
+          brainContext = completedStep.output as Record<string, unknown>;
         }
-        if (step.step_type === 'llm_text') {
-          brainContext['__llm_output'] = completedStep.output
+        if (step.step_type === "llm_text") {
+          brainContext["__llm_output"] = completedStep.output;
         }
-        if (step.step_type === 'user_input') {
-          Object.assign(brainContext, completedStep.output)
+        if (step.step_type === "user_input") {
+          Object.assign(brainContext, completedStep.output);
         }
       }
-      continue
+      continue;
     }
 
     // Mark step as running
-    await admin.from('mission_steps').upsert({
-      mission_instance_id: instanceId,
-      step_number: step.step_number,
-      step_type: step.step_type,
-      status: 'running',
-      started_at: new Date().toISOString(),
-    }, { onConflict: 'mission_instance_id,step_number' })
+    await admin.from("mission_steps").upsert(
+      {
+        mission_instance_id: instanceId,
+        step_number: step.step_number,
+        step_type: step.step_type,
+        status: "running",
+        started_at: new Date().toISOString(),
+      },
+      { onConflict: "mission_instance_id,step_number" },
+    );
 
     // Before writing to Brain or assets, validate the complete LLM output
-    if (step.step_type === 'brain_update' || step.step_type === 'write_outputs') {
+    if (
+      step.step_type === "brain_update" ||
+      step.step_type === "write_outputs"
+    ) {
       const llmStepDef = steps
-        .slice(0, steps.findIndex(s => s.step_number === step.step_number))
+        .slice(
+          0,
+          steps.findIndex((s) => s.step_number === step.step_number),
+        )
         .reverse()
-        .find(s => s.step_type === 'llm_text')
+        .find((s) => s.step_type === "llm_text");
 
       if (llmStepDef?.config.prompt_key) {
-        const schema = PROMPT_SCHEMAS[llmStepDef.config.prompt_key as PromptKey]
-        const check = schema.safeParse(brainContext['__llm_output'])
+        const schema =
+          PROMPT_SCHEMAS[llmStepDef.config.prompt_key as PromptKey];
+        const check = schema.safeParse(brainContext["__llm_output"]);
 
         if (!check.success) {
-          let retried: Record<string, unknown>
+          let retried: Record<string, unknown>;
           try {
-            retried = await callLlmStep(llmStepDef, brainContext, locale)
+            retried = await callLlmStep(llmStepDef, brainContext, locale);
           } catch (retryErr) {
-            const msg = retryErr instanceof Error ? retryErr.message : String(retryErr)
-            await admin.from('mission_steps').upsert({
-              mission_instance_id: instanceId,
-              step_number: step.step_number,
-              step_type: step.step_type,
-              status: 'failed',
-              output: { error: `Output validation failed after retry: ${msg}` },
-              completed_at: new Date().toISOString(),
-            }, { onConflict: 'mission_instance_id,step_number' })
-            await admin.from('mission_instances')
-              .update({ status: 'failed', completed_at: new Date().toISOString() })
-              .eq('id', instanceId)
-            return
+            const msg =
+              retryErr instanceof Error ? retryErr.message : String(retryErr);
+            await admin.from("mission_steps").upsert(
+              {
+                mission_instance_id: instanceId,
+                step_number: step.step_number,
+                step_type: step.step_type,
+                status: "failed",
+                output: {
+                  error: `Output validation failed after retry: ${msg}`,
+                },
+                completed_at: new Date().toISOString(),
+              },
+              { onConflict: "mission_instance_id,step_number" },
+            );
+            await admin
+              .from("mission_instances")
+              .update({
+                status: "failed",
+                completed_at: new Date().toISOString(),
+              })
+              .eq("id", instanceId);
+            return;
           }
           // Retry succeeded — update brainContext and overwrite the llm_text step row
-          brainContext['__llm_output'] = retried
-          await admin.from('mission_steps').upsert({
-            mission_instance_id: instanceId,
-            step_number: llmStepDef.step_number,
-            step_type: llmStepDef.step_type,
-            status: 'completed',
-            output: retried,
-            completed_at: new Date().toISOString(),
-          }, { onConflict: 'mission_instance_id,step_number' })
+          brainContext["__llm_output"] = retried;
+          await admin.from("mission_steps").upsert(
+            {
+              mission_instance_id: instanceId,
+              step_number: llmStepDef.step_number,
+              step_type: llmStepDef.step_type,
+              status: "completed",
+              output: retried,
+              completed_at: new Date().toISOString(),
+            },
+            { onConflict: "mission_instance_id,step_number" },
+          );
         }
       }
     }
 
-    let stepOutput: unknown
+    let stepOutput: unknown;
     try {
-      stepOutput = await executeStep(admin, instance.project_id, instanceId, step, brainContext, locale)
+      stepOutput = await executeStep(
+        admin,
+        instance.project_id,
+        instanceId,
+        step,
+        brainContext,
+        locale,
+      );
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err)
-      await admin.from('mission_steps').upsert({
-        mission_instance_id: instanceId,
-        step_number: step.step_number,
-        step_type: step.step_type,
-        status: 'failed',
-        input: { config: step.config },
-        output: { error: errorMessage },
-        completed_at: new Date().toISOString(),
-      }, { onConflict: 'mission_instance_id,step_number' })
-      await admin.from('mission_instances')
-        .update({ status: 'failed', completed_at: new Date().toISOString() })
-        .eq('id', instanceId)
-      return
-    }
-
-    if (stepOutput === 'WAIT_FOR_INPUT') {
-      // Write question/choices to step row so the UI can read them directly
-      await admin.from('mission_steps').upsert({
-        mission_instance_id: instanceId,
-        step_number: step.step_number,
-        step_type: step.step_type,
-        status: 'awaiting_input',
-        input: { config: step.config },
-        started_at: new Date().toISOString(),
-      }, { onConflict: 'mission_instance_id,step_number' })
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await admin.from("mission_steps").upsert(
+        {
+          mission_instance_id: instanceId,
+          step_number: step.step_number,
+          step_type: step.step_type,
+          status: "failed",
+          input: { config: step.config },
+          output: { error: errorMessage },
+          completed_at: new Date().toISOString(),
+        },
+        { onConflict: "mission_instance_id,step_number" },
+      );
       await admin
-        .from('mission_instances')
-        .update({ status: 'needs_user_input', current_step: step.step_number })
-        .eq('id', instanceId)
-      return // stop execution until user responds
+        .from("mission_instances")
+        .update({ status: "failed", completed_at: new Date().toISOString() })
+        .eq("id", instanceId);
+      return;
     }
 
-    if (step.step_type === 'brain_read') {
-      brainContext = stepOutput as Record<string, unknown>
-    }
-    if (step.step_type === 'llm_text') {
-      brainContext['__llm_output'] = stepOutput
+    if (stepOutput === "WAIT_FOR_INPUT") {
+      // Write question/choices to step row so the UI can read them directly
+      await admin.from("mission_steps").upsert(
+        {
+          mission_instance_id: instanceId,
+          step_number: step.step_number,
+          step_type: step.step_type,
+          status: "awaiting_input",
+          input: { config: step.config },
+          started_at: new Date().toISOString(),
+        },
+        { onConflict: "mission_instance_id,step_number" },
+      );
+      await admin
+        .from("mission_instances")
+        .update({ status: "waiting_input", current_step: step.step_number })
+        .eq("id", instanceId);
+      return; // stop execution until user responds
     }
 
-    await admin.from('mission_steps').upsert({
-      mission_instance_id: instanceId,
-      step_number: step.step_number,
-      step_type: step.step_type,
-      status: 'completed',
-      input: { config: step.config },
-      output: typeof stepOutput === 'object' ? stepOutput : { result: stepOutput },
-      completed_at: new Date().toISOString(),
-    }, { onConflict: 'mission_instance_id,step_number' })
+    if (step.step_type === "brain_read") {
+      brainContext = stepOutput as Record<string, unknown>;
+    }
+    if (step.step_type === "llm_text") {
+      brainContext["__llm_output"] = stepOutput;
+    }
+
+    await admin.from("mission_steps").upsert(
+      {
+        mission_instance_id: instanceId,
+        step_number: step.step_number,
+        step_type: step.step_type,
+        status: "completed",
+        input: { config: step.config },
+        output:
+          typeof stepOutput === "object" ? stepOutput : { result: stepOutput },
+        completed_at: new Date().toISOString(),
+      },
+      { onConflict: "mission_instance_id,step_number" },
+    );
 
     await admin
-      .from('mission_instances')
+      .from("mission_instances")
       .update({ current_step: step.step_number })
-      .eq('id', instanceId)
+      .eq("id", instanceId);
   }
 
   // All steps done
   await admin
-    .from('mission_instances')
+    .from("mission_instances")
     .update({
-      status: 'completed',
+      status: "completed",
       completed_at: new Date().toISOString(),
-      outputs: brainContext['__llm_output'] ?? {},
+      outputs: brainContext["__llm_output"] ?? {},
     })
-    .eq('id', instanceId)
+    .eq("id", instanceId);
 
   // Write mission_completed signal + event_log (per spec §5.3)
-  const completedAt = new Date().toISOString()
-  await appendSignal(admin, instance.project_id, 'mission_completed', {
-    template_code: instance.template_code,
-    instance_id: instanceId,
-  }, 'mission_runner')
-  await admin.from('event_log').insert({
+  const completedAt = new Date().toISOString();
+  await appendSignal(
+    admin,
+    instance.project_id,
+    "mission_completed",
+    {
+      template_code: instance.template_code,
+      instance_id: instanceId,
+    },
+    "mission_runner",
+  );
+  await admin.from("event_log").insert({
     project_id: instance.project_id,
-    event_type: 'mission_completed',
-    event_data: { template_code: instance.template_code, instance_id: instanceId, completed_at: completedAt },
-  })
+    event_type: "mission_completed",
+    event_data: {
+      template_code: instance.template_code,
+      instance_id: instanceId,
+      completed_at: completedAt,
+    },
+  });
 
   // Gamification: award XP, update streak, restore energy
-  await onMissionComplete(admin, instance.project_id, instance.template_code)
+  await onMissionComplete(admin, instance.project_id, instance.template_code);
 
   // Grant +15 premium credits per completed mission
   await grantPremiumCredits(
-    admin, instance.project_id, 15,
-    'MISSION_COMPLETION_REWARD',
-    `mission:${instanceId}:completion_reward`
-  )
+    admin,
+    instance.project_id,
+    15,
+    "MISSION_COMPLETION_REWARD",
+    `mission:${instanceId}:completion_reward`,
+  );
 
   // Debit allowance credits
   if (template.credit_cost_allowance > 0) {
     const { data: wallet } = await admin
-      .from('core_wallets')
-      .select('wallet_id, allowance_llm_balance')
-      .eq('project_id', instance.project_id)
-      .single()
+      .from("core_wallets")
+      .select("wallet_id, allowance_llm_balance")
+      .eq("project_id", instance.project_id)
+      .single();
 
-    if (wallet && wallet.allowance_llm_balance >= template.credit_cost_allowance) {
-      const newBalance = wallet.allowance_llm_balance - template.credit_cost_allowance
-      await admin.from('core_ledger').insert({
+    if (
+      wallet &&
+      wallet.allowance_llm_balance >= template.credit_cost_allowance
+    ) {
+      const newBalance =
+        wallet.allowance_llm_balance - template.credit_cost_allowance;
+      await admin.from("core_ledger").insert({
         project_id: instance.project_id,
-        kind: 'debit',
+        kind: "debit",
         amount_allowance: template.credit_cost_allowance,
-        reason_key: 'MISSION_ALLOWANCE_DEBIT',
+        reason_key: "MISSION_ALLOWANCE_DEBIT",
         idempotency_key: `mission:${instanceId}:allowance_debit`,
         metadata_json: { template_code: instance.template_code },
-      })
+      });
       await admin
-        .from('core_wallets')
-        .update({ allowance_llm_balance: newBalance, updated_at: new Date().toISOString() })
-        .eq('wallet_id', wallet.wallet_id)
+        .from("core_wallets")
+        .update({
+          allowance_llm_balance: newBalance,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("wallet_id", wallet.wallet_id);
     }
   }
 
   // Call Policy Engine immediately after mission completion (per spec Step 11 + Step 10 compute frequency)
   // force=true: mission completion is a significant event — bypass 60-min cache
-  const phaseResult = await runPhaseEngine(admin, instance.project_id, true)
-  const policyResult = await runPolicyEngine(admin, instance.project_id, phaseResult, null, true)
+  const phaseResult = await runPhaseEngine(admin, instance.project_id, true);
+  const policyResult = await runPolicyEngine(
+    admin,
+    instance.project_id,
+    phaseResult,
+    null,
+    true,
+  );
 
   // Write active_mode to project
   await admin
-    .from('projects')
-    .update({ active_mode: policyResult.activeMode, updated_at: new Date().toISOString() })
-    .eq('id', instance.project_id)
+    .from("projects")
+    .update({
+      active_mode: policyResult.activeMode,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", instance.project_id);
 
   // Instantiate next recommended missions (idempotent — createMissionInstance returns existing if already open)
   for (const m of policyResult.missionQueue.slice(0, 3)) {
-    await createMissionInstance(admin, instance.project_id, m.templateCode)
+    await createMissionInstance(admin, instance.project_id, m.templateCode);
   }
 }
 
@@ -336,36 +423,42 @@ export async function executeMission(
 async function callLlmStep(
   step: MissionStep,
   brainContext: Record<string, unknown>,
-  locale?: string
+  locale?: string,
 ): Promise<Record<string, unknown>> {
-  const promptKey = step.config.prompt_key as PromptKey
-  const modelConfig = step.config.model ?? 'haiku'
-  const model = modelConfig.startsWith('claude-')
+  const promptKey = step.config.prompt_key as PromptKey;
+  const modelConfig = step.config.model ?? "haiku";
+  const model = modelConfig.startsWith("claude-")
     ? modelConfig
-    : modelConfig === 'sonnet'
+    : modelConfig === "sonnet"
       ? process.env.ANTHROPIC_MODEL_SONNET!
-      : process.env.ANTHROPIC_MODEL_HAIKU!
-  const maxTokens = model.includes('sonnet') || model.includes('opus') ? 2048 : 1024
-  const prompt = buildPrompt(promptKey, brainContext, locale)
-  const schema = PROMPT_SCHEMAS[promptKey]
+      : process.env.ANTHROPIC_MODEL_HAIKU!;
+  const maxTokens =
+    model.includes("sonnet") || model.includes("opus") ? 2048 : 1024;
+  const prompt = buildPrompt(promptKey, brainContext, locale);
+  const schema = PROMPT_SCHEMAS[promptKey];
 
   const attempt = async (): Promise<Record<string, unknown>> => {
     const message = await anthropic.messages.create({
       model,
       max_tokens: maxTokens,
-      messages: [{ role: 'user', content: prompt }],
-    })
-    const rawText = (message.content.find(c => c.type === 'text') as { type: 'text'; text: string } | undefined)?.text ?? ''
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {}
-    schema.parse(parsed) // throws ZodError if invalid
-    return parsed as Record<string, unknown>
-  }
+      messages: [{ role: "user", content: prompt }],
+    });
+    const rawText =
+      (
+        message.content.find((c) => c.type === "text") as
+          | { type: "text"; text: string }
+          | undefined
+      )?.text ?? "";
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    schema.parse(parsed); // throws ZodError if invalid
+    return parsed as Record<string, unknown>;
+  };
 
   try {
-    return await attempt()
+    return await attempt();
   } catch {
-    return await attempt() // one retry
+    return await attempt(); // one retry
   }
 }
 
@@ -375,62 +468,86 @@ async function executeStep(
   instanceId: string,
   step: MissionStep,
   brainContext: Record<string, unknown>,
-  locale?: string
+  locale?: string,
 ): Promise<unknown> {
   switch (step.step_type) {
-    case 'brain_read': {
-      const keys = step.config.facts ?? []
-      const factExtract = step.config.fact_extract ?? {}
-      const facts = await readAllFacts(admin, projectId)
-      const result: Record<string, unknown> = {}
+    case "brain_read": {
+      const keys = step.config.facts ?? [];
+      const factExtract = step.config.fact_extract ?? {};
+      const facts = await readAllFacts(admin, projectId);
+      const result: Record<string, unknown> = {};
       // Direct key reads (flat fact names)
-      for (const key of keys) result[key] = facts[key] ?? null
+      for (const key of keys) result[key] = facts[key] ?? null;
       // Canonical key extraction with optional field drilling and array wrapping
-      for (const [canonKey, { as, field, as_array }] of Object.entries(factExtract)) {
-        const val = facts[canonKey]
-        let extracted: unknown = val ?? null
-        if (field && val !== null && val !== undefined && typeof val === 'object') {
-          extracted = (val as Record<string, unknown>)[field] ?? null
+      for (const [canonKey, { as, field, as_array }] of Object.entries(
+        factExtract,
+      )) {
+        const val = facts[canonKey];
+        let extracted: unknown = val ?? null;
+        if (
+          field &&
+          val !== null &&
+          val !== undefined &&
+          typeof val === "object"
+        ) {
+          extracted = (val as Record<string, unknown>)[field] ?? null;
         }
-        result[as] = as_array ? (extracted != null ? [extracted] : []) : extracted
+        result[as] = as_array
+          ? extracted != null
+            ? [extracted]
+            : []
+          : extracted;
       }
       if (step.config.signals_hours) {
-        const signals = await readSignals(admin, projectId, step.config.signals_hours)
-        result['__signals'] = signals
+        const signals = await readSignals(
+          admin,
+          projectId,
+          step.config.signals_hours,
+        );
+        result["__signals"] = signals;
       }
-      return result
+      return result;
     }
 
-    case 'llm_text': {
-      return callLlmStep(step, brainContext, locale)
+    case "llm_text": {
+      return callLlmStep(step, brainContext, locale);
     }
 
-    case 'user_input': {
-      return 'WAIT_FOR_INPUT'
+    case "user_input": {
+      return "WAIT_FOR_INPUT";
     }
 
-    case 'brain_update': {
-      const llmOutput = (brainContext['__llm_output'] ?? {}) as Record<string, unknown>
+    case "brain_update": {
+      const llmOutput = (brainContext["__llm_output"] ?? {}) as Record<
+        string,
+        unknown
+      >;
 
       // Save entire LLM output as a single fact (used when the output IS the fact value)
       if (step.config.full_output_key) {
-        await writeFact(admin, projectId, step.config.full_output_key, llmOutput, 'mission')
+        await writeFact(
+          admin,
+          projectId,
+          step.config.full_output_key,
+          llmOutput,
+          "mission",
+        );
       }
 
       // Facts that should also be synced to user_preferences columns
       const PREFERENCE_FACTS: Record<string, string> = {
-        posting_frequency: 'posting_frequency',
-      }
-      const preferenceUpdates: Record<string, unknown> = {}
+        posting_frequency: "posting_frequency",
+      };
+      const preferenceUpdates: Record<string, unknown> = {};
 
       if (step.config.facts) {
         for (const factKey of step.config.facts) {
           // Prefer user-edited value from brainContext (user_input step), fall back to LLM output
-          const value = brainContext[factKey] ?? llmOutput[factKey]
+          const value = brainContext[factKey] ?? llmOutput[factKey];
           if (value !== undefined) {
-            await writeFact(admin, projectId, factKey, value, 'mission')
+            await writeFact(admin, projectId, factKey, value, "mission");
             if (PREFERENCE_FACTS[factKey]) {
-              preferenceUpdates[PREFERENCE_FACTS[factKey]] = value
+              preferenceUpdates[PREFERENCE_FACTS[factKey]] = value;
             }
           }
         }
@@ -438,76 +555,110 @@ async function executeStep(
 
       // Sync any preference facts to user_preferences
       if (Object.keys(preferenceUpdates).length > 0) {
-        await admin.from('user_preferences').upsert(
-          { project_id: projectId, ...preferenceUpdates, updated_at: new Date().toISOString() },
-          { onConflict: 'project_id' }
-        )
+        await admin
+          .from("user_preferences")
+          .upsert(
+            {
+              project_id: projectId,
+              ...preferenceUpdates,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "project_id" },
+          );
       }
 
       if (step.config.signals) {
         for (const signalKey of step.config.signals) {
-          await appendSignal(admin, projectId, signalKey, { source: 'mission' }, 'mission')
+          await appendSignal(
+            admin,
+            projectId,
+            signalKey,
+            { source: "mission" },
+            "mission",
+          );
         }
       }
-      return { updated: true }
+      return { updated: true };
     }
 
-    case 'write_outputs': {
-      const llmOutput = (brainContext['__llm_output'] ?? {}) as Record<string, unknown>
-      const posts = Array.isArray(llmOutput['posts'])
-        ? (llmOutput['posts'] as Array<Record<string, unknown>>)
-        : [llmOutput]
-      const platform = (brainContext['focus_platform'] as string) ?? null
+    case "write_outputs": {
+      const llmOutput = (brainContext["__llm_output"] ?? {}) as Record<
+        string,
+        unknown
+      >;
+      const posts = Array.isArray(llmOutput["posts"])
+        ? (llmOutput["posts"] as Array<Record<string, unknown>>)
+        : [llmOutput];
+      const platform = (brainContext["focus_platform"] as string) ?? null;
       for (const post of posts) {
-        const { data: output } = await admin.from('core_outputs').insert({
-          project_id: projectId,
-          mission_instance_id: instanceId,
-          output_type: 'content',
-          format: (post['format'] as string) ?? 'post',
-          content: post,
-          status: 'draft',
-          idempotency_key: `${instanceId}:output:${post['day'] ?? Date.now()}`,
-        }).select('id').single()
+        const { data: output } = await admin
+          .from("core_outputs")
+          .insert({
+            project_id: projectId,
+            mission_instance_id: instanceId,
+            output_type: "content",
+            format: (post["format"] as string) ?? "post",
+            content: post,
+            status: "draft",
+            idempotency_key: `${instanceId}:output:${post["day"] ?? Date.now()}`,
+          })
+          .select("id")
+          .single();
 
         // Also create a draft calendar item so content appears in the calendar
         if (output) {
-          await admin.from('core_calendar_items').insert({
+          await admin.from("core_calendar_items").insert({
             project_id: projectId,
             output_id: output.id,
             asset_id: null,
-            content_type: (post['format'] as string) ?? 'post',
+            content_type: (post["format"] as string) ?? "post",
             platform,
-            status: 'draft',
+            status: "draft",
             scheduled_at: null,
-          })
+          });
         }
       }
-      return { saved: true, count: posts.length }
+      return { saved: true, count: posts.length };
     }
 
-    case 'snapshot': {
-      const allFacts = await readAllFacts(admin, projectId)
-      const currentPhase = (allFacts['current_phase'] as string) ?? 'F0'
-      await createSnapshot(admin, projectId, 'mission_completed', { phase: currentPhase, facts: allFacts })
-      return { snapshot_created: true }
+    case "snapshot": {
+      const allFacts = await readAllFacts(admin, projectId);
+      const currentPhase = (allFacts["current_phase"] as string) ?? "F0";
+      await createSnapshot(admin, projectId, "mission_completed", {
+        phase: currentPhase,
+        facts: allFacts,
+      });
+      return { snapshot_created: true };
     }
 
-    case 'finalize': {
+    case "finalize": {
       // Services preference hooks (Step 20): write silent brain facts when preferences captured
       const { data: inst } = await admin
-        .from('mission_instances')
-        .select('template_code')
-        .eq('id', instanceId)
-        .single()
-      if (inst?.template_code === 'PREFERENCES_CAPTURE_V1') {
-        await writeFact(admin, projectId, 'services.preference.channel', 'in_app', 'system')
-        await writeFact(admin, projectId, 'services.preference.mode_default', 'guided_llm', 'system')
+        .from("mission_instances")
+        .select("template_code")
+        .eq("id", instanceId)
+        .single();
+      if (inst?.template_code === "PREFERENCES_CAPTURE_V1") {
+        await writeFact(
+          admin,
+          projectId,
+          "services.preference.channel",
+          "in_app",
+          "system",
+        );
+        await writeFact(
+          admin,
+          projectId,
+          "services.preference.mode_default",
+          "guided_llm",
+          "system",
+        );
       }
-      return { finalized: true }
+      return { finalized: true };
     }
 
     default:
-      return { skipped: true, step_type: step.step_type }
+      return { skipped: true, step_type: step.step_type };
   }
 }
 
@@ -515,35 +666,38 @@ export async function resumeMissionAfterInput(
   admin: AdminClient,
   instanceId: string,
   userInputs: Record<string, unknown>,
-  locale?: string
+  locale?: string,
 ): Promise<void> {
   const { data: instance } = await admin
-    .from('mission_instances')
-    .select('id, status, current_step, project_id')
-    .eq('id', instanceId)
-    .single()
+    .from("mission_instances")
+    .select("id, status, current_step, project_id")
+    .eq("id", instanceId)
+    .single();
 
-  if (!instance || instance.status !== 'needs_user_input') return
+  if (!instance || instance.status !== "waiting_input") return;
 
-  const currentStep = instance.current_step ?? 0
+  const currentStep = instance.current_step ?? 0;
 
   // Save user inputs to the waiting step's output
-  await admin.from('mission_steps').upsert({
-    mission_instance_id: instanceId,
-    step_number: currentStep,
-    step_type: 'user_input',
-    status: 'completed',
-    output: userInputs,
-    completed_at: new Date().toISOString(),
-  }, { onConflict: 'mission_instance_id,step_number' })
+  await admin.from("mission_steps").upsert(
+    {
+      mission_instance_id: instanceId,
+      step_number: currentStep,
+      step_type: "user_input",
+      status: "completed",
+      output: userInputs,
+      completed_at: new Date().toISOString(),
+    },
+    { onConflict: "mission_instance_id,step_number" },
+  );
 
   // Re-queue the mission so executeMission continues from the next step
   await admin
-    .from('mission_instances')
-    .update({ status: 'queued' })
-    .eq('id', instanceId)
+    .from("mission_instances")
+    .update({ status: "queued" })
+    .eq("id", instanceId);
 
   // Continue execution — this will skip completed steps (including user_input),
   // reconstruct brainContext from their DB outputs, and run remaining steps
-  await executeMission(admin, instanceId, locale)
+  await executeMission(admin, instanceId, locale);
 }

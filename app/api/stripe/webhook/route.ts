@@ -1,194 +1,256 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { seedBrainFromOnboarding } from '@/lib/onboarding/brain-seed'
-import { createMissionInstance, executeMission } from '@/lib/missions/runner'
-import { runPhaseEngine } from '@/lib/engines/phase-engine'
-import { runPolicyEngine } from '@/lib/engines/policy-engine'
-import { requestScrapeLight } from '@/lib/scrape'
-import { readAllFacts } from '@/lib/brain'
-import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
+import { createAdminClient } from "@/lib/supabase/admin";
+import { seedBrainFromOnboarding } from "@/lib/onboarding/brain-seed";
+import { createMissionInstance, executeMission } from "@/lib/missions/runner";
+import { runPhaseEngine } from "@/lib/engines/phase-engine";
+import { runPolicyEngine } from "@/lib/engines/policy-engine";
+import { requestScrapeLight } from "@/lib/scrape";
+import { readAllFacts } from "@/lib/brain";
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
 
 function getStripeClient() {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) return null
-  return new Stripe(key)
+  const key = process.env.STRIPE_SECRET_KEY;
+  if (!key) return null;
+  return new Stripe(key);
 }
 
 async function stripeGet(path: string) {
   const res = await fetch(`https://api.stripe.com/v1${path}`, {
-    headers: { 'Authorization': `Bearer ${process.env.STRIPE_SECRET_KEY}` },
-  })
-  return res.json()
+    headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` },
+  });
+  return res.json();
 }
 
 async function getPlanCredits(
   admin: ReturnType<typeof createAdminClient>,
-  planCode: string
+  planCode: string,
 ): Promise<{ allowance: number; premium: number }> {
   const { data } = await admin
-    .from('core_plans')
-    .select('allowance_llm_monthly, premium_credits_monthly')
-    .eq('plan_code', planCode)
-    .single()
+    .from("core_plans")
+    .select("allowance_llm_monthly, premium_credits_monthly")
+    .eq("plan_code", planCode)
+    .single();
   return {
     allowance: data?.allowance_llm_monthly ?? 2000,
     premium: data?.premium_credits_monthly ?? 500,
-  }
+  };
 }
 
 export async function POST(request: Request) {
-  const stripe = getStripeClient()
+  const stripe = getStripeClient();
   if (!stripe) {
-    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 })
+    return NextResponse.json(
+      { error: "Stripe is not configured" },
+      { status: 500 },
+    );
   }
 
-  const body = await request.text()
-  const sig = request.headers.get('stripe-signature')
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  const body = await request.text();
+  const sig = request.headers.get("stripe-signature");
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!sig || !webhookSecret) {
-    return NextResponse.json({ error: 'Missing stripe signature/secret' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Missing stripe signature/secret" },
+      { status: 400 },
+    );
   }
 
-  let event: Stripe.Event
+  let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
+    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
   } catch {
-    return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 400 })
+    return NextResponse.json(
+      { error: "Invalid webhook signature" },
+      { status: 400 },
+    );
   }
 
-  const admin = createAdminClient()
+  const admin = createAdminClient();
 
   // Deduplication (non-negotiable per spec): if stripe_event_id already exists → return 200 immediately
   const { data: existing } = await admin
-    .from('stripe_events')
-    .select('id')
-    .eq('stripe_event_id', event.id)
-    .single()
+    .from("stripe_events")
+    .select("id")
+    .eq("stripe_event_id", event.id)
+    .single();
 
   if (existing) {
-    return NextResponse.json({ received: true })
+    return NextResponse.json({ received: true });
   }
 
   // Insert raw event before processing
-  await admin.from('stripe_events').insert({
+  await admin.from("stripe_events").insert({
     stripe_event_id: event.id,
     event_type: event.type,
     data: event.data,
     processed: false,
-  })
+  });
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object as Stripe.Checkout.Session
-    if (session.mode !== 'subscription') {
-      await admin.from('stripe_events').update({ processed: true }).eq('stripe_event_id', event.id)
-      return NextResponse.json({ received: true })
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.mode !== "subscription") {
+      await admin
+        .from("stripe_events")
+        .update({ processed: true })
+        .eq("stripe_event_id", event.id);
+      return NextResponse.json({ received: true });
     }
-    await handleSubscriptionActivated(admin, event.id, session)
+    await handleSubscriptionActivated(admin, event.id, session);
   }
 
   // Handle both event types: invoice.paid fires for $0 trials too; invoice.payment_succeeded for real payments
   // Both use the same handler with idempotency protection (invoice ID deduplication)
-  if (event.type === 'invoice.payment_succeeded' || event.type === 'invoice.paid') {
-    const invoice = event.data.object as Stripe.Invoice
-    await handleInvoicePaid(admin, event.id, invoice)
+  if (
+    event.type === "invoice.payment_succeeded" ||
+    event.type === "invoice.paid"
+  ) {
+    const invoice = event.data.object as Stripe.Invoice;
+    await handleInvoicePaid(admin, event.id, invoice);
   }
 
-  if (event.type === 'invoice.payment_failed') {
-    const invoice = event.data.object as Stripe.Invoice
-    await handlePaymentFailed(admin, invoice)
+  if (event.type === "invoice.payment_failed") {
+    const invoice = event.data.object as Stripe.Invoice;
+    await handlePaymentFailed(admin, invoice);
   }
 
-  if (event.type === 'charge.refunded') {
-    const charge = event.data.object as Stripe.Charge
-    await handleChargeRefunded(admin, charge)
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as Stripe.Charge;
+    await handleChargeRefunded(admin, charge);
   }
 
-  if (event.type === 'customer.subscription.deleted') {
-    const sub = event.data.object as Stripe.Subscription
-    await handleSubscriptionDeleted(admin, sub)
+  if (event.type === "customer.subscription.deleted") {
+    const sub = event.data.object as Stripe.Subscription;
+    await handleSubscriptionDeleted(admin, sub);
   }
 
-  await admin.from('stripe_events').update({ processed: true }).eq('stripe_event_id', event.id)
-  return NextResponse.json({ received: true })
+  await admin
+    .from("stripe_events")
+    .update({ processed: true })
+    .eq("stripe_event_id", event.id);
+  return NextResponse.json({ received: true });
 }
 
 async function handleSubscriptionActivated(
   admin: ReturnType<typeof createAdminClient>,
   eventId: string,
-  session: Stripe.Checkout.Session
+  session: Stripe.Checkout.Session,
 ) {
-  const userId = session.metadata?.user_id ?? session.client_reference_id
-  const planCode = session.metadata?.plan_code ?? 'BASE'
-  if (!userId) return
+  const userId = session.metadata?.user_id ?? session.client_reference_id;
+  const planCode = session.metadata?.plan_code ?? "BASE";
+  if (!userId) return;
 
-  const projectId = await getProjectId(admin, userId)
+  const projectId = await getProjectId(admin, userId);
 
   // Retrieve full subscription
-  const stripeSub = await stripeGet(`/subscriptions/${session.subscription}`)
-  const item = stripeSub.items.data[0]
+  const stripeSub = await stripeGet(`/subscriptions/${session.subscription}`);
+  const item = stripeSub.items.data[0];
 
   // Upsert core_subscriptions
-  await admin.from('core_subscriptions').upsert({
-    project_id: projectId,
-    user_id: userId,
-    stripe_customer_id: session.customer as string,
-    stripe_subscription_id: stripeSub.id,
-    plan_code: planCode,
-    status: 'active',
-    current_period_start: new Date(item.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(item.current_period_end * 1000).toISOString(),
-    cancel_at_period_end: stripeSub.cancel_at_period_end,
-  }, { onConflict: 'stripe_subscription_id' })
+  await admin.from("core_subscriptions").upsert(
+    {
+      project_id: projectId,
+      user_id: userId,
+      stripe_customer_id: session.customer as string,
+      stripe_subscription_id: stripeSub.id,
+      plan_code: planCode,
+      status: "active",
+      current_period_start: new Date(
+        item.current_period_start * 1000,
+      ).toISOString(),
+      current_period_end: new Date(
+        item.current_period_end * 1000,
+      ).toISOString(),
+      cancel_at_period_end: stripeSub.cancel_at_period_end,
+    },
+    { onConflict: "stripe_subscription_id" },
+  );
 
   // Upsert access grant
-  await admin.from('core_access_grants').upsert({
-    user_id: userId,
-    project_id: projectId,
-    source: 'subscription',
-    status: 'active',
-    reference_id: stripeSub.id,
-  }, { onConflict: 'reference_id' })
+  await admin.from("core_access_grants").upsert(
+    {
+      user_id: userId,
+      project_id: projectId,
+      source: "subscription",
+      status: "active",
+      reference_id: stripeSub.id,
+    },
+    { onConflict: "reference_id" },
+  );
 
   // Step 2+3: wallet + ledger grant with spec idempotency key `invoice_{invoice.id}_grant`
-  const invoiceId = typeof session.invoice === 'string' ? session.invoice : (session.invoice as { id?: string })?.id ?? undefined
-  await grantMonthlyCredits(admin, userId, planCode, stripeSub.id, item.current_period_end, invoiceId)
+  const invoiceId =
+    typeof session.invoice === "string"
+      ? session.invoice
+      : ((session.invoice as { id?: string })?.id ?? undefined);
+  await grantMonthlyCredits(
+    admin,
+    userId,
+    planCode,
+    stripeSub.id,
+    item.current_period_end,
+    invoiceId,
+  );
 
   // Step 5: Seed Brain Facts from onboarding answers
-  await seedBrainFromOnboarding(admin, userId, projectId)
+  await seedBrainFromOnboarding(admin, userId, projectId);
 
   // Step 6: Queue Scrape Light if platform handle exists — FOCO only (before Phase Engine per spec order)
-  const facts = await readAllFacts(admin, projectId)
-  const focusFact = facts['platforms.focus'] as { platform?: string; handle?: string } | null
+  const facts = await readAllFacts(admin, projectId);
+  const focusFact = facts["platforms.focus"] as {
+    platform?: string;
+    handle?: string;
+  } | null;
   if (focusFact?.platform && focusFact?.handle) {
-    void requestScrapeLight(admin, projectId, userId, focusFact.platform, focusFact.handle, 'bootstrap')
+    void requestScrapeLight(
+      admin,
+      projectId,
+      userId,
+      focusFact.platform,
+      focusFact.handle,
+      "bootstrap",
+    );
   }
 
   // Step 7: Phase Engine — sets initial phase (F0) and writes capabilities.current
-  const phaseResult = await runPhaseEngine(admin, projectId, true)
+  const phaseResult = await runPhaseEngine(admin, projectId, true);
 
   // Policy Engine — determines active_mode and topMission (Core Flow Gate for F0 → VISION_PURPOSE_MOODBOARD_V1)
-  const policyResult = await runPolicyEngine(admin, projectId, phaseResult, null, true)
+  const policyResult = await runPolicyEngine(
+    admin,
+    projectId,
+    phaseResult,
+    null,
+    true,
+  );
 
   // Write active_mode to project
-  await admin.from('projects').update({ active_mode: policyResult.activeMode }).eq('id', projectId)
+  await admin
+    .from("projects")
+    .update({ active_mode: policyResult.activeMode })
+    .eq("id", projectId);
 
   // JIT mission instantiation — create all 5 Core Flow missions in canonical order
-  // Execute topMission first so it reaches needs_user_input on Dashboard; queue the rest
+  // Execute topMission first so it reaches waiting_input on Dashboard; queue the rest
   const CORE_FLOW_TEMPLATES = [
-    'VISION_PURPOSE_MOODBOARD_V1',
-    'CONTENT_COMFORT_STYLE_V1',
-    'PLATFORM_STRATEGY_PICKER_V1',
-    'NICHE_CONFIRM_V1',
-    'PREFERENCES_CAPTURE_V1',
-  ]
-  const firstTemplate = policyResult.topMission ?? 'VISION_PURPOSE_MOODBOARD_V1'
-  const firstInstanceId = await createMissionInstance(admin, projectId, firstTemplate)
-  await executeMission(admin, firstInstanceId)
+    "VISION_PURPOSE_MOODBOARD_V1",
+    "CONTENT_COMFORT_STYLE_V1",
+    "PLATFORM_STRATEGY_PICKER_V1",
+    "NICHE_CONFIRM_V1",
+    "PREFERENCES_CAPTURE_V1",
+  ];
+  const firstTemplate =
+    policyResult.topMission ?? "VISION_PURPOSE_MOODBOARD_V1";
+  const firstInstanceId = await createMissionInstance(
+    admin,
+    projectId,
+    firstTemplate,
+  );
+  await executeMission(admin, firstInstanceId);
 
   // Queue remaining missions (skip the one already executed)
   for (const templateCode of CORE_FLOW_TEMPLATES) {
     if (templateCode !== firstTemplate) {
-      await createMissionInstance(admin, projectId, templateCode)
+      await createMissionInstance(admin, projectId, templateCode);
     }
   }
 }
@@ -196,136 +258,158 @@ async function handleSubscriptionActivated(
 async function handleInvoicePaid(
   admin: ReturnType<typeof createAdminClient>,
   eventId: string,
-  invoice: Stripe.Invoice
+  invoice: Stripe.Invoice,
 ) {
-  const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
-    ? invoice.parent.subscription_details.subscription
-    : invoice.parent?.subscription_details?.subscription?.id
+  const subscriptionId =
+    typeof invoice.parent?.subscription_details?.subscription === "string"
+      ? invoice.parent.subscription_details.subscription
+      : invoice.parent?.subscription_details?.subscription?.id;
 
-  if (!subscriptionId) return
+  if (!subscriptionId) return;
 
   const { data: sub } = await admin
-    .from('core_subscriptions')
-    .select('user_id, plan_code, project_id')
-    .eq('stripe_subscription_id', subscriptionId)
-    .single()
+    .from("core_subscriptions")
+    .select("user_id, plan_code, project_id")
+    .eq("stripe_subscription_id", subscriptionId)
+    .single();
 
-  if (!sub) return
+  if (!sub) return;
 
   // Update period
-  const stripeSub = await stripeGet(`/subscriptions/${subscriptionId}`)
-  const periodItem = stripeSub.items.data[0]
-  await admin.from('core_subscriptions').update({
-    status: 'active',
-    current_period_start: new Date(periodItem.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(periodItem.current_period_end * 1000).toISOString(),
-  }).eq('stripe_subscription_id', subscriptionId)
+  const stripeSub = await stripeGet(`/subscriptions/${subscriptionId}`);
+  const periodItem = stripeSub.items.data[0];
+  await admin
+    .from("core_subscriptions")
+    .update({
+      status: "active",
+      current_period_start: new Date(
+        periodItem.current_period_start * 1000,
+      ).toISOString(),
+      current_period_end: new Date(
+        periodItem.current_period_end * 1000,
+      ).toISOString(),
+    })
+    .eq("stripe_subscription_id", subscriptionId);
 
   // Grant renewal credits (idempotency key uses invoice ID)
-  const idempKey = `invoice_${invoice.id}_grant`
+  const idempKey = `invoice_${invoice.id}_grant`;
   const { data: alreadyGranted } = await admin
-    .from('core_ledger')
-    .select('ledger_id')
-    .eq('idempotency_key', idempKey)
-    .single()
+    .from("core_ledger")
+    .select("ledger_id")
+    .eq("idempotency_key", idempKey)
+    .single();
 
-  if (alreadyGranted) return
+  if (alreadyGranted) return;
 
   await grantMonthlyCredits(
-    admin, sub.user_id, sub.plan_code,
+    admin,
+    sub.user_id,
+    sub.plan_code,
     subscriptionId,
     periodItem.current_period_end,
-    invoice.id
-  )
+    invoice.id,
+  );
 }
 
 async function handlePaymentFailed(
   admin: ReturnType<typeof createAdminClient>,
-  invoice: Stripe.Invoice
+  invoice: Stripe.Invoice,
 ) {
-  const subscriptionId = typeof invoice.parent?.subscription_details?.subscription === 'string'
-    ? invoice.parent.subscription_details.subscription
-    : invoice.parent?.subscription_details?.subscription?.id
+  const subscriptionId =
+    typeof invoice.parent?.subscription_details?.subscription === "string"
+      ? invoice.parent.subscription_details.subscription
+      : invoice.parent?.subscription_details?.subscription?.id;
 
-  if (!subscriptionId) return
+  if (!subscriptionId) return;
 
-  await admin.from('core_subscriptions')
-    .update({ status: 'past_due' })
-    .eq('stripe_subscription_id', subscriptionId)
+  await admin
+    .from("core_subscriptions")
+    .update({ status: "past_due" })
+    .eq("stripe_subscription_id", subscriptionId);
 
   // Suspend wallet so write operations are blocked after 7-day grace period
   // The wallet status 'past_due' signals the app to show the grace period banner
   const { data: sub } = await admin
-    .from('core_subscriptions')
-    .select('project_id')
-    .eq('stripe_subscription_id', subscriptionId)
-    .single()
+    .from("core_subscriptions")
+    .select("project_id")
+    .eq("stripe_subscription_id", subscriptionId)
+    .single();
 
   if (sub?.project_id) {
-    await admin.from('core_wallets')
-      .update({ status: 'past_due' })
-      .eq('project_id', sub.project_id)
+    await admin
+      .from("core_wallets")
+      .update({ status: "past_due" })
+      .eq("project_id", sub.project_id);
   }
 }
 
 async function handleChargeRefunded(
   admin: ReturnType<typeof createAdminClient>,
-  charge: Stripe.Charge
+  charge: Stripe.Charge,
 ) {
-  const customerId = typeof charge.customer === 'string' ? charge.customer : charge.customer?.id
-  if (!customerId) return
+  const customerId =
+    typeof charge.customer === "string" ? charge.customer : charge.customer?.id;
+  if (!customerId) return;
 
   // Find subscription via customer
   const { data: sub } = await admin
-    .from('core_subscriptions')
-    .select('id, project_id, stripe_subscription_id')
-    .eq('stripe_customer_id', customerId)
-    .eq('status', 'active')
-    .single()
+    .from("core_subscriptions")
+    .select("id, project_id, stripe_subscription_id")
+    .eq("stripe_customer_id", customerId)
+    .eq("status", "active")
+    .single();
 
-  if (!sub) return
+  if (!sub) return;
 
-  await admin.from('core_subscriptions')
-    .update({ status: 'canceled', cancel_at_period_end: false })
-    .eq('id', sub.id)
+  await admin
+    .from("core_subscriptions")
+    .update({ status: "canceled", cancel_at_period_end: false })
+    .eq("id", sub.id);
 
   // Revoke access grant
-  await admin.from('core_access_grants')
-    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
-    .eq('reference_id', sub.stripe_subscription_id)
-    .eq('status', 'active')
+  await admin
+    .from("core_access_grants")
+    .update({ status: "revoked", revoked_at: new Date().toISOString() })
+    .eq("reference_id", sub.stripe_subscription_id)
+    .eq("status", "active");
 
   // Lock wallet — blocks all write operations
-  await admin.from('core_wallets')
-    .update({ status: 'locked' })
-    .eq('project_id', sub.project_id)
+  await admin
+    .from("core_wallets")
+    .update({ status: "locked" })
+    .eq("project_id", sub.project_id);
 
   // Log refund in ledger
-  await admin.from('core_ledger').insert({
+  await admin.from("core_ledger").insert({
     project_id: sub.project_id,
-    kind: 'adjustment',
+    kind: "adjustment",
     amount_allowance: 0,
     amount_premium: 0,
-    reason_key: 'REFUND_CREDIT',
-    ref_type: 'refund',
+    reason_key: "REFUND_CREDIT",
+    ref_type: "refund",
     ref_id: charge.id,
     idempotency_key: `refund_${charge.id}`,
-    metadata_json: { charge_id: charge.id, amount_refunded: charge.amount_refunded },
-  })
+    metadata_json: {
+      charge_id: charge.id,
+      amount_refunded: charge.amount_refunded,
+    },
+  });
 }
 
 async function handleSubscriptionDeleted(
   admin: ReturnType<typeof createAdminClient>,
-  sub: Stripe.Subscription
+  sub: Stripe.Subscription,
 ) {
-  await admin.from('core_subscriptions')
-    .update({ status: 'canceled', cancel_at_period_end: false })
-    .eq('stripe_subscription_id', sub.id)
+  await admin
+    .from("core_subscriptions")
+    .update({ status: "canceled", cancel_at_period_end: false })
+    .eq("stripe_subscription_id", sub.id);
 
-  await admin.from('core_access_grants')
-    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
-    .eq('reference_id', sub.id)
-    .eq('status', 'active')
+  await admin
+    .from("core_access_grants")
+    .update({ status: "revoked", revoked_at: new Date().toISOString() })
+    .eq("reference_id", sub.id)
+    .eq("status", "active");
 }
 
 async function grantMonthlyCredits(
@@ -334,68 +418,71 @@ async function grantMonthlyCredits(
   planCode: string,
   subscriptionId: string,
   periodEnd: number,
-  invoiceId?: string
+  invoiceId?: string,
 ) {
-  const credits = await getPlanCredits(admin, planCode)
-  const projectId = await getProjectId(admin, userId)
-  const resetAt = new Date(periodEnd * 1000).toISOString()
+  const credits = await getPlanCredits(admin, planCode);
+  const projectId = await getProjectId(admin, userId);
+  const resetAt = new Date(periodEnd * 1000).toISOString();
   const idempKey = invoiceId
     ? `invoice_${invoiceId}_grant`
-    : `subscription_grant_${subscriptionId}_${periodEnd}`
+    : `subscription_grant_${subscriptionId}_${periodEnd}`;
 
   // Self-protecting idempotency: if this key was already granted, skip entirely
   const { data: existingGrant } = await admin
-    .from('core_ledger')
-    .select('ledger_id')
-    .eq('idempotency_key', idempKey)
-    .single()
-  if (existingGrant) return
+    .from("core_ledger")
+    .select("ledger_id")
+    .eq("idempotency_key", idempKey)
+    .single();
+  if (existingGrant) return;
 
   // Read existing premium balance so we ADD to it (unused credits roll over)
   // LLM allowance always resets to plan amount (spec: "Reset monthly LLM balance")
   const { data: existingWallet } = await admin
-    .from('core_wallets')
-    .select('premium_credits_balance')
-    .eq('project_id', projectId)
-    .single()
-  const existingPremium = existingWallet?.premium_credits_balance ?? 0
+    .from("core_wallets")
+    .select("premium_credits_balance")
+    .eq("project_id", projectId)
+    .single();
+  const existingPremium = existingWallet?.premium_credits_balance ?? 0;
 
-  await admin.from('core_wallets').upsert({
-    project_id: projectId,
-    plan_code: planCode,
-    allowance_llm_balance: credits.allowance,      // reset per spec
-    credits_allowance: credits.allowance,
-    premium_credits_balance: existingPremium + credits.premium,  // grant (add) per spec
-    premium_daily_cap_remaining: credits.premium,
-    allowance_reset_at: resetAt,
-    premium_reset_at: resetAt,
-    status: 'active',
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'project_id' })
+  await admin.from("core_wallets").upsert(
+    {
+      project_id: projectId,
+      plan_code: planCode,
+      allowance_llm_balance: credits.allowance, // reset per spec
+      credits_allowance: credits.allowance,
+      premium_credits_balance: existingPremium + credits.premium, // grant (add) per spec
+      premium_daily_cap_remaining: credits.premium,
+      allowance_reset_at: resetAt,
+      premium_reset_at: resetAt,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "project_id" },
+  );
 
   // Ledger credit entry (append-only — never update)
-  await admin.from('core_ledger').insert({
+  await admin.from("core_ledger").insert({
     project_id: projectId,
-    kind: 'credit',
+    kind: "credit",
     amount_allowance: credits.allowance,
     amount_premium: credits.premium,
-    reason_key: 'PLAN_MONTHLY_GRANT',
-    ref_type: 'payment',
+    reason_key: "PLAN_MONTHLY_GRANT",
+    ref_type: "payment",
     ref_id: subscriptionId,
     idempotency_key: idempKey,
     metadata_json: { plan_code: planCode, period_end: periodEnd },
-  })
+  });
 }
 
 async function getProjectId(
   admin: ReturnType<typeof createAdminClient>,
-  userId: string
+  userId: string,
 ): Promise<string> {
   const { data } = await admin
-    .from('projects')
-    .select('id')
-    .eq('user_id', userId)
-    .neq('status', 'archived')
-    .single()
-  return data!.id
+    .from("projects")
+    .select("id")
+    .eq("user_id", userId)
+    .neq("status", "archived")
+    .single();
+  return data!.id;
 }

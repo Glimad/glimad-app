@@ -160,7 +160,7 @@ export default async function DashboardPage() {
         .from("mission_instances")
         .select("template_code, status, id")
         .eq("project_id", project.id)
-        .in("status", ["queued", "running", "needs_user_input"]),
+        .in("status", ["queued", "running", "waiting_input"]),
     ]);
 
   const allTemplates = allTemplatesResult.data ?? [];
