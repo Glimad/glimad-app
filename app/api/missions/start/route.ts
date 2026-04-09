@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     template_code,
   );
 
-  // Execute mission synchronously — runs until completed or waiting_input
+  // Execute mission synchronously — runs until completed or needs_user_input
   await executeMission(admin, instanceId, locale);
 
   return NextResponse.json({ instance_id: instanceId });

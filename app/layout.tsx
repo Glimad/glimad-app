@@ -1,21 +1,37 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { cookies } from 'next/headers'
-import { locales, defaultLocale } from '@/i18n.config'
-import Header from '@/components/layout/Header'
-import Footer from '@/components/layout/Footer'
-import ClientLocaleProvider from '@/components/layout/ClientLocaleProvider'
-import OfflineBanner from '@/components/layout/OfflineBanner'
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { cookies } from "next/headers";
+import { locales, defaultLocale } from "@/i18n.config";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
+import ClientLocaleProvider from "@/components/layout/ClientLocaleProvider";
+import OfflineBanner from "@/components/layout/OfflineBanner";
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+});
 
 export const metadata: Metadata = {
-  title: 'Glimad',
-}
+  title: "Glimad",
+};
 
 async function loadMessages(locale: string) {
-  const [auth, subscribe, dashboard, missions, common, onboarding, studio, calendar, monetization, notifications, admin] = await Promise.all([
+  const [
+    auth,
+    subscribe,
+    dashboard,
+    missions,
+    common,
+    onboarding,
+    studio,
+    calendar,
+    monetization,
+    notifications,
+    admin,
+  ] = await Promise.all([
     import(`../messages/${locale}/auth.json`),
     import(`../messages/${locale}/subscribe.json`),
     import(`../messages/${locale}/dashboard.json`),
@@ -27,7 +43,7 @@ async function loadMessages(locale: string) {
     import(`../messages/${locale}/monetization.json`),
     import(`../messages/${locale}/notifications.json`),
     import(`../messages/${locale}/admin.json`),
-  ])
+  ]);
   return {
     auth: auth.default,
     subscribe: subscribe.default,
@@ -40,28 +56,30 @@ async function loadMessages(locale: string) {
     monetization: monetization.default,
     notifications: notifications.default,
     admin: admin.default,
-  }
+  };
 }
 
 export default async function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
-  const cookieStore = cookies()
-  const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value
-  const locale = locales.includes(cookieLocale as typeof locales[number]) ? cookieLocale! : defaultLocale
+  const cookieStore = cookies();
+  const cookieLocale = cookieStore.get("NEXT_LOCALE")?.value;
+  const locale = locales.includes(cookieLocale as (typeof locales)[number])
+    ? cookieLocale!
+    : defaultLocale;
 
-  const otherLocale = locale === 'en' ? 'es' : 'en'
+  const otherLocale = locale === "en" ? "es" : "en";
   const [currentMessages, otherMessages] = await Promise.all([
     loadMessages(locale),
     loadMessages(otherLocale),
-  ])
+  ]);
 
   const allMessages = {
     [locale]: currentMessages,
     [otherLocale]: otherMessages,
-  }
+  };
 
   return (
     <html lang={locale}>
@@ -70,13 +88,11 @@ export default async function RootLayout({
           <div className="min-h-screen flex flex-col">
             <Header />
             <OfflineBanner />
-            <main className="flex-1 pt-14">
-              {children}
-            </main>
+            <main className="flex-1 pt-14">{children}</main>
             <Footer />
           </div>
         </ClientLocaleProvider>
       </body>
     </html>
-  )
+  );
 }
