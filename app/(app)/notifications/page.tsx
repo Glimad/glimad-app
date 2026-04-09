@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { makeServerT } from "@/lib/i18n";
+import { makeServerT } from "@/lib/i18n.server";
 import { resolveLocale } from "@/i18n.config";
 import MarkReadButton from "./MarkReadButton";
 

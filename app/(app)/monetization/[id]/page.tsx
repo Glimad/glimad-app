@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect, notFound } from "next/navigation";
 import { computeProductHealth } from "@/lib/monetization";
-import { makeServerT } from "@/lib/i18n";
+import { makeServerT } from "@/lib/i18n.server";
 import { resolveLocale } from "@/i18n.config";
 import AddEventForm from "./AddEventForm";
 import Link from "next/link";

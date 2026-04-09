@@ -1,41 +1,44 @@
-import { cookies } from 'next/headers'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { makeServerT } from '@/lib/i18n'
-import { defaultLocale } from '@/i18n.config'
-import CheckoutButton from './CheckoutButton'
+import { cookies } from "next/headers";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { makeServerT } from "@/lib/i18n.server";
+import { defaultLocale } from "@/i18n.config";
+import CheckoutButton from "./CheckoutButton";
 
 type Plan = {
-  plan_code: string
-  name: string
-  price_monthly_eur: number
-}
+  plan_code: string;
+  name: string;
+  price_monthly_eur: number;
+};
 
 export default async function SubscribePage() {
-  const cookieStore = cookies()
-  const locale = cookieStore.get('NEXT_LOCALE')?.value ?? defaultLocale
-  const messages = (await import(`@/messages/${locale}/subscribe.json`)).default as Record<string, unknown>
-  const t = makeServerT(messages)
+  const cookieStore = cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value ?? defaultLocale;
+  const messages = (await import(`@/messages/${locale}/subscribe.json`))
+    .default as Record<string, unknown>;
+  const t = makeServerT(messages);
 
-  const admin = createAdminClient()
+  const admin = createAdminClient();
 
   const { data: plans } = await admin
-    .from('core_plans')
-    .select('plan_code, name, price_monthly_eur')
-    .eq('active', true)
-    .order('price_monthly_eur', { ascending: true })
+    .from("core_plans")
+    .select("plan_code, name, price_monthly_eur")
+    .eq("active", true)
+    .order("price_monthly_eur", { ascending: true });
 
-  const planList: Plan[] = plans ?? []
+  const planList: Plan[] = plans ?? [];
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4 py-16">
-      <h1 className="text-4xl font-bold text-white text-center">{t('title')}</h1>
-      <p className="mt-3 text-zinc-400 text-center">{t('subtitle')}</p>
+      <h1 className="text-4xl font-bold text-white text-center">
+        {t("title")}
+      </h1>
+      <p className="mt-3 text-zinc-400 text-center">{t("subtitle")}</p>
 
       <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
         {planList.map((plan) => {
-          const code = plan.plan_code as 'BASE' | 'PRO' | 'ELITE'
-          const features = t.raw(`plans.${code}.features`) as string[]
-          const description = t(`plans.${code}.description`)
+          const code = plan.plan_code as "BASE" | "PRO" | "ELITE";
+          const features = t.raw(`plans.${code}.features`) as string[];
+          const description = t(`plans.${code}.description`);
 
           return (
             <div
@@ -51,13 +54,18 @@ export default async function SubscribePage() {
                   <span className="text-4xl font-bold text-white">
                     €{plan.price_monthly_eur}
                   </span>
-                  <span className="text-zinc-400 text-sm">{t('per_month')}</span>
+                  <span className="text-zinc-400 text-sm">
+                    {t("per_month")}
+                  </span>
                 </div>
               </div>
 
               <ul className="flex-1 space-y-3 mb-8">
                 {features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-sm text-zinc-300"
+                  >
                     <span className="mt-0.5 text-white">✓</span>
                     {feature}
                   </li>
@@ -66,9 +74,9 @@ export default async function SubscribePage() {
 
               <CheckoutButton planCode={code} />
             </div>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

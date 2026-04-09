@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getGamificationState } from "@/lib/gamification";
-import { makeServerT } from "@/lib/i18n";
+import { makeServerT } from "@/lib/i18n.server";
 import { resolveLocale } from "@/i18n.config";
 import Link from "next/link";
 

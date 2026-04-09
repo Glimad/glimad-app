@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { getMonetizationKpis, computeProductHealth } from "@/lib/monetization";
-import { makeServerT } from "@/lib/i18n";
+import { makeServerT } from "@/lib/i18n.server";
 import { resolveLocale } from "@/i18n.config";
 import Link from "next/link";
 import AiSuggestionCard from "@/components/monetization/AiSuggestionCard";
