@@ -7,7 +7,7 @@
       "subtitle": "Your AI co-pilot to grow your idea, brand, project or business",
       "tagline": "Stop guessing. Start earning. 🚀",
       "cta": "Build My Evolution Map",
-      "duration": "3–5 min · Custom strategy for YOUR niche"
+      "duration": "3–5 min.  Custom strategy for YOUR niche. Grow & monitize without overwhelm"
     },
     "project": {
       "question": "What project do you want to boost?",
@@ -158,28 +158,82 @@
       "customLabel": "Or tell us something else:",
       "addButton": "Add",
       "startingHelp": {
-        "clearRoadmap": { "label": "A Clear Step-by-Step Roadmap", "desc": "Show me exactly what to do first" },
-        "nichePositioning": { "label": "Define My Niche & Positioning", "desc": "Help me find my unique angle" },
-        "contentStrategy": { "label": "Content Strategy & Ideas", "desc": "What to post and when" },
-        "platformGuidance": { "label": "Platform Selection & Setup", "desc": "Where to start and how to set up" },
-        "firstFollowers": { "label": "Getting My First Followers", "desc": "Build initial audience from scratch" },
-        "accountability": { "label": "Accountability & Support", "desc": "Someone to keep me on track" }
+        "clearRoadmap": {
+          "label": "A Clear Step-by-Step Roadmap",
+          "desc": "Show me exactly what to do first"
+        },
+        "nichePositioning": {
+          "label": "Define My Niche & Positioning",
+          "desc": "Help me find my unique angle"
+        },
+        "contentStrategy": {
+          "label": "Content Strategy & Ideas",
+          "desc": "What to post and when"
+        },
+        "platformGuidance": {
+          "label": "Platform Selection & Setup",
+          "desc": "Where to start and how to set up"
+        },
+        "firstFollowers": {
+          "label": "Getting My First Followers",
+          "desc": "Build initial audience from scratch"
+        },
+        "accountability": {
+          "label": "Accountability & Support",
+          "desc": "Someone to keep me on track"
+        }
       },
       "existingHelp": {
-        "breakPlateau": { "label": "Break Through My Plateau", "desc": "Get past stagnant growth" },
-        "monetization": { "label": "Monetization Strategies", "desc": "Turn followers into revenue" },
-        "contentOptimization": { "label": "Content Optimization", "desc": "Improve engagement & reach" },
-        "collabOpportunities": { "label": "Brand Collaborations", "desc": "Connect with brands & sponsors" },
-        "automationSystems": { "label": "Automation & Systems", "desc": "Save time with smart tools" },
-        "growthStrategy": { "label": "Advanced Growth Strategy", "desc": "Scale to the next level" }
+        "breakPlateau": {
+          "label": "Break Through My Plateau",
+          "desc": "Get past stagnant growth"
+        },
+        "monetization": {
+          "label": "Monetization Strategies",
+          "desc": "Turn followers into revenue"
+        },
+        "contentOptimization": {
+          "label": "Content Optimization",
+          "desc": "Improve engagement & reach"
+        },
+        "collabOpportunities": {
+          "label": "Brand Collaborations",
+          "desc": "Connect with brands & sponsors"
+        },
+        "automationSystems": {
+          "label": "Automation & Systems",
+          "desc": "Save time with smart tools"
+        },
+        "growthStrategy": {
+          "label": "Advanced Growth Strategy",
+          "desc": "Scale to the next level"
+        }
       },
       "legacyHelp": {
-        "scaleOperations": { "label": "Scale Operations & Team", "desc": "Build systems that work without you" },
-        "multipleRevenue": { "label": "Multiple Revenue Streams", "desc": "Diversify income sources" },
-        "ipLicensing": { "label": "IP & Methodology Licensing", "desc": "Package & sell your knowledge" },
-        "marketExpansion": { "label": "New Market Expansion", "desc": "Enter new territories & audiences" },
-        "empireSystems": { "label": "Empire-Level Systems", "desc": "Automated infrastructure for scale" },
-        "strategicPartnerships": { "label": "Strategic Partnerships", "desc": "High-level collaborations & deals" }
+        "scaleOperations": {
+          "label": "Scale Operations & Team",
+          "desc": "Build systems that work without you"
+        },
+        "multipleRevenue": {
+          "label": "Multiple Revenue Streams",
+          "desc": "Diversify income sources"
+        },
+        "ipLicensing": {
+          "label": "IP & Methodology Licensing",
+          "desc": "Package & sell your knowledge"
+        },
+        "marketExpansion": {
+          "label": "New Market Expansion",
+          "desc": "Enter new territories & audiences"
+        },
+        "empireSystems": {
+          "label": "Empire-Level Systems",
+          "desc": "Automated infrastructure for scale"
+        },
+        "strategicPartnerships": {
+          "label": "Strategic Partnerships",
+          "desc": "High-level collaborations & deals"
+        }
       }
     },
     "final": {

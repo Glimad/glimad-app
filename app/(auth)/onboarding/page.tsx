@@ -174,7 +174,13 @@ const PLATFORM_CONFIG: Record<
     color: "#00C9A7",
     bg: "linear-gradient(135deg, #00C9A7, #48CAE4)",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" className="w-5 h-5">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        strokeWidth="1.5"
+        className="w-5 h-5"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20M2 12h20" />
       </svg>
@@ -184,7 +190,13 @@ const PLATFORM_CONFIG: Record<
     color: "#888",
     bg: "linear-gradient(135deg, #555, #333)",
     icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" className="w-5 h-5">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        strokeWidth="1.5"
+        className="w-5 h-5"
+      >
         <circle cx="12" cy="12" r="10" />
         <path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20M2 12h20" />
       </svg>
@@ -193,10 +205,26 @@ const PLATFORM_CONFIG: Record<
 };
 
 const PROJECT_TYPES = [
-  { id: "music", icon: "🎵", gradient: "linear-gradient(135deg, #833AB4, #E1306C)" },
-  { id: "visual", icon: "🎨", gradient: "linear-gradient(135deg, #F77737, #E1306C)" },
-  { id: "creator", icon: "🎬", gradient: "linear-gradient(135deg, #0575E6, #00CAE4)" },
-  { id: "personal-brand", icon: "💼", gradient: "linear-gradient(135deg, #00C9A7, #48CAE4)" },
+  {
+    id: "music",
+    icon: "🎵",
+    gradient: "linear-gradient(135deg, #833AB4, #E1306C)",
+  },
+  {
+    id: "visual",
+    icon: "🎨",
+    gradient: "linear-gradient(135deg, #F77737, #E1306C)",
+  },
+  {
+    id: "creator",
+    icon: "🎬",
+    gradient: "linear-gradient(135deg, #0575E6, #00CAE4)",
+  },
+  {
+    id: "personal-brand",
+    icon: "💼",
+    gradient: "linear-gradient(135deg, #00C9A7, #48CAE4)",
+  },
 ];
 
 const PLATFORM_LIST = [
@@ -216,18 +244,38 @@ const PLATFORM_LIST = [
 // Accent colors cycling for chips
 const CHIP_ACCENTS = [
   { border: "1px solid #48CAE4", bg: "rgba(72,202,228,0.12)", text: "#48CAE4" },
-  { border: "1px solid #9B6BFF", bg: "rgba(155,107,255,0.12)", text: "#9B6BFF" },
-  { border: "1px solid #FF6B9D", bg: "rgba(255,107,157,0.12)", text: "#FF6B9D" },
+  {
+    border: "1px solid #9B6BFF",
+    bg: "rgba(155,107,255,0.12)",
+    text: "#9B6BFF",
+  },
+  {
+    border: "1px solid #FF6B9D",
+    bg: "rgba(255,107,157,0.12)",
+    text: "#FF6B9D",
+  },
   { border: "1px solid #F77737", bg: "rgba(247,119,55,0.12)", text: "#F77737" },
   { border: "1px solid #00C9A7", bg: "rgba(0,201,167,0.12)", text: "#00C9A7" },
 ];
 
 const BLOCKER_ACCENTS = [
-  { border: "1px solid #FF6B6B", bg: "rgba(255,107,107,0.12)", text: "#FF6B6B" },
+  {
+    border: "1px solid #FF6B6B",
+    bg: "rgba(255,107,107,0.12)",
+    text: "#FF6B6B",
+  },
   { border: "1px solid #F77737", bg: "rgba(247,119,55,0.12)", text: "#F77737" },
-  { border: "1px solid #FF6B9D", bg: "rgba(255,107,157,0.12)", text: "#FF6B9D" },
+  {
+    border: "1px solid #FF6B9D",
+    bg: "rgba(255,107,157,0.12)",
+    text: "#FF6B9D",
+  },
   { border: "1px solid #FFBB33", bg: "rgba(255,187,51,0.12)", text: "#FFBB33" },
-  { border: "1px solid #FF6B6B", bg: "rgba(255,107,107,0.12)", text: "#FF6B6B" },
+  {
+    border: "1px solid #FF6B6B",
+    bg: "rgba(255,107,107,0.12)",
+    text: "#FF6B6B",
+  },
 ];
 
 export default function OnboardingPage() {
@@ -529,24 +577,22 @@ export default function OnboardingPage() {
       // ── WELCOME ──────────────────────────────────────────────────────────
       case "welcome":
         return (
-          <div className="text-center max-w-2xl mx-auto" style={{ padding: "0 16px" }}>
+          <div
+            className="text-center max-w-2xl mx-auto"
+            style={{ padding: "0 16px" }}
+          >
             {/* Sparkle Icon Circle */}
             <div className="flex justify-center mb-8">
               <div
                 className="rounded-full flex items-center justify-center"
                 style={{
-                  width: "80px",
-                  height: "80px",
-                  background: "linear-gradient(135deg, #00C9A7, #9B6BFF, #FF6B9D)",
-                  padding: "2px",
+                  width: "72px",
+                  height: "72px",
+                  background:
+                    "linear-gradient(135deg, #00BFA5 0%, #7B61FF 100%)",
                 }}
               >
-                <div
-                  className="w-full h-full rounded-full bg-black flex items-center justify-center"
-                  style={{ fontSize: "32px" }}
-                >
-                  ✦
-                </div>
+                <span style={{ fontSize: "32px", color: "white" }}>✦</span>
               </div>
             </div>
 
@@ -560,7 +606,8 @@ export default function OnboardingPage() {
               <h2
                 className="font-semibold"
                 style={{
-                  background: "linear-gradient(to right, #48CAE4, #00C9A7, #FF6B9D)",
+                  background:
+                    "linear-gradient(to right, #48CAE4, #00C9A7, #FF6B9D)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -580,7 +627,7 @@ export default function OnboardingPage() {
                 onClick={handleNext}
                 className="text-white font-semibold transition-opacity hover:opacity-90"
                 style={{
-                  background: "linear-gradient(to right, #00C9A7, #48CAE4)",
+                  background: "linear-gradient(to right, #00BFA5, #26C6DA)",
                   borderRadius: "14px",
                   padding: "16px 48px",
                   fontWeight: 600,
@@ -603,7 +650,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {t("assessment.project.question")}
             </h2>
-            <p className="text-center mb-6" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-6"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.project.subtitle")}
             </p>
             <div className="grid grid-cols-2 gap-3 mb-6">
@@ -655,7 +705,15 @@ export default function OnboardingPage() {
                           background: "#00C9A7",
                         }}
                       >
-                        <span style={{ color: "#000", fontSize: "11px", fontWeight: 700 }}>✓</span>
+                        <span
+                          style={{
+                            color: "#000",
+                            fontSize: "11px",
+                            fontWeight: 700,
+                          }}
+                        >
+                          ✓
+                        </span>
                       </div>
                     )}
                   </button>
@@ -697,7 +755,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {t("assessment.journeyStage.title")}
             </h2>
-            <p className="text-center mb-6" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-6"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.journeyStage.subtitle")}
             </p>
             <div className="grid md:grid-cols-3 gap-4">
@@ -740,7 +801,9 @@ export default function OnboardingPage() {
                       className="relative p-5 text-left transition-all"
                       style={{
                         borderRadius: "12px",
-                        background: isSelected ? c.bg : "rgba(255,255,255,0.04)",
+                        background: isSelected
+                          ? c.bg
+                          : "rgba(255,255,255,0.04)",
                         border: `1px solid ${isSelected ? c.border : "rgba(255,255,255,0.1)"}`,
                       }}
                     >
@@ -759,7 +822,13 @@ export default function OnboardingPage() {
                       <h3 className="text-white font-semibold mb-2 text-sm">
                         {t(`assessment.journeyStage.${stage}.title`)}
                       </h3>
-                      <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", lineHeight: "1.5" }}>
+                      <p
+                        style={{
+                          color: "rgba(255,255,255,0.6)",
+                          fontSize: "13px",
+                          lineHeight: "1.5",
+                        }}
+                      >
                         {t(`assessment.journeyStage.${stage}.description`)}
                       </p>
                       {isSelected && (
@@ -774,7 +843,15 @@ export default function OnboardingPage() {
                             background: c.check,
                           }}
                         >
-                          <span style={{ color: "#000", fontSize: "12px", fontWeight: 700 }}>✓</span>
+                          <span
+                            style={{
+                              color: "#000",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                            }}
+                          >
+                            ✓
+                          </span>
                         </div>
                       )}
                     </button>
@@ -806,7 +883,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {t("assessment.yourIdea.title")}
             </h2>
-            <p className="text-center mb-6" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-6"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.yourIdea.subtitle")}
             </p>
 
@@ -861,7 +941,13 @@ export default function OnboardingPage() {
                     }}
                   />
                   {formData.projectIdea.length >= 15 && (
-                    <p style={{ color: "#00C9A7", fontSize: "12px", marginTop: "8px" }}>
+                    <p
+                      style={{
+                        color: "#00C9A7",
+                        fontSize: "12px",
+                        marginTop: "8px",
+                      }}
+                    >
                       {formData.projectIdea.length < 50
                         ? t("assessment.yourIdea.feedbackShort")
                         : formData.projectIdea.length < 100
@@ -900,7 +986,12 @@ export default function OnboardingPage() {
                       <p className="text-white text-sm font-medium">
                         {t("assessment.yourIdea.aiHelpTitle")}
                       </p>
-                      <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px" }}>
+                      <p
+                        style={{
+                          color: "rgba(255,255,255,0.6)",
+                          fontSize: "12px",
+                        }}
+                      >
                         {t("assessment.yourIdea.aiHelpDescription")}
                       </p>
                     </div>
@@ -926,7 +1017,13 @@ export default function OnboardingPage() {
                     }}
                   />
                   {formData.projectNiche.trim().length > 3 && (
-                    <p style={{ color: "#00C9A7", fontSize: "12px", marginTop: "8px" }}>
+                    <p
+                      style={{
+                        color: "#00C9A7",
+                        fontSize: "12px",
+                        marginTop: "8px",
+                      }}
+                    >
                       {t("assessment.yourIdea.aiHelpSuccess")}
                     </p>
                   )}
@@ -980,7 +1077,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {t("assessment.goalsBlockers.title")}
             </h2>
-            <p className="text-center mb-5" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-5"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.goalsBlockers.subtitle")}
             </p>
             <div
@@ -991,7 +1091,10 @@ export default function OnboardingPage() {
                 border: "1px solid rgba(155,107,255,0.15)",
               }}
             >
-              <p className="text-center mb-4" style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>
+              <p
+                className="text-center mb-4"
+                style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}
+              >
                 {t("assessment.goalsBlockers.goalsHint")}
               </p>
               <div className="flex flex-wrap gap-3">
@@ -1006,8 +1109,12 @@ export default function OnboardingPage() {
                       style={{
                         padding: "8px 18px",
                         borderRadius: "999px",
-                        background: isSelected ? c.bg : "rgba(255,255,255,0.06)",
-                        border: isSelected ? c.border : "1px solid rgba(255,255,255,0.15)",
+                        background: isSelected
+                          ? c.bg
+                          : "rgba(255,255,255,0.06)",
+                        border: isSelected
+                          ? c.border
+                          : "1px solid rgba(255,255,255,0.15)",
                         color: isSelected ? c.text : "rgba(255,255,255,0.8)",
                       }}
                     >
@@ -1121,7 +1228,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {blockerTitle}
             </h2>
-            <p className="text-center mb-5" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-5"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.goalsBlockers.goalsHint")}
             </p>
             <div
@@ -1146,8 +1256,12 @@ export default function OnboardingPage() {
                       style={{
                         padding: "8px 18px",
                         borderRadius: "999px",
-                        background: isSelected ? c.bg : "rgba(255,255,255,0.06)",
-                        border: isSelected ? c.border : "1px solid rgba(255,255,255,0.15)",
+                        background: isSelected
+                          ? c.bg
+                          : "rgba(255,255,255,0.06)",
+                        border: isSelected
+                          ? c.border
+                          : "1px solid rgba(255,255,255,0.15)",
                         color: isSelected ? c.text : "rgba(255,255,255,0.8)",
                       }}
                     >
@@ -1230,7 +1344,10 @@ export default function OnboardingPage() {
                 ? t("assessment.digitalPresence.titleStarting")
                 : t("assessment.digitalPresence.titleExisting")}
             </h2>
-            <p className="text-center mb-5" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-5"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {isStarting
                 ? t("assessment.digitalPresence.subtitleStarting")
                 : t("assessment.digitalPresence.subtitleExisting")}
@@ -1239,7 +1356,10 @@ export default function OnboardingPage() {
             {formData.selectedPlatforms.length >= 3 && !formData.noPresence && (
               <div
                 className="rounded-xl p-3 mb-4 text-center"
-                style={{ background: "rgba(0,201,167,0.08)", border: "1px solid rgba(0,201,167,0.3)" }}
+                style={{
+                  background: "rgba(0,201,167,0.08)",
+                  border: "1px solid rgba(0,201,167,0.3)",
+                }}
               >
                 <p style={{ color: "#00C9A7", fontSize: "13px" }}>
                   {t("assessment.digitalPresence.maxPlatformsNote")}
@@ -1249,7 +1369,9 @@ export default function OnboardingPage() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {PLATFORM_LIST.map((platform) => {
-                const isSelected = formData.selectedPlatforms.includes(platform.id);
+                const isSelected = formData.selectedPlatforms.includes(
+                  platform.id,
+                );
                 const isDisabled =
                   !isSelected &&
                   formData.selectedPlatforms.length >= 3 &&
@@ -1294,7 +1416,9 @@ export default function OnboardingPage() {
                           {t(`assessment.platforms.${platform.id}`)}
                         </span>
                         {isSelected && (
-                          <span style={{ color: "#00C9A7", fontSize: "13px" }}>✓</span>
+                          <span style={{ color: "#00C9A7", fontSize: "13px" }}>
+                            ✓
+                          </span>
                         )}
                       </div>
                     </button>
@@ -1311,7 +1435,9 @@ export default function OnboardingPage() {
                             },
                           }))
                         }
-                        placeholder={t(`assessment.placeholders.${platform.id}`)}
+                        placeholder={t(
+                          `assessment.placeholders.${platform.id}`,
+                        )}
                         className="mt-2 w-full text-white focus:outline-none text-xs"
                         style={{
                           background: "rgba(255,255,255,0.05)",
@@ -1328,7 +1454,12 @@ export default function OnboardingPage() {
             </div>
 
             {isStarting && (
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "16px" }}>
+              <div
+                style={{
+                  borderTop: "1px solid rgba(255,255,255,0.08)",
+                  paddingTop: "16px",
+                }}
+              >
                 <button
                   onClick={() => togglePlatform("none")}
                   className="w-full p-4 transition-all"
@@ -1347,7 +1478,9 @@ export default function OnboardingPage() {
                       {t("assessment.digitalPresence.noPresenceLabel")}
                     </span>
                     {formData.noPresence && (
-                      <span style={{ color: "#00C9A7", fontSize: "13px" }}>✓</span>
+                      <span style={{ color: "#00C9A7", fontSize: "13px" }}>
+                        ✓
+                      </span>
                     )}
                   </div>
                 </button>
@@ -1364,7 +1497,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {t("assessment.monetization.title")}
             </h2>
-            <p className="text-center mb-5" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-5"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.monetization.subtitle")}
             </p>
             <div className="space-y-3">
@@ -1402,7 +1538,9 @@ export default function OnboardingPage() {
                     className="w-full p-4 text-left transition-all"
                     style={{
                       borderRadius: "12px",
-                      background: isSelected ? meta.bg : "rgba(255,255,255,0.04)",
+                      background: isSelected
+                        ? meta.bg
+                        : "rgba(255,255,255,0.04)",
                       border: `1px solid ${isSelected ? meta.borderColor : "rgba(255,255,255,0.1)"}`,
                     }}
                   >
@@ -1413,11 +1551,22 @@ export default function OnboardingPage() {
                           <p className="text-white text-sm font-medium">
                             {meta.title}
                           </p>
-                          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "12px" }}>{meta.desc}</p>
+                          <p
+                            style={{
+                              color: "rgba(255,255,255,0.6)",
+                              fontSize: "12px",
+                            }}
+                          >
+                            {meta.desc}
+                          </p>
                         </div>
                       </div>
                       {isSelected && (
-                        <span style={{ color: meta.borderColor, fontSize: "14px" }}>✓</span>
+                        <span
+                          style={{ color: meta.borderColor, fontSize: "14px" }}
+                        >
+                          ✓
+                        </span>
                       )}
                     </div>
                   </button>
@@ -1509,7 +1658,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-1 text-center">
               {t(titleKey)}
             </h2>
-            <p className="text-center mb-5" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="text-center mb-5"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t(subtitleKey)}
             </p>
             <div
@@ -1538,8 +1690,12 @@ export default function OnboardingPage() {
                       style={{
                         padding: "8px 18px",
                         borderRadius: "999px",
-                        background: isSelected ? c.bg : "rgba(255,255,255,0.06)",
-                        border: isSelected ? c.border : "1px solid rgba(255,255,255,0.15)",
+                        background: isSelected
+                          ? c.bg
+                          : "rgba(255,255,255,0.06)",
+                        border: isSelected
+                          ? c.border
+                          : "1px solid rgba(255,255,255,0.15)",
                         color: isSelected ? c.text : "rgba(255,255,255,0.8)",
                       }}
                     >
@@ -1619,7 +1775,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-2">
               {t("assessment.final.nameStepTitle")}
             </h2>
-            <p className="mb-6" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="mb-6"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.final.nameStepDescription")}
             </p>
             <input
@@ -1650,7 +1809,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-2">
               {t("assessment.final.passwordStepTitle")}
             </h2>
-            <p className="mb-6" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="mb-6"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.final.passwordStepDescription")}
             </p>
             <input
@@ -1672,7 +1834,10 @@ export default function OnboardingPage() {
               }}
             />
             {formData.password.length > 0 && formData.password.length < 8 && (
-              <p className="mt-2" style={{ color: "#FF6B6B", fontSize: "13px" }}>
+              <p
+                className="mt-2"
+                style={{ color: "#FF6B6B", fontSize: "13px" }}
+              >
                 {t("assessment.final.passwordError")}
               </p>
             )}
@@ -1686,7 +1851,10 @@ export default function OnboardingPage() {
             <h2 className="text-2xl font-bold text-white mb-2">
               {t("assessment.final.emailStepTitle")}
             </h2>
-            <p className="mb-6" style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}>
+            <p
+              className="mb-6"
+              style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px" }}
+            >
               {t("assessment.final.emailStepDescription")}
             </p>
             <input
@@ -1727,13 +1895,19 @@ export default function OnboardingPage() {
                 style={{ color: "rgba(255,255,255,0.8)" }}
               >
                 {t("assessment.final.gdprConsentLabel")}{" "}
-                <Link href="/terms" style={{ color: "#00C9A7" }} className="underline">
+                <Link
+                  href="/terms"
+                  style={{ color: "#00C9A7" }}
+                  className="underline"
+                >
                   {t("assessment.final.termsLink")}
                 </Link>
               </label>
             </div>
             {signupError && (
-              <p className="mt-4 text-sm" style={{ color: "#FF6B6B" }}>{signupError}</p>
+              <p className="mt-4 text-sm" style={{ color: "#FF6B6B" }}>
+                {signupError}
+              </p>
             )}
           </div>
         );
@@ -1747,7 +1921,8 @@ export default function OnboardingPage() {
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center"
                 style={{
-                  background: "linear-gradient(135deg, #00C9A7, #9B6BFF, #FF6B9D)",
+                  background:
+                    "linear-gradient(135deg, #00C9A7, #9B6BFF, #FF6B9D)",
                   padding: "2px",
                 }}
               >
@@ -1767,14 +1942,24 @@ export default function OnboardingPage() {
                   border: "3px solid black",
                 }}
               >
-                <span style={{ color: "white", fontSize: "14px", fontWeight: 700 }}>✓</span>
+                <span
+                  style={{ color: "white", fontSize: "14px", fontWeight: 700 }}
+                >
+                  ✓
+                </span>
               </div>
             </div>
 
-            <h2 className="font-bold text-white mb-4" style={{ fontSize: "28px" }}>
+            <h2
+              className="font-bold text-white mb-4"
+              style={{ fontSize: "28px" }}
+            >
               {t("assessment.verifyEmail.emailSentTitle")}
             </h2>
-            <p className="mb-8 leading-relaxed" style={{ color: "rgba(255,255,255,0.7)", fontSize: "16px" }}>
+            <p
+              className="mb-8 leading-relaxed"
+              style={{ color: "rgba(255,255,255,0.7)", fontSize: "16px" }}
+            >
               {t("assessment.verifyEmail.emailSentMessage")}
             </p>
 
@@ -1838,7 +2023,10 @@ export default function OnboardingPage() {
               </button>
             </div>
 
-            <p className="italic" style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
+            <p
+              className="italic"
+              style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px" }}
+            >
               💡 {t("assessment.verifyEmail.note")}
             </p>
           </div>
@@ -1856,13 +2044,13 @@ export default function OnboardingPage() {
         <div
           className="absolute"
           style={{
-            bottom: 0,
             left: 0,
-            width: "600px",
-            height: "500px",
-            borderRadius: "50%",
+            width: "500px",
+            height: "400px",
             background:
-              "radial-gradient(ellipse at bottom left, rgba(0,200,150,0.08) 0%, rgba(0,150,200,0.06) 40%, transparent 70%)",
+              "radial-gradient(ellipse, rgba(0,180,140,0.12) 0%, transparent 70%)",
+            filter: "blur(60px)",
+            left: "-100px",
           }}
         />
         <div
@@ -1870,11 +2058,12 @@ export default function OnboardingPage() {
           style={{
             bottom: 0,
             right: 0,
-            width: "500px",
-            height: "400px",
-            borderRadius: "50%",
+            width: "400px",
+            height: "350px",
             background:
-              "radial-gradient(ellipse at bottom right, rgba(0,150,200,0.06) 0%, transparent 60%)",
+              "radial-gradient(ellipse, rgba(0,140,180,0.08) 0%, transparent 70%)",
+            filter: "blur(60px)",
+            right: "-80px",
           }}
         />
       </div>
@@ -1889,20 +2078,39 @@ export default function OnboardingPage() {
           borderBottom: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <div
-          className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between"
-        >
-          <span className="text-white font-bold text-xl tracking-tight">g+</span>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
+          <span
+            style={{
+              fontFamily: "serif",
+              fontSize: "28px",
+              color: "white",
+              fontWeight: 400,
+              letterSpacing: "-0.5px",
+            }}
+          >
+            g<sup style={{ fontSize: "14px", fontWeight: 400 }}>+</sup>
+          </span>
           <div className="flex items-center gap-2">
             {/* Globe icon */}
             <button
-              className="w-9 h-9 rounded-full flex items-center justify-center"
-              style={{ border: "1px solid rgba(255,255,255,0.3)" }}
+              className="w-9 h-9 flex items-center justify-center"
+              style={{
+                border: "1px solid rgba(255,255,255,0.3)",
+                borderRadius: "6px",
+              }}
               aria-label="Language"
             >
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <circle cx="12" cy="12" r="10" strokeWidth="1.5" />
-                <path d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20M2 12h20" strokeWidth="1.5" />
+                <path
+                  d="M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20M2 12h20"
+                  strokeWidth="1.5"
+                />
               </svg>
             </button>
             {/* Exit Assessment button */}
@@ -1938,24 +2146,33 @@ export default function OnboardingPage() {
         >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
             <div className="flex items-center justify-between mb-1.5">
-              <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>
+              <span
+                style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}
+              >
                 Step {step} of {totalSteps - 1}
               </span>
-              <span style={{ color: "#48CAE4", fontSize: "13px", fontWeight: 600 }}>
+              <span
+                style={{ color: "#48CAE4", fontSize: "13px", fontWeight: 600 }}
+              >
                 {progress}%
               </span>
             </div>
             <div
               className="overflow-hidden"
-              style={{ height: "3px", background: "rgba(255,255,255,0.1)", borderRadius: "99px" }}
+              style={{
+                height: "3px",
+                background: "rgba(255,255,255,0.06)",
+                borderRadius: "99px",
+              }}
             >
               <div
                 style={{
                   height: "100%",
                   borderRadius: "99px",
                   width: `${progress}%`,
-                  background: "linear-gradient(to right, #00C9A7, #9B6BFF, #FF6B9D)",
-                  transition: "width 0.5s ease",
+                  background:
+                    "linear-gradient(to right, #00C9A7, #9B6BFF, #FF6B9D)",
+                  transition: "width 0.4s ease",
                 }}
               />
             </div>
@@ -1978,9 +2195,7 @@ export default function OnboardingPage() {
 
           {/* Navigation buttons */}
           {stepName !== "welcome" && stepName !== "verify" && (
-            <div
-              className="flex justify-between items-center mt-10 max-w-3xl mx-auto"
-            >
+            <div className="flex justify-between items-center mt-10 max-w-3xl mx-auto">
               <button
                 onClick={handleBack}
                 className="flex items-center gap-2 font-medium text-white text-sm transition-colors"
@@ -1998,13 +2213,19 @@ export default function OnboardingPage() {
                 disabled={!canProceed() || loading || !sessionId}
                 className="font-semibold text-white text-sm transition-all"
                 style={{
-                  background: canProceed() && !loading && sessionId
-                    ? "linear-gradient(to right, #00C9A7, #48CAE4)"
-                    : "linear-gradient(to right, #00C9A7, #48CAE4)",
-                  borderRadius: "8px",
-                  padding: "12px 28px",
-                  opacity: !canProceed() || loading || !sessionId ? 0.4 : 1,
-                  cursor: !canProceed() || loading || !sessionId ? "not-allowed" : "pointer",
+                  background:
+                    canProceed() && !loading && sessionId
+                      ? "linear-gradient(to right, #00BFA5, #26C6DA)"
+                      : "linear-gradient(to right, #00BFA5, #26C6DA)",
+                  borderRadius: "10px",
+                  padding: "14px 28px",
+                  opacity: !canProceed() || loading || !sessionId ? 0.35 : 1,
+                  cursor:
+                    !canProceed() || loading || !sessionId
+                      ? "not-allowed"
+                      : "pointer",
+                  fontWeight: 600,
+                  fontSize: "15px",
                 }}
               >
                 {loading ? "..." : `${t("assessment.continue")} →`}

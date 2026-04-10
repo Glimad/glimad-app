@@ -105,17 +105,23 @@ export default function LoginPage() {
       {/* Background glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div
-          className="absolute bottom-0 left-0 w-[600px] h-[500px] rounded-full"
+          className="absolute bottom-0 left-0 w-[500px] h-[400px]"
           style={{
             background:
-              "radial-gradient(ellipse at bottom left, rgba(0,200,150,0.08) 0%, rgba(0,150,200,0.06) 40%, transparent 70%)",
+              "radial-gradient(ellipse, rgba(0,180,140,0.12) 0%, transparent 70%)",
+            filter: "blur(60px)",
+            bottom: "-100px",
+            left: "-100px",
           }}
         />
         <div
-          className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full"
+          className="absolute bottom-0 right-0 w-[400px] h-[350px]"
           style={{
             background:
-              "radial-gradient(ellipse at bottom right, rgba(0,150,200,0.06) 0%, transparent 60%)",
+              "radial-gradient(ellipse, rgba(0,140,180,0.08) 0%, transparent 70%)",
+            filter: "blur(60px)",
+            bottom: "-80px",
+            right: "-80px",
           }}
         />
       </div>
@@ -152,12 +158,23 @@ export default function LoginPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
-          <span className="text-white font-bold text-xl tracking-tight">
-            g+
+          <span
+            style={{
+              fontFamily: "serif",
+              fontSize: "28px",
+              color: "white",
+              fontWeight: 400,
+              letterSpacing: "-0.5px",
+            }}
+          >
+            g<sup style={{ fontSize: "14px", fontWeight: 400 }}>+</sup>
           </span>
           <button
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-            style={{ border: "1px solid rgba(255,255,255,0.3)" }}
+            className="w-9 h-9 flex items-center justify-center transition-colors"
+            style={{
+              border: "1px solid rgba(255,255,255,0.3)",
+              borderRadius: "6px",
+            }}
             aria-label="Language"
           >
             <svg
@@ -186,13 +203,12 @@ export default function LoginPage() {
                 className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
                 style={{
                   background:
-                    "linear-gradient(135deg, #00C9A7, #9B6BFF, #FF6B9D)",
-                  padding: "2px",
+                    "linear-gradient(135deg, #00BFA5 0%, #7B61FF 100%)",
                 }}
               >
-                <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
-                  <span className="text-3xl">✦</span>
-                </div>
+                <span className="text-3xl" style={{ color: "white" }}>
+                  ✦
+                </span>
               </div>
             </div>
           </div>
@@ -214,7 +230,7 @@ export default function LoginPage() {
           <div
             className="flex p-1 rounded-full"
             style={{
-              background: "rgba(255,255,255,0.06)",
+              background: "rgba(255,255,255,0.07)",
             }}
           >
             <button
@@ -226,11 +242,10 @@ export default function LoginPage() {
               style={
                 activeTab === "magic"
                   ? {
-                      background:
-                        "linear-gradient(to right, #00C9A7, #48CAE4)",
-                      color: "#fff",
+                      background: "linear-gradient(to right, #00BFA5, #26C6DA)",
+                      color: "white",
                     }
-                  : { color: "rgba(255,255,255,0.5)" }
+                  : { color: "rgba(255,255,255,0.45)" }
               }
             >
               {t("magicLink")}
@@ -244,11 +259,10 @@ export default function LoginPage() {
               style={
                 activeTab === "password"
                   ? {
-                      background:
-                        "linear-gradient(to right, #00C9A7, #48CAE4)",
-                      color: "#fff",
+                      background: "linear-gradient(to right, #00BFA5, #26C6DA)",
+                      color: "white",
                     }
-                  : { color: "rgba(255,255,255,0.5)" }
+                  : { color: "rgba(255,255,255,0.45)" }
               }
             >
               {t("passwordTab")}
@@ -258,25 +272,27 @@ export default function LoginPage() {
           {/* Password tab */}
           {activeTab === "password" && (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Email label */}
+              <label
+                className="block text-sm font-medium"
+                style={{ color: "rgba(255,255,255,0.7)" }}
+              >
+                {t("email")}
+              </label>
+
               <div
                 className="rounded-xl overflow-hidden"
                 style={{
-                  background: "rgba(255,255,255,0.05)",
+                  background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.1)",
                 }}
               >
                 {/* Email field */}
-                <div className="px-4 pt-4 pb-3">
-                  <label
-                    className="block text-sm font-medium mb-2"
-                    style={{ color: "rgba(255,255,255,0.8)" }}
-                  >
-                    {t("email")}
-                  </label>
+                <div className="px-4 py-4">
                   <div className="flex items-center gap-3">
                     <svg
                       className="w-4 h-4 flex-shrink-0"
-                      style={{ color: "rgba(255,255,255,0.4)" }}
+                      style={{ color: "rgba(255,255,255,0.35)" }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -295,8 +311,8 @@ export default function LoginPage() {
                       placeholder={t("emailPlaceholder")}
                       className="flex-1 bg-transparent text-white text-sm focus:outline-none"
                       style={{
-                        color: "#fff",
-                        caretColor: "#00C9A7",
+                        color: "white",
+                        fontSize: "14px",
                       }}
                       required
                     />
@@ -304,21 +320,15 @@ export default function LoginPage() {
                 </div>
 
                 <div
-                  style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
                 />
 
                 {/* Password field */}
-                <div className="px-4 pt-3 pb-4">
-                  <label
-                    className="block text-sm font-medium mb-2"
-                    style={{ color: "rgba(255,255,255,0.8)" }}
-                  >
-                    {t("password")}
-                  </label>
+                <div className="px-4 py-4">
                   <div className="flex items-center gap-3">
                     <svg
                       className="w-4 h-4 flex-shrink-0"
-                      style={{ color: "rgba(255,255,255,0.4)" }}
+                      style={{ color: "rgba(255,255,255,0.35)" }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -344,8 +354,8 @@ export default function LoginPage() {
                       placeholder={t("passwordPlaceholder")}
                       className="flex-1 bg-transparent text-white text-sm focus:outline-none"
                       style={{
-                        color: "#fff",
-                        caretColor: "#00C9A7",
+                        color: "white",
+                        fontSize: "14px",
                       }}
                       required
                     />
@@ -353,27 +363,32 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              {error && <p className="text-sm" style={{ color: "#FF6B6B" }}>{error}</p>}
+              {error && (
+                <p className="text-sm" style={{ color: "#FF6B6B" }}>
+                  {error}
+                </p>
+              )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-lg font-semibold text-white text-sm transition-opacity disabled:opacity-40"
+                className="w-full font-semibold text-white text-sm transition-opacity disabled:opacity-35 disabled:cursor-not-allowed"
                 style={{
-                  background: "linear-gradient(to right, #00C9A7, #48CAE4)",
-                  borderRadius: "8px",
-                  padding: "12px 28px",
+                  background: "linear-gradient(to right, #00BFA5, #26C6DA)",
+                  borderRadius: "10px",
+                  padding: "14px 28px",
                   fontWeight: 600,
+                  fontSize: "15px",
                 }}
               >
                 {loading ? t("loading") : `${t("submit")} →`}
               </button>
 
-              <div className="text-right">
+              <div className="text-center">
                 <button
                   type="button"
                   className="text-sm transition-colors"
-                  style={{ color: "#00C9A7" }}
+                  style={{ color: "#26C6DA", fontSize: "14px" }}
                 >
                   {t("forgotPassword")}
                 </button>
@@ -442,16 +457,22 @@ export default function LoginPage() {
                 </p>
               )}
 
-              {error && <p className="text-sm" style={{ color: "#FF6B6B" }}>{error}</p>}
+              {error && (
+                <p className="text-sm" style={{ color: "#FF6B6B" }}>
+                  {error}
+                </p>
+              )}
 
               <button
                 type="submit"
                 disabled={magicLoading || magicLinkSent}
-                className="w-full py-3 rounded-lg font-semibold text-white text-sm transition-opacity disabled:opacity-40"
+                className="w-full font-semibold text-white text-sm transition-opacity disabled:opacity-35 disabled:cursor-not-allowed"
                 style={{
-                  background: "linear-gradient(to right, #00C9A7, #48CAE4)",
-                  borderRadius: "8px",
+                  background: "linear-gradient(to right, #00BFA5, #26C6DA)",
+                  borderRadius: "10px",
+                  padding: "14px 28px",
                   fontWeight: 600,
+                  fontSize: "15px",
                 }}
               >
                 {magicLoading ? t("magicLinkSending") : t("magicLinkSubmit")}
@@ -461,15 +482,27 @@ export default function LoginPage() {
 
           {/* Divider */}
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
-            <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <div
+              className="flex-1 h-px"
+              style={{ background: "rgba(255,255,255,0.1)" }}
+            />
+            <span
+              className="text-sm"
+              style={{ color: "rgba(255,255,255,0.4)" }}
+            >
               {t("orDivider")}
             </span>
-            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
+            <div
+              className="flex-1 h-px"
+              style={{ background: "rgba(255,255,255,0.1)" }}
+            />
           </div>
 
           {/* Assessment link */}
-          <p className="text-center text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <p
+            className="text-center text-sm"
+            style={{ color: "rgba(255,255,255,0.5)" }}
+          >
             {t("signup_link")}{" "}
             <Link
               href="/onboarding"
@@ -484,7 +517,10 @@ export default function LoginPage() {
 
       {/* Footer */}
       <footer className="relative z-10 py-4 text-center">
-        <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+        <p
+          className="text-xs"
+          style={{ color: "rgba(255,255,255,0.25)", fontSize: "12px" }}
+        >
           © 2024 GLIMAD. Your digital acceleration partner.
         </p>
       </footer>
