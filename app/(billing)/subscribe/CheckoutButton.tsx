@@ -22,7 +22,13 @@ export default function CheckoutButton({ planCode }: { planCode: string }) {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="w-full py-3 rounded-lg bg-white text-black font-semibold hover:bg-zinc-200 transition disabled:opacity-50 disabled:cursor-not-allowed"
+      className="w-full py-3 font-semibold text-white transition-opacity disabled:opacity-40"
+      style={{
+        background: 'linear-gradient(to right, #00C9A7, #48CAE4)',
+        borderRadius: '8px',
+        fontSize: '14px',
+        fontWeight: 600,
+      }}
     >
       {loading ? t('processing') : t('cta')}
     </button>
