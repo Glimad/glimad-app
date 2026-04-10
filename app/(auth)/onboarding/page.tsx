@@ -2044,7 +2044,6 @@ export default function OnboardingPage() {
         <div
           className="absolute"
           style={{
-            left: 0,
             width: "500px",
             height: "400px",
             background:
@@ -2057,7 +2056,6 @@ export default function OnboardingPage() {
           className="absolute"
           style={{
             bottom: 0,
-            right: 0,
             width: "400px",
             height: "350px",
             background:
