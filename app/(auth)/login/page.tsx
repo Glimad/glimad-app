@@ -103,27 +103,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black relative overflow-hidden flex flex-col">
       {/* Background glow */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute bottom-0 left-0 w-[500px] h-[400px]"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(0,180,140,0.12) 0%, transparent 70%)",
-            filter: "blur(60px)",
-            bottom: "-100px",
-            left: "-100px",
-          }}
-        />
-        <div
-          className="absolute bottom-0 right-0 w-[400px] h-[350px]"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(0,140,180,0.08) 0%, transparent 70%)",
-            filter: "blur(60px)",
-            bottom: "-80px",
-            right: "-80px",
-          }}
-        />
+      {/* Background gradients (Figma match) */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
       </div>
 
       {/* Security timeout banner */}
@@ -149,7 +132,7 @@ export default function LoginPage() {
 
       {/* Nav */}
       <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b"
+        className="relative z-10 border-b border-white/10 bg-black/50 backdrop-blur-sm"
         style={{
           background: "rgba(0,0,0,0.8)",
           backdropFilter: "blur(12px)",
@@ -158,17 +141,34 @@ export default function LoginPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
-          <span
-            style={{
-              fontFamily: "serif",
-              fontSize: "28px",
-              color: "white",
-              fontWeight: 400,
-              letterSpacing: "-0.5px",
-            }}
-          >
-            g<sup style={{ fontSize: "14px", fontWeight: 400 }}>+</sup>
-          </span>
+          <Link href="/">
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              <svg
+                width="52"
+                height="52"
+                viewBox="0 0 52 52"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect width="52" height="52" rx="10" />
+                <text
+                  x="26"
+                  y="40"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                  fontSize="38"
+                  fontWeight="700"
+                  fill="white"
+                  textAnchor="middle"
+                >
+                  g
+                </text>
+                <path
+                  d="M37,8 L38.4,4.2 L39.8,8 L43.6,9.4 L39.8,10.8 L38.4,14.6 L37,10.8 L33.2,9.4 Z"
+                  fill="#2dd4bf"
+                />
+              </svg>
+            </span>
+          </Link>
           <button
             className="w-9 h-9 flex items-center justify-center transition-colors"
             style={{
@@ -196,20 +196,16 @@ export default function LoginPage() {
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 pt-24 relative z-10">
         <div className="w-full max-w-[440px] space-y-6">
-          {/* Icon */}
-          <div className="text-center">
-            <div className="relative inline-block">
-              <div
-                className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #00BFA5 0%, #7B61FF 100%)",
-                }}
+          {/* Icon (Figma style) */}
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 via-emerald-400 to-pink-500 flex items-center justify-center mx-auto animate-pulse">
+              <svg
+                className="w-8 h-8 text-white"
+                viewBox="0 0 24 24"
+                fill="currentColor"
               >
-                <span className="text-3xl" style={{ color: "white" }}>
-                  ✦
-                </span>
-              </div>
+                <path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2z" />
+              </svg>
             </div>
           </div>
 
@@ -226,44 +222,34 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Tab Toggle */}
-          <div
-            className="flex p-1 rounded-full"
-            style={{
-              background: "rgba(255,255,255,0.07)",
-            }}
-          >
+          {/* Tab Toggle (Figma match) */}
+          <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl border border-white/10">
+            {/* Magic Link */}
             <button
               onClick={() => {
                 setActiveTab("magic");
                 setError("");
               }}
-              className="flex-1 py-2 rounded-full text-sm font-medium transition-all"
-              style={
+              className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
                 activeTab === "magic"
-                  ? {
-                      background: "linear-gradient(to right, #00BFA5, #26C6DA)",
-                      color: "white",
-                    }
-                  : { color: "rgba(255,255,255,0.45)" }
-              }
+                  ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
             >
               {t("magicLink")}
             </button>
+
+            {/* Password */}
             <button
               onClick={() => {
                 setActiveTab("password");
                 setError("");
               }}
-              className="flex-1 py-2 rounded-full text-sm font-medium transition-all"
-              style={
+              className={`flex-1 py-2 px-4 rounded-lg text-sm transition-all ${
                 activeTab === "password"
-                  ? {
-                      background: "linear-gradient(to right, #00BFA5, #26C6DA)",
-                      color: "white",
-                    }
-                  : { color: "rgba(255,255,255,0.45)" }
-              }
+                  ? "bg-gradient-to-r from-cyan-500 to-emerald-500 text-white"
+                  : "text-white/60 hover:text-white"
+              }`}
             >
               {t("passwordTab")}
             </button>
