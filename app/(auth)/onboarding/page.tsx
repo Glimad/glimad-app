@@ -46,12 +46,6 @@ interface FormData {
   gdprConsent: boolean;
 }
 
-function getTotalSteps(journeyStage: JourneyStage): number {
-  if (!journeyStage) return 12;
-  if (journeyStage === "starting") return 10;
-  return 10; // existing or legacy
-}
-
 function getStepName(step: number, journeyStage: JourneyStage): StepName {
   if (step === 0) return "welcome";
   if (step === 1) return "project";
@@ -313,8 +307,22 @@ export default function OnboardingPage() {
   });
 
   const stepName = getStepName(step, formData.journeyStage);
-  const totalSteps = getTotalSteps(formData.journeyStage);
-  const progress = Math.round(((step + 1) / totalSteps) * 100);
+  const totalSteps = 12;
+  const stepProgressMap: Record<number, number> = {
+    0: 8,
+    1: 15,
+    2: formData.journeyStage ? 25 : 23,
+    3: 33,
+    4: 42,
+    5: 50,
+    6: 58,
+    7: 67,
+    8: 75,
+    9: 83,
+    10: 92,
+    11: 100,
+  };
+  const progress = stepProgressMap[step] ?? Math.round(((step + 1) / 12) * 100);
 
   useEffect(() => {
     const visitorId =
@@ -583,16 +591,14 @@ export default function OnboardingPage() {
           >
             {/* Sparkle Icon Circle */}
             <div className="flex justify-center mb-8">
-              <div
-                className="rounded-full flex items-center justify-center"
-                style={{
-                  width: "72px",
-                  height: "72px",
-                  background:
-                    "linear-gradient(135deg, #00BFA5 0%, #7B61FF 100%)",
-                }}
-              >
-                <span style={{ fontSize: "32px", color: "white" }}>✦</span>
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 via-emerald-400 to-pink-500 flex items-center justify-center animate-pulse">
+                <svg
+                  className="w-8 h-8 text-white"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2z" />
+                </svg>
               </div>
             </div>
 
@@ -622,20 +628,27 @@ export default function OnboardingPage() {
               </p>
             </div>
 
+            {/* Build My Evolution Map */}
             <div className="space-y-3">
               <button
                 onClick={handleNext}
-                className="text-white font-semibold transition-opacity hover:opacity-90"
+                className="text-white font-semibold transition-all duration-300 hover:opacity-95 hover:translate-y-[-1px]"
                 style={{
-                  background: "linear-gradient(to right, #00BFA5, #26C6DA)",
-                  borderRadius: "14px",
-                  padding: "16px 48px",
-                  fontWeight: 600,
-                  fontSize: "16px",
+                  background:
+                    "linear-gradient(90deg, #00D6C9 0%, #00C389 100%)",
+                  borderRadius: "6px",
+                  padding: "18px 40px",
+                  fontSize: "17px",
+                  fontWeight: 700,
+                  lineHeight: "20px",
+                  letterSpacing: "-0.2px",
+                  zIndex: 10,
+                  boxShadow: "0px 14px 28px rgba(0, 214, 201, 0.25)",
                 }}
               >
                 {t("assessment.welcome.cta")} ›
               </button>
+
               <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>
                 {t("assessment.welcome.duration")}
               </p>
@@ -902,18 +915,19 @@ export default function OnboardingPage() {
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <span style={{ fontSize: "20px" }}>💡</span>
-                    <span className="text-white text-sm font-medium">
+                    <span className="text-white text-medium font-medium">
                       {t("assessment.yourIdea.describeLabel")}
                     </span>
                     <div
-                      className="ml-auto flex items-center justify-center"
+                      className="flex items-center justify-center"
                       style={{
                         width: "20px",
                         height: "20px",
                         borderRadius: "50%",
-                        border: "1px solid rgba(255,255,255,0.3)",
+                        border: "1px solid rgba(72, 202, 228, 0.9)",
                         fontSize: "11px",
-                        color: "rgba(255,255,255,0.4)",
+                        fontWeight: "900%",
+                        color: "rgb(72, 202, 228)",
                         flexShrink: 0,
                       }}
                     >
@@ -2038,38 +2052,60 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    // REPLACE THIS entire outer div + atmospheric glow
+    <div className="min-h-screen" style={{ background: "#080808" }}>
       {/* Atmospheric background glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        {/* Teal glow — top-center, behind the sparkle icon */}
         <div
-          className="absolute"
           style={{
-            width: "500px",
-            height: "400px",
+            position: "absolute",
+            top: "15%",
+            left: "55%",
+            transform: "translateX(-50%)",
+            width: "700px",
+            height: "500px",
             background:
-              "radial-gradient(ellipse, rgba(0,180,140,0.12) 0%, transparent 70%)",
-            filter: "blur(60px)",
-            left: "-100px",
+              "radial-gradient(ellipse, rgba(0,200,160,0.22) 0%, transparent 20%)",
+            filter: "blur(90px)",
           }}
         />
+
+        {/* Purple glow — left-center, large and diffused */}
         <div
-          className="absolute"
           style={{
-            bottom: 0,
-            width: "400px",
-            height: "350px",
+            position: "absolute",
+            top: "5%",
+            left: "5%",
+            width: "800px",
+            height: "700px",
             background:
-              "radial-gradient(ellipse, rgba(0,140,180,0.08) 0%, transparent 70%)",
-            filter: "blur(60px)",
-            right: "-80px",
+              "radial-gradient(ellipse, rgba(110,0,200,0.07) 0%, transparent 65%)",
+            filter: "blur(100px)",
+          }}
+        />
+
+        {/* Subtle cyan bottom-center bleed */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "-100px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: "600px",
+            height: "400px",
+            background:
+              "radial-gradient(ellipse, rgba(0,140,180,0.06) 0%, transparent 70%)",
+            filter: "blur(80px)",
           }}
         />
       </div>
 
       {/* Header nav */}
       <nav
-        className="fixed w-full z-50"
+        className="fixed w-full"
         style={{
+          zIndex: 50,
           background: "rgba(0,0,0,0.8)",
           backdropFilter: "blur(12px)",
           height: "64px",
@@ -2077,17 +2113,34 @@ export default function OnboardingPage() {
         }}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-full flex items-center justify-between">
-          <span
-            style={{
-              fontFamily: "serif",
-              fontSize: "28px",
-              color: "white",
-              fontWeight: 400,
-              letterSpacing: "-0.5px",
-            }}
-          >
-            g<sup style={{ fontSize: "14px", fontWeight: 400 }}>+</sup>
-          </span>
+          <Link href="/">
+            <span style={{ display: "inline-flex", alignItems: "center" }}>
+              <svg
+                width="52"
+                height="52"
+                viewBox="0 0 52 52"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect width="52" height="52" rx="10" />
+                <text
+                  x="26"
+                  y="40"
+                  fontFamily="Georgia, 'Times New Roman', serif"
+                  fontSize="38"
+                  fontWeight="700"
+                  fill="white"
+                  textAnchor="middle"
+                >
+                  g
+                </text>
+                <path
+                  d="M37,8 L38.4,4.2 L39.8,8 L43.6,9.4 L39.8,10.8 L38.4,14.6 L37,10.8 L33.2,9.4 Z"
+                  fill="#2dd4bf"
+                />
+              </svg>
+            </span>
+          </Link>
           <div className="flex items-center gap-2">
             {/* Globe icon */}
             <button
@@ -2111,17 +2164,16 @@ export default function OnboardingPage() {
                 />
               </svg>
             </button>
+
             {/* Exit Assessment button */}
             {stepName !== "verify" && (
               <button
-                onClick={() => router.push("/")}
-                className="text-white text-sm transition-colors"
+                onClick={() => router.push("/login")}
+                className="text-sm font-bold px-5 py-2.5 rounded-md transition-all hover:opacity-90"
                 style={{
-                  background: "transparent",
-                  border: "1px solid rgba(255,255,255,0.3)",
-                  borderRadius: "6px",
-                  padding: "6px 14px",
-                  fontSize: "13px",
+                  background: "#FFFFFF",
+                  color: "#38BDF8",
+                  border: "1px solid rgba(56, 189, 248, 0.25)", // soft sky blue border
                 }}
               >
                 Exit Assessment
@@ -2131,58 +2183,61 @@ export default function OnboardingPage() {
         </div>
       </nav>
 
-      {/* Progress bar — fixed below nav, hidden on welcome */}
-      {stepName !== "welcome" && (
-        <div
-          className="fixed left-0 right-0 z-40"
-          style={{
-            top: "64px",
-            background: "rgba(0,0,0,0.6)",
-            backdropFilter: "blur(8px)",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-          }}
-        >
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span
-                style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}
-              >
-                Step {step} of {totalSteps - 1}
-              </span>
-              <span
-                style={{ color: "#48CAE4", fontSize: "13px", fontWeight: 600 }}
-              >
-                {progress}%
-              </span>
-            </div>
-            <div
-              className="overflow-hidden"
+      {/* Progress bar — fixed below nav, always visible */}
+      <div
+        className="fixed left-0 right-0"
+        style={{
+          top: "64px",
+          zIndex: 39,
+          background: "rgba(0,0,0,0.7)",
+          backdropFilter: "blur(8px)",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between mb-2">
+            <span
               style={{
-                height: "3px",
-                background: "rgba(255,255,255,0.06)",
-                borderRadius: "99px",
+                color: "rgba(255,255,255,0.6)",
+                fontSize: "15px",
+                fontWeight: 500,
               }}
             >
-              <div
-                style={{
-                  height: "100%",
-                  borderRadius: "99px",
-                  width: `${progress}%`,
-                  background:
-                    "linear-gradient(to right, #00C9A7, #9B6BFF, #FF6B9D)",
-                  transition: "width 0.4s ease",
-                }}
-              />
-            </div>
+              Step {step + 1} of {totalSteps}
+            </span>
+            <span
+              style={{ color: "#48CAE4", fontSize: "15px", fontWeight: 700 }}
+            >
+              {progress}%
+            </span>
+          </div>
+          <div
+            className="overflow-hidden"
+            style={{
+              height: "6px",
+              background: "rgba(255,255,255,0.08)",
+              borderRadius: "99px",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                borderRadius: "99px",
+                width: `${progress}%`,
+                background:
+                  "linear-gradient(to right, #00C9A7, #9B6BFF, #FF6B9D)",
+                transition: "width 0.4s ease",
+              }}
+            />
           </div>
         </div>
-      )}
+      </div>
 
       {/* Main content */}
       <div
         className="relative z-10"
         style={{
-          paddingTop: stepName === "welcome" ? "96px" : "140px",
+          paddingTop: "140px",
           paddingBottom: "96px",
           paddingLeft: "16px",
           paddingRight: "16px",
@@ -2196,15 +2251,15 @@ export default function OnboardingPage() {
             <div className="flex justify-between items-center mt-10 max-w-3xl mx-auto">
               <button
                 onClick={handleBack}
-                className="flex items-center gap-2 font-medium text-white text-sm transition-colors"
+                className="flex items-center gap-2 font-semibold text-gray-400 text-medium transition-colors"
                 style={{
-                  background: "transparent",
+                  background: "white",
                   border: "1px solid rgba(255,255,255,0.2)",
                   borderRadius: "8px",
                   padding: "10px 20px",
                 }}
               >
-                ← {t("assessment.back")}
+                ᐸ {t("assessment.back")}
               </button>
               <button
                 onClick={handleNext}
@@ -2226,7 +2281,7 @@ export default function OnboardingPage() {
                   fontSize: "15px",
                 }}
               >
-                {loading ? "..." : `${t("assessment.continue")} →`}
+                {loading ? "..." : `${t("assessment.continue")} ᐳ`}
               </button>
             </div>
           )}

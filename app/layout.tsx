@@ -5,8 +5,9 @@ import { cookies } from "next/headers";
 import { locales, defaultLocale } from "@/i18n.config";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import ClientLocaleProvider from "@/components/layout/ClientLocaleProvider";
 import OfflineBanner from "@/components/layout/OfflineBanner";
+import ClientLocaleProvider from "@/components/layout/ClientLocaleProvider";
+import ConditionalShell from "@/components/layout/ConditionalShell";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -85,12 +86,13 @@ export default async function RootLayout({
     <html lang={locale}>
       <body className={`${inter.className} bg-black`}>
         <ClientLocaleProvider locale={locale} allMessages={allMessages}>
-          <div className="min-h-screen flex flex-col">
-            <Header />
-            <OfflineBanner />
-            <main className="flex-1 pt-14">{children}</main>
-            <Footer />
-          </div>
+          <ConditionalShell
+            header={<Header />}
+            footer={<Footer />}
+            offlineBanner={<OfflineBanner />}
+          >
+            {children}
+          </ConditionalShell>
         </ClientLocaleProvider>
       </body>
     </html>

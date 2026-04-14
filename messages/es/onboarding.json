@@ -7,7 +7,7 @@
       "subtitle": "Tu co-piloto de IA para hacer crecer tu idea, marca, proyecto o negocio",
       "tagline": "Deja de adivinar. Comienza a ganar. 🚀",
       "cta": "Construir Mi Mapa de Evolución",
-      "duration": "3–5 min · Estrategia personalizada para TU realidad"
+      "duration": "duration3-5min. Estrategia personalizada para TU realidad. Crece paso a paso, sin agobios"
     },
     "project": {
       "question": "¿Qué proyecto quieres impulsar?",
@@ -43,7 +43,7 @@
       "subtitle": "Hagamos realidad tu idea",
       "specificity": "Cuanto más específico seas, mejor podremos guiarte 🎯",
       "describeLabel": "Describe tu idea",
-      "placeholder": "Ejemplo: Quiero crear contenido sobre moda sostenible para la Generación Z, mezclando videos educativos con detrás de cámaras...",
+      "placeholder": "Ejemplo: Quiero crear contenido sobre moda sostenible para la Generación Z, mezclando videos educativos con detrás de cámaras de mi proceso de diseño. Mi audiencia se preocupa por el consumo ético y quiere verse elegante mientras toma decisiones conscientes...",
       "feedbackShort": "✍️ ¡Sigue así! Comparte más detalles.",
       "feedbackMedium": "👍 ¡Buen comienzo! Agrega más detalles para mejores recomendaciones.",
       "feedbackGood": "✨ ¡Excelente! Tenemos todo lo necesario.",
@@ -158,28 +158,82 @@
       "customLabel": "O cuéntanos algo más:",
       "addButton": "Agregar",
       "startingHelp": {
-        "clearRoadmap": { "label": "Una Hoja de Ruta Paso a Paso", "desc": "Muéstrame exactamente qué hacer primero" },
-        "nichePositioning": { "label": "Definir Mi Nicho y Posicionamiento", "desc": "Ayúdame a encontrar mi ángulo único" },
-        "contentStrategy": { "label": "Estrategia de Contenido e Ideas", "desc": "Qué publicar y cuándo" },
-        "platformGuidance": { "label": "Selección y Configuración de Plataforma", "desc": "Dónde empezar y cómo configurar" },
-        "firstFollowers": { "label": "Conseguir Mis Primeros Seguidores", "desc": "Construir audiencia inicial desde cero" },
-        "accountability": { "label": "Responsabilidad y Apoyo", "desc": "Alguien que me mantenga en camino" }
+        "clearRoadmap": {
+          "label": "Una Hoja de Ruta Paso a Paso",
+          "desc": "Muéstrame exactamente qué hacer primero"
+        },
+        "nichePositioning": {
+          "label": "Definir Mi Nicho y Posicionamiento",
+          "desc": "Ayúdame a encontrar mi ángulo único"
+        },
+        "contentStrategy": {
+          "label": "Estrategia de Contenido e Ideas",
+          "desc": "Qué publicar y cuándo"
+        },
+        "platformGuidance": {
+          "label": "Selección y Configuración de Plataforma",
+          "desc": "Dónde empezar y cómo configurar"
+        },
+        "firstFollowers": {
+          "label": "Conseguir Mis Primeros Seguidores",
+          "desc": "Construir audiencia inicial desde cero"
+        },
+        "accountability": {
+          "label": "Responsabilidad y Apoyo",
+          "desc": "Alguien que me mantenga en camino"
+        }
       },
       "existingHelp": {
-        "breakPlateau": { "label": "Superar Mi Estancamiento", "desc": "Pasar el crecimiento estancado" },
-        "monetization": { "label": "Estrategias de Monetización", "desc": "Convertir seguidores en ingresos" },
-        "contentOptimization": { "label": "Optimización de Contenido", "desc": "Mejorar engagement y alcance" },
-        "collabOpportunities": { "label": "Colaboraciones con Marcas", "desc": "Conectar con marcas y patrocinadores" },
-        "automationSystems": { "label": "Automatización y Sistemas", "desc": "Ahorrar tiempo con herramientas inteligentes" },
-        "growthStrategy": { "label": "Estrategia de Crecimiento Avanzada", "desc": "Escalar al siguiente nivel" }
+        "breakPlateau": {
+          "label": "Superar Mi Estancamiento",
+          "desc": "Pasar el crecimiento estancado"
+        },
+        "monetization": {
+          "label": "Estrategias de Monetización",
+          "desc": "Convertir seguidores en ingresos"
+        },
+        "contentOptimization": {
+          "label": "Optimización de Contenido",
+          "desc": "Mejorar engagement y alcance"
+        },
+        "collabOpportunities": {
+          "label": "Colaboraciones con Marcas",
+          "desc": "Conectar con marcas y patrocinadores"
+        },
+        "automationSystems": {
+          "label": "Automatización y Sistemas",
+          "desc": "Ahorrar tiempo con herramientas inteligentes"
+        },
+        "growthStrategy": {
+          "label": "Estrategia de Crecimiento Avanzada",
+          "desc": "Escalar al siguiente nivel"
+        }
       },
       "legacyHelp": {
-        "scaleOperations": { "label": "Escalar Operaciones y Equipo", "desc": "Construir sistemas que funcionen sin ti" },
-        "multipleRevenue": { "label": "Múltiples Fuentes de Ingresos", "desc": "Diversificar fuentes de ingresos" },
-        "ipLicensing": { "label": "Licenciamiento de PI y Metodología", "desc": "Empaquetar y vender tu conocimiento" },
-        "marketExpansion": { "label": "Expansión a Nuevos Mercados", "desc": "Entrar en nuevos territorios y audiencias" },
-        "empireSystems": { "label": "Sistemas a Nivel Imperio", "desc": "Infraestructura automatizada para escalar" },
-        "strategicPartnerships": { "label": "Alianzas Estratégicas", "desc": "Colaboraciones y acuerdos de alto nivel" }
+        "scaleOperations": {
+          "label": "Escalar Operaciones y Equipo",
+          "desc": "Construir sistemas que funcionen sin ti"
+        },
+        "multipleRevenue": {
+          "label": "Múltiples Fuentes de Ingresos",
+          "desc": "Diversificar fuentes de ingresos"
+        },
+        "ipLicensing": {
+          "label": "Licenciamiento de PI y Metodología",
+          "desc": "Empaquetar y vender tu conocimiento"
+        },
+        "marketExpansion": {
+          "label": "Expansión a Nuevos Mercados",
+          "desc": "Entrar en nuevos territorios y audiencias"
+        },
+        "empireSystems": {
+          "label": "Sistemas a Nivel Imperio",
+          "desc": "Infraestructura automatizada para escalar"
+        },
+        "strategicPartnerships": {
+          "label": "Alianzas Estratégicas",
+          "desc": "Colaboraciones y acuerdos de alto nivel"
+        }
       }
     },
     "final": {
@@ -193,7 +247,7 @@
       "emailStepTitle": "Tu email",
       "emailStepDescription": "¿Dónde debemos enviar tu hoja de ruta?",
       "emailPlaceholder": "tu@email.com",
-      "gdprConsentLabel": "Acepto que GLIMAD use mis datos para ofrecer hojas de ruta, información y actualizaciones personalizadas. Cancela cuando quieras. Lee nuestros",
+      "gdprConsentLabel": "Acepto que GLIMAD use mis datos para entregarme hojas de ruta personalizadas, insights y actualizaciones de la plataforma para mi beneficio. Dar de baja en cualquier momento. Lee nuestros",
       "termsLink": "Términos y Condiciones"
     },
     "verifyEmail": {

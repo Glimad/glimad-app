@@ -502,14 +502,14 @@ export default function LoginPage() {
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 py-4 text-center">
+      {/* <footer className="relative z-10 py-4 text-center">
         <p
           className="text-xs"
           style={{ color: "rgba(255,255,255,0.25)", fontSize: "12px" }}
         >
           © 2024 GLIMAD. Your digital acceleration partner.
         </p>
-      </footer>
+      </footer> */}
     </div>
   );
 }
