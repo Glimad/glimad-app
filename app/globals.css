@@ -25,3 +25,27 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Scrollbar for your modal */
+.modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: rgba(10, 10, 10, 0.4); /* dark background */
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(20, 20, 20, 0.9); /* almost black */
+  border-radius: 10px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(35, 35, 35, 1); /* hover effect */
+}
+
+/* Firefox support */
+.modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 20, 20, 0.9) rgba(10, 10, 10, 0.4);
+}

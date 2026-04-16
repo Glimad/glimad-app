@@ -194,7 +194,7 @@ export default function LoginPage() {
       </nav>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 pt-24 relative z-10">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 pt-0 relative z-10">
         <div className="w-full max-w-[440px] space-y-6">
           {/* Icon (Figma style) */}
           <div className="text-center mb-6">

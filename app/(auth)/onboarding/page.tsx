@@ -282,6 +282,7 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [signupError, setSignupError] = useState("");
   const [resending, setResending] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     projectType: "",
     projectName: "",
@@ -918,20 +919,55 @@ export default function OnboardingPage() {
                     <span className="text-white text-medium font-medium">
                       {t("assessment.yourIdea.describeLabel")}
                     </span>
-                    <div
-                      className="flex items-center justify-center"
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        borderRadius: "50%",
-                        border: "1px solid rgba(72, 202, 228, 0.9)",
-                        fontSize: "11px",
-                        fontWeight: "900%",
-                        color: "rgb(72, 202, 228)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      ℹ
+                    <div className="relative group flex-shrink-0">
+                      <div
+                        className="flex items-center justify-center cursor-pointer"
+                        style={{
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "50%",
+                          border: "1px solid rgba(72, 202, 228, 0.9)",
+                          fontSize: "11px",
+                          fontWeight: 900,
+                          color: "rgb(72, 202, 228)",
+                          flexShrink: 0,
+                        }}
+                      >
+                        ℹ
+                      </div>
+                      {/* Tooltip */}
+                      <div
+                        className="absolute hidden group-hover:block z-50"
+                        style={{
+                          bottom: "28px",
+                          left: "50%",
+                          transform: "translateX(-60%)",
+                          width: "300px",
+                          fontWeight: 500,
+                          background: "rgba(0, 0, 0, 0.8)",
+                          borderRadius: "10px",
+                          padding: "12px 14px",
+                        }}
+                      >
+                        <p
+                          className="font-medium mb-1"
+                          style={{
+                            color: "rgb(54, 201, 231)",
+                            fontSize: "15px",
+                          }}
+                        >
+                          {t("assessment.yourIdea.thinkAbout")}
+                        </p>
+                        <p
+                          style={{
+                            color: "rgba(255,255,255,0.8)",
+                            fontSize: "15px",
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {t("assessment.yourIdea.specificity")}
+                        </p>
+                      </div>
                     </div>
                   </div>
                   <textarea
@@ -1142,8 +1178,8 @@ export default function OnboardingPage() {
                 style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
               >
                 <label
-                  className="block text-sm mb-2"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
+                  className="block text-bold mb-2"
+                  style={{ color: "rgba(255, 255, 255, 0.78)" }}
                 >
                   ✦ {t("assessment.goalsBlockers.customGoalLabel")}
                 </label>
@@ -1289,8 +1325,8 @@ export default function OnboardingPage() {
                 style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}
               >
                 <label
-                  className="block text-sm mb-2"
-                  style={{ color: "rgba(255,255,255,0.5)" }}
+                  className="block text-bold mb-2"
+                  style={{ color: "rgba(255, 255, 255, 0.78)" }}
                 >
                   ✦ {t("assessment.goalsBlockers.customBlockerLabel")}
                 </label>
@@ -1901,7 +1937,7 @@ export default function OnboardingPage() {
                   }))
                 }
                 className="mt-1 w-4 h-4 cursor-pointer"
-                style={{ accentColor: "#00C9A7" }}
+                style={{ accentColor: "#101212" }}
               />
               <label
                 htmlFor="gdpr"
@@ -1909,13 +1945,13 @@ export default function OnboardingPage() {
                 style={{ color: "rgba(255,255,255,0.8)" }}
               >
                 {t("assessment.final.gdprConsentLabel")}{" "}
-                <Link
-                  href="/terms"
-                  style={{ color: "#00C9A7" }}
+                <button
+                  onClick={() => setShowTerms(true)}
+                  style={{ color: "#22D3EE", fontWeight: "700" }}
                   className="underline"
                 >
                   {t("assessment.final.termsLink")}
-                </Link>
+                </button>
               </label>
             </div>
             {signupError && (
@@ -1929,7 +1965,10 @@ export default function OnboardingPage() {
       // ── VERIFY ────────────────────────────────────────────────────────────
       case "verify":
         return (
-          <div className="max-w-lg mx-auto text-center">
+          <div
+            className="max-w-lg mx-auto text-center"
+            style={{ paddingTop: "0px" }}
+          >
             {/* Animated envelope icon */}
             <div className="relative w-24 h-24 mx-auto mb-8">
               <div
@@ -1937,7 +1976,7 @@ export default function OnboardingPage() {
                 style={{
                   background:
                     "linear-gradient(135deg, #00C9A7, #9B6BFF, #FF6B9D)",
-                  padding: "2px",
+                  padding: "9px",
                 }}
               >
                 <div className="w-full h-full rounded-full bg-black flex items-center justify-center">
@@ -2237,7 +2276,7 @@ export default function OnboardingPage() {
       <div
         className="relative z-10"
         style={{
-          paddingTop: "140px",
+          paddingTop: "150px",
           paddingBottom: "96px",
           paddingLeft: "16px",
           paddingRight: "16px",
@@ -2291,20 +2330,344 @@ export default function OnboardingPage() {
             <div className="flex justify-center mt-8 max-w-3xl mx-auto">
               <button
                 onClick={handleBack}
-                className="flex items-center gap-2 font-medium text-white text-sm transition-colors"
+                className="flex items-center gap-2 font-medium text-gray-400 text-sm transition-colors"
                 style={{
-                  background: "transparent",
+                  background: "white",
                   border: "1px solid rgba(255,255,255,0.2)",
                   borderRadius: "8px",
                   padding: "10px 20px",
                 }}
               >
-                ← {t("assessment.back")}
+                ᐸ {t("assessment.back")}
               </button>
             </div>
           )}
         </div>
       </div>
+      {/* Terms Modal */}
+      {showTerms && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(6px)" }}
+          onClick={() => setShowTerms(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden"
+            style={{
+              border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: "16px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              className="flex items-center justify-between p-4 rounded-t-2xl"
+              style={{
+                background: "rgba(6, 6, 7, 0.95)", // your custom header bg
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <h2 className="text-white font-semibold text-lg">
+                Terms & Conditions, Privacy Policy
+              </h2>
+              <button
+                onClick={() => setShowTerms(false)}
+                className="text-white opacity-60 hover:opacity-100 transition-opacity text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div
+              className="overflow-y-auto p-6 flex-1 modal-scroll"
+              style={{
+                background: `
+  linear-gradient(135deg,
+    rgba(26, 26, 46, 0.95) 0%,
+    rgba(14, 14, 22, 0.98) 30%,
+    rgba(0, 0, 0, 1) 100%
+  )
+`,
+                color: "rgba(255,255,255,0.8)",
+                fontSize: "14px",
+                lineHeight: 1.7,
+              }}
+            >
+              <h3 className="text-white font-semibold text-base mb-2">
+                1. Introduction
+              </h3>
+              <p className="mb-4">
+                By using GLIMAD and providing your information, you agree to
+                these Terms & Conditions and our Privacy Policy. GLIMAD is
+                committed to helping artists, creators, and entrepreneurs grow
+                their creative careers through personalized guidance, AI-powered
+                tools, and strategic partnerships.
+              </p>
+
+              <h3 className="text-white font-semibold text-base mb-2">
+                2. Data We Collect
+              </h3>
+              <p className="mb-2">
+                When you use GLIMAD, we collect the following information:
+              </p>
+              <ul className="list-disc pl-5 mb-4 space-y-1">
+                <li>Personal Information: Name, email address, location</li>
+                <li>
+                  Project Information: Project type, name, creative stage, and
+                  description
+                </li>
+                <li>
+                  Goals & Blockers: Your creative goals, challenges, and
+                  aspirations
+                </li>
+                <li>
+                  Digital Presence: Social media platforms, URLs, and follower
+                  counts
+                </li>
+                <li>
+                  Preferences: Content style, target audience, niche
+                  specificity, and monetization status
+                </li>
+              </ul>
+
+              <h3 className="text-white font-semibold text-base mb-2">
+                3. How We Use Your Data
+              </h3>
+              <ul className="list-disc pl-5 mb-4 space-y-1">
+                <li>
+                  Create your personalized Evolution Map and strategic action
+                  plan
+                </li>
+                <li>Provide AI-powered recommendations and insights</li>
+                <li>Improve and optimize the GLIMAD platform experience</li>
+                <li>
+                  Generate analytics and insights about your creative journey
+                </li>
+                <li>Provide customer support and respond to your inquiries</li>
+              </ul>
+              <div
+                className="p-4 mb-4"
+                style={{
+                  background: `
+  linear-gradient(120deg,
+    rgba(0, 201, 167, 0.12) 0%,
+    rgba(0, 201, 167, 0.08) 25%,
+    rgba(15, 15, 25, 0.98) 60%,
+    rgba(0, 0, 0, 1) 100%
+  )
+`,
+                  border: "1px solid rgba(72,202,228,0.3)",
+                  borderRadius: "10px",
+                  backdropFilter: "blur(12px)",
+                }}
+              >
+                <h3
+                  className="font-semibold text-base mb-2"
+                  style={{ color: "#48CAE4", fontWeight: 600 }}
+                >
+                  4. Partners & Affiliates
+                </h3>
+                <p>
+                  By accepting these terms, you consent to GLIMAD sharing
+                  relevant information with our trusted partners and affiliates
+                  for the following purposes:
+                </p>
+                <ul className="list-disc pl-5 mb-4 space-y-1">
+                  <li>
+                    Brand Collaborations: Connect you with local brands and
+                    collaboration opportunities that match your niche and
+                    location
+                  </li>
+                  <li>
+                    Local Partnerships: Introduce you to relevant local partners
+                    in your area for authentic community-based collaborations
+                  </li>
+                  <li>
+                    Sponsored Opportunities: Inform you about sponsored content
+                    opportunities from brands that align with your creative
+                    identity
+                  </li>
+                  <li>
+                    Affiliate Products: Recommend tools, software, and services
+                    from our affiliate partners that can help accelerate your
+                    growth
+                  </li>
+                  <li>
+                    Strategic Collaborations: Connect you with other creators,
+                    mentors, or industry professionals for potential
+                    partnerships
+                  </li>
+                </ul>
+                <p className="mb-4">
+                  ✓ We only share information that is relevant to opportunities
+                  that benefit your creative career. You can opt out of partner
+                  communications at any time.
+                </p>
+                <h3
+                  className="font-semibold text-base mb-2"
+                  style={{ color: "#48CAE4", fontWeight: 600 }}
+                >
+                  5. Marketing & Promotional Communications
+                </h3>
+                <p>By accepting, you agree to receive:</p>
+                <ul className="list-disc pl-5 mb-4 space-y-1">
+                  <li>
+                    Platform Updates: News about new features, tools, and
+                    improvements to GLIMAD
+                  </li>
+                  <li>
+                    Exclusive Offers: Early access, beta testing opportunities,
+                    and special promotions
+                  </li>
+                  <li>
+                    Partner Promotions: Relevant offers and opportunities from
+                    our trusted partners and affiliates
+                  </li>
+                  <li>
+                    Educational Content: Tips, guides, and resources to help you
+                    grow your creative career
+                  </li>
+                  <li>
+                    Feedback Requests: Surveys and research to improve the
+                    GLIMAD experience
+                  </li>
+                </ul>
+                <p className="mb-2">
+                  ✓ You can unsubscribe from promotional emails at any time by
+                  clicking the &quot;unsubscribe&quot; link at the bottom of any
+                  email.
+                </p>
+
+                <h3
+                  className="font-semibold text-base mb-2"
+                  style={{ color: "#48CAE4", fontWeight: 600 }}
+                >
+                  6. Data Sharing & Third Parties
+                </h3>
+                <p>We may share your data with:</p>
+                <ul className="list-disc pl-5 mb-4 space-y-1">
+                  <li>
+                    Trusted Partners: Selected partners and affiliates who offer
+                    relevant opportunities for your creative growth
+                  </li>
+                  <li>
+                    Service Providers: Third-party services that help us operate
+                    the platform (email providers, analytics tools, cloud
+                    storage)
+                  </li>
+                  <li>
+                    Aggregated Data: Anonymous, aggregated statistics with
+                    partners for research and industry insights
+                  </li>
+                </ul>
+                <p className="mb-2">
+                  ✗ We will NEVER sell your personal data to third parties for
+                  profit. All data sharing is done exclusively to benefit your
+                  creative journey.
+                </p>
+              </div>
+              <h3 className="text-white font-semibold text-base mb-2">
+                7. Your Rights
+              </h3>
+
+              <ul className="list-disc pl-5 mb-4 space-y-1">
+                <li>
+                  Right to Access: Request a copy of all personal data we hold
+                  about you
+                </li>
+                <li>
+                  Right to Rectification: Correct any inaccurate or incomplete
+                  data
+                </li>
+                <li>
+                  Right to Erasure: Request deletion of your personal data
+                  (&quot;right to be forgotten&quot;)
+                </li>
+                <li>
+                  Right to Data Portability: Receive your data in a structured,
+                  machine- readable format
+                </li>
+                <li>
+                  Right to Withdraw Consent: Withdraw your consent at any time
+                </li>
+                <li>
+                  Right to Opt-Out: Opt out of marketing communications and
+                  partner sharing
+                </li>
+                <p className="mb-2">
+                  To exercise any of these rights, contact us at{" "}
+                  <a
+                    href="mailto:privacy@glimad.com"
+                    className="text-cyan-400 hover:underline"
+                  >
+                    privacy@glimad.com
+                  </a>
+                </p>
+              </ul>
+
+              <h3 className="text-white font-semibold text-base mb-2">
+                8. Data Security
+              </h3>
+              <p className="mb-4">
+                We implement industry-standard security measures to protect your
+                personal information, including encryption, secure servers, and
+                regular security audits. However, no method of transmission over
+                the internet is 100% secure.
+              </p>
+
+              <h3 className="text-white font-semibold text-base mb-2">
+                9. Changes to These Terms
+              </h3>
+              <p className="mb-4">
+                We may update these Terms & Conditions from time to time. We
+                will notify you of any significant changes via email. Your
+                continued use of GLIMAD after changes constitutes acceptance of
+                the updated terms.
+              </p>
+              <h3 className="text-white font-semibold text-base mb-2">
+                10. Contact Us
+              </h3>
+              <p>
+                If you have any questions or concerns about these Terms &
+                Conditions or our Privacy Policy, please contact us at{" "}
+                <a
+                  href="mailto:privacy@glimad.com"
+                  className="text-cyan-400 hover:underline"
+                >
+                  📧 privacy@glimad.com
+                </a>
+              </p>
+            </div>
+
+            {/* Accept button */}
+            <div
+              className="flex items-center justify-between p-4 rounded-b-2xl"
+              style={{
+                background: "rgba(6, 6, 7, 0.95)", // your custom header bg
+                borderBottom: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <button
+                onClick={() => {
+                  setFormData((prev) => ({ ...prev, gdprConsent: true }));
+                  setShowTerms(false);
+                }}
+                className="w-full font-semibold text-white transition-opacity hover:opacity-90"
+                style={{
+                  background: "linear-gradient(to right, #00C9A7, #9B6BFF)",
+                  borderRadius: "4px",
+                  padding: "10px",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                I Understand & Accept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
