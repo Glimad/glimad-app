@@ -97,7 +97,7 @@ export interface StripeCheckoutCreatedEvent extends BaseEvent {
   payload: {
     sessionId: string;
     amountEur: number;
-    plan: "BASE" | "PRO" | "ELITE";
+    plan: "starter" | "growth" | "scale";
     currency: string;
   };
 }
@@ -108,7 +108,7 @@ export interface StripePaymentCompletedEvent extends BaseEvent {
   payload: {
     chargeId: string;
     amountEur: number;
-    plan: "BASE" | "PRO" | "ELITE";
+    plan: "starter" | "growth" | "scale";
     creditsAwarded: number;
   };
 }
@@ -267,7 +267,7 @@ export interface RateLimitExceededEvent extends BaseEvent {
     limit: number;
     currentUsage: number;
     resetAfterSeconds: number;
-    planType: "BASE" | "PRO" | "ELITE" | "FREE";
+    planType: "starter" | "growth" | "scale" | "default";
   };
 }
 

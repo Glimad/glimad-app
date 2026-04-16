@@ -11,8 +11,8 @@
   "go_dashboard": "Ir al Dashboard",
   "retry": "Reintentar",
   "plans": {
-    "BASE": {
-      "name": "Base",
+    "starter": {
+      "name": "Starter",
       "description": "Para creadores que están comenzando",
       "features": [
         "2.000 llamadas IA / mes",
@@ -22,25 +22,25 @@
         "Calendario de contenido"
       ]
     },
-    "PRO": {
-      "name": "Pro",
+    "growth": {
+      "name": "Growth",
       "description": "Para creadores en crecimiento activo",
       "features": [
         "5.000 llamadas IA / mes",
         "1.250 créditos premium / mes",
-        "Todo lo de Base",
+        "Todo lo de Starter",
         "Scrape Light diario",
         "Batch de 7 días",
         "Generación de imágenes"
       ]
     },
-    "ELITE": {
-      "name": "Elite",
+    "scale": {
+      "name": "Scale",
       "description": "Para creadores en monetización y escala",
       "features": [
         "12.500 llamadas IA / mes",
         "3.125 créditos premium / mes",
-        "Todo lo de Pro",
+        "Todo lo de Growth",
         "Batch de 14 días",
         "Generación de video",
         "Jobs prioritarios"

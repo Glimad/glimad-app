@@ -136,7 +136,7 @@ async function handleSubscriptionActivated(
   session: Stripe.Checkout.Session,
 ) {
   const userId = session.metadata?.user_id ?? session.client_reference_id;
-  const planCode = session.metadata?.plan_code ?? "BASE";
+  const planCode = session.metadata?.plan_code ?? "starter";
   if (!userId) return;
 
   const projectId = await getProjectId(admin, userId);

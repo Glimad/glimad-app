@@ -96,8 +96,8 @@ Complete reference of all system events in Glimad v0.
   ```typescript
   {
     sessionId: string; // Stripe checkout session ID
-    amountEur: number; // Price in EUR (29.00, 59.00, 129.00)
-    plan: "BASE" | "PRO" | "ELITE";
+    amountEur: number; // Price in EUR (39.00, 69.00, 149.00)
+    plan: "starter" | "growth" | "scale";
     currency: string; // 'EUR'
   }
   ```
@@ -115,7 +115,7 @@ Complete reference of all system events in Glimad v0.
   {
     chargeId: string; // Stripe charge ID
     amountEur: number; // Amount charged
-    plan: "BASE" | "PRO" | "ELITE";
+    plan: "starter" | "growth" | "scale";
     creditsAwarded: number; // Credits added to wallet (500/1250/3125)
   }
   ```
@@ -364,7 +364,7 @@ Complete reference of all system events in Glimad v0.
     limit: number; // Rate limit threshold
     currentUsage: number; // Requests in window
     resetAfterSeconds: number; // When limit resets
-    planType: "BASE" | "PRO" | "ELITE" | "FREE";
+    planType: "starter" | "growth" | "scale" | "default";
   }
   ```
 

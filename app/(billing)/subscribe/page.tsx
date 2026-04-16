@@ -21,13 +21,13 @@ const PLAN_DISPLAY: Record<
     accentColor: string;
   }
 > = {
-  BASE: {
+  starter: {
     label: "Starter",
     tagline: "Build Your Foundation",
     borderColor: "rgba(255,255,255,0.15)",
     accentColor: "#48CAE4",
   },
-  PRO: {
+  growth: {
     label: "Growth",
     tagline: "Execute & Get Real Results",
     badge: "Most Popular",
@@ -35,7 +35,7 @@ const PLAN_DISPLAY: Record<
     borderColor: "#9B6BFF",
     accentColor: "#9B6BFF",
   },
-  ELITE: {
+  scale: {
     label: "Scale",
     tagline: "Monetize & Expand",
     borderColor: "rgba(255,255,255,0.15)",
@@ -180,7 +180,7 @@ export default async function SubscribePage() {
         {/* Plan cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-10">
           {planList.map((plan) => {
-            const code = plan.plan_code as "BASE" | "PRO" | "ELITE";
+            const code = plan.plan_code as "starter" | "growth" | "scale";
             const features = t.raw(`plans.${code}.features`) as string[];
             const description = t(`plans.${code}.description`);
             const display = PLAN_DISPLAY[code];
@@ -217,7 +217,10 @@ export default async function SubscribePage() {
                   >
                     {display?.label ?? plan.name}
                   </p>
-                  <p className="text-sm mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  <p
+                    className="text-sm mb-3"
+                    style={{ color: "rgba(255,255,255,0.5)" }}
+                  >
                     {display?.tagline ?? description}
                   </p>
                   <div className="flex items-baseline gap-1 mt-4">
@@ -227,7 +230,12 @@ export default async function SubscribePage() {
                     >
                       €{plan.price_monthly_eur}
                     </span>
-                    <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>
+                    <span
+                      style={{
+                        color: "rgba(255,255,255,0.5)",
+                        fontSize: "14px",
+                      }}
+                    >
                       {t("per_month")}
                     </span>
                   </div>
@@ -265,8 +273,12 @@ export default async function SubscribePage() {
             border: "1px solid rgba(255,255,255,0.1)",
           }}
         >
-          <p className="text-sm mb-1" style={{ color: "rgba(255,255,255,0.6)" }}>
-            Most users upgrade after seeing their roadmap — start with what fits you now
+          <p
+            className="text-sm mb-1"
+            style={{ color: "rgba(255,255,255,0.6)" }}
+          >
+            Most users upgrade after seeing their roadmap — start with what fits
+            you now
           </p>
           <p className="text-xs font-medium" style={{ color: "#00C9A7" }}>
             ⚡ Beta pricing available for a limited time

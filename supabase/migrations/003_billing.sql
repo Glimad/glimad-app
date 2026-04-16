@@ -34,9 +34,9 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON core_subscriptions(user_
 
 INSERT INTO core_plans (plan_code, name, price_monthly_eur, allowance_llm_monthly, premium_credits_monthly, max_projects, active)
 VALUES
-  ('BASE',  'Base',  29.00,  2000,  500,  1, true),
-  ('PRO',   'Pro',   59.00,  5000,  1250, 1, true),
-  ('ELITE', 'Elite', 129.00, 12500, 3125, 1, true)
+  ('starter', 'Starter', 39.00,  2000,  500,  1, true),
+  ('growth',  'Growth',  69.00,  5000,  1250, 1, true),
+  ('scale',   'Scale',   149.00, 12500, 3125, 1, true)
 ON CONFLICT (plan_code) DO UPDATE SET
   price_monthly_eur     = EXCLUDED.price_monthly_eur,
   allowance_llm_monthly = EXCLUDED.allowance_llm_monthly,

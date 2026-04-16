@@ -11,8 +11,8 @@
   "go_dashboard": "Go to Dashboard",
   "retry": "Retry",
   "plans": {
-    "BASE": {
-      "name": "Base",
+    "starter": {
+      "name": "Starter",
       "description": "For creators just getting started",
       "features": [
         "2,000 AI calls / month",
@@ -22,25 +22,25 @@
         "Content calendar"
       ]
     },
-    "PRO": {
-      "name": "Pro",
+    "growth": {
+      "name": "Growth",
       "description": "For creators in active growth",
       "features": [
         "5,000 AI calls / month",
         "1,250 premium credits / month",
-        "Everything in Base",
+        "Everything in Starter",
         "Daily Scrape Light",
         "7-day batch",
         "Image generation"
       ]
     },
-    "ELITE": {
-      "name": "Elite",
+    "scale": {
+      "name": "Scale",
       "description": "For creators in monetization and scale",
       "features": [
         "12,500 AI calls / month",
         "3,125 premium credits / month",
-        "Everything in Pro",
+        "Everything in Growth",
         "14-day batch",
         "Video generation",
         "Priority jobs"

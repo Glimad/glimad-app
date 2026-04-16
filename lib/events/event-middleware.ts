@@ -297,7 +297,7 @@ export async function logRateLimitEvent(
   endpoint: string,
   limit: number,
   resetAfterSeconds: number,
-  planType: "BASE" | "PRO" | "ELITE" | "FREE",
+  planType: "starter" | "growth" | "scale" | "default",
   context?: EventContext,
 ): Promise<void> {
   try {

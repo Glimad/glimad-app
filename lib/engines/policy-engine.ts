@@ -128,7 +128,7 @@ export async function runPolicyEngine(
     .single();
 
   const premiumBalance = wallet?.premium_credits_balance ?? 0;
-  const planCode = wallet?.plan_code ?? "BASE";
+  const planCode = wallet?.plan_code ?? "starter";
 
   // Get plan's daily LLM call limit
   const { data: plan } = await admin

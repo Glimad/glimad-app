@@ -96,7 +96,7 @@ async function ensureProject(userId: string): Promise<string> {
         user_id: userId,
         stripe_customer_id: `cus_runner_${Date.now()}`,
         stripe_subscription_id: `sub_runner_${Date.now()}`,
-        plan_code: "BASE",
+        plan_code: "starter",
         status: "active",
         current_period_start: new Date().toISOString(),
         current_period_end: new Date(Date.now() + 30 * 86400000).toISOString(),
@@ -117,7 +117,7 @@ async function seedWallet(
     .upsert(
       {
         project_id: projectId,
-        plan_code: "BASE",
+        plan_code: "starter",
         allowance_llm_balance: allowance,
         credits_allowance: allowance,
         premium_credits_balance: premium,
@@ -132,18 +132,16 @@ async function seedWallet(
 }
 
 async function seedFact(projectId: string, key: string, value: unknown) {
-  await sb()
-    .from("brain_facts")
-    .upsert(
-      {
-        project_id: projectId,
-        fact_key: key,
-        value,
-        source: "test",
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "project_id,fact_key" },
-    );
+  await sb().from("brain_facts").upsert(
+    {
+      project_id: projectId,
+      fact_key: key,
+      value,
+      source: "test",
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "project_id,fact_key" },
+  );
 }
 
 async function resetState(projectId: string) {

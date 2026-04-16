@@ -3,9 +3,9 @@
  * Run: node scripts/seed.mjs
  *
  * Creates 3 test users covering every phase/mode/plan combination:
- *   alice@test.glimad.com  — F3, monetize, PRO
- *   bob@test.glimad.com    — F0, test, BASE (just started)
- *   carol@test.glimad.com  — F5, scale, ELITE (power user)
+ *   alice@test.glimad.com  — F3, monetize, Growth
+ *   bob@test.glimad.com    — F0, test, Starter (just started)
+ *   carol@test.glimad.com  — F5, scale, Scale (power user)
  *
  * Seeds every table in dependency order. Safe to re-run (upserts where
  * possible; deletes old seed data first where not).
@@ -419,9 +419,9 @@ async function main() {
     "core_plans",
     [
       {
-        plan_code: "BASE",
-        name: "Base",
-        price_monthly_eur: 29,
+        plan_code: "starter",
+        name: "Starter",
+        price_monthly_eur: 39,
         allowance_llm_monthly: 2000,
         premium_credits_monthly: 500,
         max_projects: 1,
@@ -429,9 +429,9 @@ async function main() {
         active: true,
       },
       {
-        plan_code: "PRO",
-        name: "Pro",
-        price_monthly_eur: 59,
+        plan_code: "growth",
+        name: "Growth",
+        price_monthly_eur: 69,
         allowance_llm_monthly: 5000,
         premium_credits_monthly: 1500,
         max_projects: 3,
@@ -439,9 +439,9 @@ async function main() {
         active: true,
       },
       {
-        plan_code: "ELITE",
-        name: "Elite",
-        price_monthly_eur: 129,
+        plan_code: "scale",
+        name: "Scale",
+        price_monthly_eur: 149,
         allowance_llm_monthly: 15000,
         premium_credits_monthly: 5000,
         max_projects: 10,
@@ -466,7 +466,7 @@ async function main() {
         user_id: alice.id,
         stripe_customer_id: `cus_seed_alice`,
         stripe_subscription_id: aliceSubId,
-        plan_code: "PRO",
+        plan_code: "growth",
         status: "active",
         current_period_start: ago(5),
         current_period_end: days(25),
@@ -477,7 +477,7 @@ async function main() {
         user_id: bob.id,
         stripe_customer_id: `cus_seed_bob`,
         stripe_subscription_id: bobSubId,
-        plan_code: "BASE",
+        plan_code: "starter",
         status: "active",
         current_period_start: ago(2),
         current_period_end: days(28),
@@ -488,7 +488,7 @@ async function main() {
         user_id: carol.id,
         stripe_customer_id: `cus_seed_carol`,
         stripe_subscription_id: carolSubId,
-        plan_code: "ELITE",
+        plan_code: "scale",
         status: "active",
         current_period_start: ago(10),
         current_period_end: days(20),
@@ -505,7 +505,7 @@ async function main() {
     [
       {
         project_id: aliceProjId,
-        plan_code: "PRO",
+        plan_code: "growth",
         allowance_llm_balance: 4200,
         credits_allowance: 5000,
         premium_credits_balance: 1200,
@@ -516,7 +516,7 @@ async function main() {
       },
       {
         project_id: bobProjId,
-        plan_code: "BASE",
+        plan_code: "starter",
         allowance_llm_balance: 1950,
         credits_allowance: 2000,
         premium_credits_balance: 495,
@@ -527,7 +527,7 @@ async function main() {
       },
       {
         project_id: carolProjId,
-        plan_code: "ELITE",
+        plan_code: "scale",
         allowance_llm_balance: 13500,
         credits_allowance: 15000,
         premium_credits_balance: 4600,
@@ -583,7 +583,7 @@ async function main() {
       idempotency_key: `seed_grant_alice_${aliceProjId}`,
       ref_type: "payment",
       ref_id: aliceSubId,
-      metadata_json: { plan_code: "PRO" },
+      metadata_json: { plan_code: "growth" },
     },
     {
       project_id: aliceProjId,
@@ -621,7 +621,7 @@ async function main() {
       idempotency_key: `seed_reward_alice_streak14`,
       metadata_json: { streak_milestone: 14 },
     },
-    // Bob — BASE grant + 1 mission debit
+    // Bob — Starter grant + 1 mission debit
     {
       project_id: bobProjId,
       kind: "credit",
@@ -631,7 +631,7 @@ async function main() {
       idempotency_key: `seed_grant_bob_${bobProjId}`,
       ref_type: "payment",
       ref_id: bobSubId,
-      metadata_json: { plan_code: "BASE" },
+      metadata_json: { plan_code: "starter" },
     },
     {
       project_id: bobProjId,
@@ -642,7 +642,7 @@ async function main() {
       idempotency_key: `seed_mission_debit_bob_1`,
       metadata_json: { template_code: "VISION_PURPOSE_MOODBOARD_V1" },
     },
-    // Carol — ELITE grant + heavy usage
+    // Carol — Scale grant + heavy usage
     {
       project_id: carolProjId,
       kind: "credit",
@@ -652,7 +652,7 @@ async function main() {
       idempotency_key: `seed_grant_carol_${carolProjId}`,
       ref_type: "payment",
       ref_id: carolSubId,
-      metadata_json: { plan_code: "ELITE" },
+      metadata_json: { plan_code: "scale" },
     },
     {
       project_id: carolProjId,
@@ -2687,20 +2687,24 @@ async function main() {
       {
         stripe_event_id: `evt_seed_alice_checkout`,
         event_type: "checkout.session.completed",
-        data: { object: { metadata: { user_id: alice.id, plan_code: "PRO" } } },
+        data: {
+          object: { metadata: { user_id: alice.id, plan_code: "growth" } },
+        },
         processed: true,
       },
       {
         stripe_event_id: `evt_seed_bob_checkout`,
         event_type: "checkout.session.completed",
-        data: { object: { metadata: { user_id: bob.id, plan_code: "BASE" } } },
+        data: {
+          object: { metadata: { user_id: bob.id, plan_code: "starter" } },
+        },
         processed: true,
       },
       {
         stripe_event_id: `evt_seed_carol_checkout`,
         event_type: "checkout.session.completed",
         data: {
-          object: { metadata: { user_id: carol.id, plan_code: "ELITE" } },
+          object: { metadata: { user_id: carol.id, plan_code: "scale" } },
         },
         processed: true,
       },
