@@ -2363,7 +2363,7 @@ export default function OnboardingPage() {
             <div
               className="flex items-center justify-between p-4 rounded-t-2xl"
               style={{
-                background: "rgba(6, 6, 7, 0.95)", // your custom header bg
+                background: "rgba(6, 6, 7, 0.95)",
                 borderBottom: "1px solid rgba(255,255,255,0.08)",
               }}
             >
@@ -2644,7 +2644,7 @@ export default function OnboardingPage() {
             <div
               className="flex items-center justify-between p-4 rounded-b-2xl"
               style={{
-                background: "rgba(6, 6, 7, 0.95)", // your custom header bg
+                background: "rgba(6, 6, 7, 0.95)",
                 borderBottom: "1px solid rgba(255,255,255,0.08)",
               }}
             >
