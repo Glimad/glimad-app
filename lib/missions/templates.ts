@@ -1506,7 +1506,9 @@ export const MISSION_TEMPLATES: Record<string, MissionTemplate> = {
         step_number: 4,
         step_type: "user_input",
         name: "Approve Rescue Plan",
-        config: { user_prompt: "Review and approve the engagement rescue strategy" },
+        config: {
+          user_prompt: "Review and approve the engagement rescue strategy",
+        },
         timeout_seconds: 259200,
         retry_max: 0,
         skip_on_failure: true,
@@ -1566,7 +1568,10 @@ export const MISSION_TEMPLATES: Record<string, MissionTemplate> = {
         step_number: 2,
         step_type: "llm_text",
         name: "Define Product Concept",
-        config: { prompt_id: "monetize_product_def", model_preference: "gpt-4" },
+        config: {
+          prompt_id: "monetize_product_def",
+          model_preference: "gpt-4",
+        },
         timeout_seconds: 30,
         retry_max: 2,
         skip_on_failure: false,
@@ -1625,7 +1630,8 @@ export const MISSION_TEMPLATES: Record<string, MissionTemplate> = {
   monetize_offer_build: {
     template_code: "monetize_offer_build",
     name: "Monetization Offer Builder",
-    description: "Build a complete sales offer with pricing and landing content",
+    description:
+      "Build a complete sales offer with pricing and landing content",
     type: "execution",
     phase_min: "F4",
     phase_max: "F7",
@@ -1650,7 +1656,10 @@ export const MISSION_TEMPLATES: Record<string, MissionTemplate> = {
         step_number: 2,
         step_type: "llm_text",
         name: "Generate Offer Copy",
-        config: { prompt_id: "monetize_offer_build", model_preference: "gpt-4" },
+        config: {
+          prompt_id: "monetize_offer_build",
+          model_preference: "gpt-4",
+        },
         timeout_seconds: 30,
         retry_max: 2,
         skip_on_failure: false,
@@ -1724,7 +1733,8 @@ export const MISSION_TEMPLATES: Record<string, MissionTemplate> = {
   audience_deep_dive: {
     template_code: "audience_deep_dive",
     name: "Audience Deep Dive",
-    description: "Deep analysis of audience demographics, behavior, and preferences",
+    description:
+      "Deep analysis of audience demographics, behavior, and preferences",
     type: "analysis",
     phase_min: "F2",
     phase_max: "F7",
