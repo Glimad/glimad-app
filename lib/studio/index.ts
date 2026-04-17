@@ -105,12 +105,18 @@ export async function approveContent(
   content: Record<string, unknown>,
   scheduledAt: string | null,
 ): Promise<{ asset_id: string; calendar_item_id: string }> {
+  // Validate content against typed schema before persisting
+  const { validateContent } = await import("@/lib/assets/schemas");
+  const rawContent = { content_type: contentType, topic, ...content };
+  const validation = validateContent(rawContent);
+  const sanitizedContent = validation.success ? validation.data : rawContent;
+
   const { data: asset } = await admin
     .from("core_assets")
     .insert({
       project_id: projectId,
       asset_type: "content_piece",
-      content: { content_type: contentType, topic, ...content },
+      content: sanitizedContent,
     })
     .select("id")
     .single();
