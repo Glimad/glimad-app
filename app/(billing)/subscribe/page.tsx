@@ -181,7 +181,8 @@ export default async function SubscribePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-10">
           {planList.map((plan) => {
             const code = plan.plan_code as "starter" | "growth" | "scale";
-            const features = t.raw(`plans.${code}.features`) as string[];
+            const features =
+              (t.raw(`plans.${code}.features`) as string[] | undefined) ?? [];
             const description = t(`plans.${code}.description`);
             const display = PLAN_DISPLAY[code];
 
