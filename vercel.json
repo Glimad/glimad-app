@@ -50,7 +50,7 @@
     },
     {
       "path": "/api/cron/job-runner",
-      "schedule": "* * * * *"
+      "schedule": "0 5 * * *"
     }
   ]
 }
