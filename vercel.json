@@ -51,6 +51,10 @@
     {
       "path": "/api/cron/job-runner",
       "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/slo-check",
+      "schedule": "0 4 * * *"
     }
   ]
 }
