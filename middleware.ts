@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
@@ -50,7 +51,14 @@ export async function middleware(request: NextRequest) {
 
   if (!user) return NextResponse.redirect(new URL("/login", request.url));
 
-  const { data: project } = await supabase
+  // Use service role for project/subscription checks to bypass RLS in middleware
+  const admin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } },
+  );
+
+  const { data: project } = await admin
     .from("projects")
     .select("id, status, is_admin")
     .eq("user_id", user.id)
@@ -62,7 +70,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/subscribe", request.url));
   }
 
-  const { data: subscriptions } = await supabase
+  const { data: subscriptions } = await admin
     .from("core_subscriptions")
     .select("status")
     .eq("project_id", project.id)

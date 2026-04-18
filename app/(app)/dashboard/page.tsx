@@ -42,25 +42,15 @@ export default async function DashboardPage() {
     await import(`@/messages/${locale}/dashboard.json`)
   ).default as Record<string, unknown>;
   const t = makeServerT(dashboardMessages);
-  const supabaseRef = new URL(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  ).hostname.split(".")[0];
-  const authCookie = cookieStore.get(`sb-${supabaseRef}-auth-token`);
   const admin = createAdminClient();
-  let user = null;
-  if (authCookie?.value?.startsWith("base64-")) {
-    try {
-      const session = JSON.parse(
-        Buffer.from(authCookie.value.slice(7), "base64").toString("utf-8"),
-      ) as { access_token?: string };
-      if (session.access_token) {
-        const { data } = await admin.auth.getUser(session.access_token);
-        user = data.user;
-      }
-    } catch {
-      user = null;
-    }
-  }
+
+  // Use the proper SSR server client to read the session from cookies
+  const { createClient: createServerSupabase } =
+    await import("@/lib/supabase/server");
+  const serverSupabase = createServerSupabase();
+  const {
+    data: { user },
+  } = await serverSupabase.auth.getUser();
 
   if (!user) redirect("/login");
 

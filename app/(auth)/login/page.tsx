@@ -1,14 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function LoginPage() {
   const t = useT("auth.login");
-  const router = useRouter();
   const supabase = createClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,8 +69,7 @@ export default function LoginPage() {
       .single();
 
     if (!project) {
-      router.push("/subscribe");
-      router.refresh();
+      window.location.href = "/subscribe";
       return;
     }
 
@@ -84,11 +81,10 @@ export default function LoginPage() {
       .limit(1);
 
     if (subs && subs.length > 0) {
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } else {
-      router.push("/subscribe");
+      window.location.href = "/subscribe";
     }
-    router.refresh();
   }
 
   async function handleMagicLink(e: React.FormEvent) {
