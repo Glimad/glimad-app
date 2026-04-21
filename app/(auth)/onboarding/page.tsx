@@ -215,7 +215,7 @@ const PROJECT_TYPES = [
     gradient: "linear-gradient(135deg, #0575E6, #00CAE4)",
   },
   {
-    id: "personal-brand",
+    id: "brand/business",
     icon: "💼",
     gradient: "linear-gradient(135deg, #00C9A7, #48CAE4)",
   },
@@ -727,7 +727,7 @@ export default function OnboardingPage() {
                     </div>
                     <span className="text-white text-sm font-medium">
                       {t(
-                        `assessment.projectTypes.${type.id === "personal-brand" ? "personalBrand" : type.id}`,
+                        `assessment.projectTypes.${type.id === "brand/business" ? "personalBrand" : type.id}`,
                       )}
                     </span>
                     {isSelected && (

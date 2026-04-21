@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { writeFact, appendSignal, createSnapshot, readAllFacts } from '@/lib/brain/index'
 import { runPhaseEngine } from '@/lib/engines/phase-engine'
+import { normalizeProjectType } from '@/lib/onboarding/config'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -37,7 +38,7 @@ export async function seedBrainFromOnboarding(
   const r = (session.responses_json ?? {}) as Record<string, unknown>
 
   // New fields from the dynamic assessment
-  const projectType   = String(r['project_type'] ?? '')
+  const projectType   = normalizeProjectType(String(r['project_type'] ?? ''))
   const projectName   = String(r['project_name'] ?? '')
   const journeyStage  = String(r['journey_stage'] ?? 'starting')
   const vision        = String(r['vision'] ?? '')
