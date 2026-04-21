@@ -258,7 +258,8 @@
       "verified": "Ya Verifiqué Mi Email",
       "resend": "Reenviar Email",
       "sending": "Enviando...",
-      "note": "Puedes verificar más tarde desde la configuración de tu cuenta."
+      "note": "Puedes verificar más tarde desde la configuración de tu cuenta.",
+      "notVerifiedYet": "Aún no detectamos tu verificación. Haz clic en el enlace de tu email y vuelve a intentarlo."
     }
   }
 }

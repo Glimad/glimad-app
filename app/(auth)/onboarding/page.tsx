@@ -581,6 +581,29 @@ export default function OnboardingPage() {
     setTimeout(() => setResending(false), 3000);
   }
 
+  async function handleVerified() {
+    if (loading) return;
+    setLoading(true);
+    setSignupError("");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (session) {
+      router.push("/subscribe");
+      return;
+    }
+
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed?.session) {
+      router.push("/subscribe");
+      return;
+    }
+
+    setSignupError(t("assessment.verifyEmail.notVerifiedYet"));
+    setLoading(false);
+  }
+
   function renderStep() {
     switch (stepName) {
       // ── WELCOME ──────────────────────────────────────────────────────────
@@ -2044,8 +2067,9 @@ export default function OnboardingPage() {
             <div className="space-y-3 mb-6">
               {/* Primary gradient button */}
               <button
-                onClick={() => router.push("/subscribe")}
-                className="w-full font-semibold text-white transition-opacity hover:opacity-90"
+                onClick={handleVerified}
+                disabled={loading}
+                className="w-full font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{
                   background: "linear-gradient(to right, #00C9A7, #48CAE4)",
                   borderRadius: "12px",
@@ -2056,6 +2080,14 @@ export default function OnboardingPage() {
               >
                 ✓ {t("assessment.verifyEmail.verified")} →
               </button>
+              {signupError && (
+                <p
+                  className="mt-2 text-sm text-center"
+                  style={{ color: "#FF6B6B" }}
+                >
+                  {signupError}
+                </p>
+              )}
 
               {/* Outlined resend button */}
               <button

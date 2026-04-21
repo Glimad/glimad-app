@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
@@ -8,6 +9,9 @@ import Link from "next/link";
 export default function LoginPage() {
   const t = useT("auth.login");
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const verificationFailed =
+    searchParams?.get("error") === "verification_failed";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -217,6 +221,19 @@ export default function LoginPage() {
               {t("subtitle")}
             </p>
           </div>
+
+          {verificationFailed && (
+            <div
+              className="rounded-xl px-4 py-3 text-sm text-center"
+              style={{
+                background: "rgba(255,180,60,0.08)",
+                border: "1px solid rgba(255,180,60,0.3)",
+                color: "rgba(255,220,180,0.9)",
+              }}
+            >
+              {t("verificationFailed")}
+            </div>
+          )}
 
           {/* Tab Toggle (Figma match) */}
           <div className="flex gap-2 mb-6 p-1 bg-white/5 rounded-xl border border-white/10">

@@ -258,7 +258,8 @@
       "verified": "I Already Verified My Email",
       "resend": "Resend Email",
       "sending": "Sending...",
-      "note": "You can verify later from your account settings."
+      "note": "You can verify later from your account settings.",
+      "notVerifiedYet": "We couldn't detect your verification yet. Please click the link in your email, then try again."
     }
   }
 }
