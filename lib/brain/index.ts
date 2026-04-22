@@ -30,7 +30,22 @@ export async function writeFact(
     changed_at: new Date().toISOString(),
   })
 
-  await admin.from('brain_facts').upsert(
+  // brain_facts.value is JSONB NOT NULL. JS `null` becomes SQL NULL and is
+  // rejected by the constraint — which means callers writing `null` (e.g. to
+  // unset platforms.focus / website.url when empty) would silently fail.
+  // Treat null as "unset" and delete the row instead, so readers see undefined.
+  if (value === null || value === undefined) {
+    if (existing) {
+      await admin
+        .from('brain_facts')
+        .delete()
+        .eq('project_id', projectId)
+        .eq('fact_key', key)
+    }
+    return
+  }
+
+  const { error } = await admin.from('brain_facts').upsert(
     {
       project_id: projectId,
       fact_key: key,
@@ -40,6 +55,9 @@ export async function writeFact(
     },
     { onConflict: 'project_id,fact_key' }
   )
+  if (error) {
+    throw new Error(`writeFact failed for ${key}: ${error.message}`)
+  }
 }
 
 export async function readFact(

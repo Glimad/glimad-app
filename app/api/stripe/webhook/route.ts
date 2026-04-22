@@ -229,12 +229,25 @@ async function handleSubscriptionActivated(
     .update({ active_mode: policyResult.activeMode })
     .eq("id", projectId);
 
-  // JIT mission instantiation — create all 5 Core Flow missions in canonical order
-  // Execute topMission first so it reaches waiting_input on Dashboard; queue the rest
+  // JIT mission instantiation — create all 5 Core Flow missions in canonical order.
+  // For users who onboarded with a website URL but no social FOCO, substitute
+  // PLATFORM_STRATEGY_PICKER_V1 → WEBSITE_FOCO_CONFIRM_V1 (the variant that
+  // pre-fills from the website scrape/LLM inference written during seed).
+  const websiteUrlFact = facts["website.url"] as string | null | undefined;
+  const platformFocusFact = facts["platforms.focus"] as
+    | { platform?: string }
+    | null
+    | undefined;
+  const substitutePicker =
+    !!websiteUrlFact && !platformFocusFact?.platform;
+  const pickerSlot = substitutePicker
+    ? "WEBSITE_FOCO_CONFIRM_V1"
+    : "PLATFORM_STRATEGY_PICKER_V1";
+
   const CORE_FLOW_TEMPLATES = [
     "VISION_PURPOSE_MOODBOARD_V1",
     "CONTENT_COMFORT_STYLE_V1",
-    "PLATFORM_STRATEGY_PICKER_V1",
+    pickerSlot,
     "NICHE_CONFIRM_V1",
     "PREFERENCES_CAPTURE_V1",
   ];

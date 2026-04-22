@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -14,6 +15,7 @@ export default function LoginPage() {
     searchParams?.get("error") === "verification_failed";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showTimeout, setShowTimeout] = useState(false);
@@ -279,19 +281,26 @@ export default function LoginPage() {
                 {t("email")}
               </label>
 
-              <div
-                className="rounded-xl overflow-hidden"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                }}
-              >
-                {/* Email field */}
-                <div className="px-4 py-4">
-                  <div className="flex items-center gap-3">
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                {/* Email */}
+                <div>
+                  <label
+                    className="block text-sm mb-2"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    {t("email")}
+                  </label>
+
+                  <div
+                    className="flex items-center gap-3 h-12 px-4 rounded-lg"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
                     <svg
-                      className="w-4 h-4 flex-shrink-0"
-                      style={{ color: "rgba(255,255,255,0.35)" }}
+                      className="w-4 h-4"
+                      style={{ color: "rgba(255,255,255,0.4)" }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -299,35 +308,40 @@ export default function LoginPage() {
                       <path
                         d="M3 8l9 6 9-6M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
                         strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
                       />
                     </svg>
+
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t("emailPlaceholder")}
                       className="flex-1 bg-transparent text-white text-sm focus:outline-none"
-                      style={{
-                        color: "white",
-                        fontSize: "14px",
-                      }}
                       required
                     />
                   </div>
                 </div>
 
-                <div
-                  style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}
-                />
+                {/* Password */}
+                <div>
+                  <label
+                    className="block text-sm mb-2"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
+                  >
+                    {t("password")}
+                  </label>
 
-                {/* Password field */}
-                <div className="px-4 py-4">
-                  <div className="flex items-center gap-3">
+                  <div
+                    className="relative flex items-center gap-3 h-12 px-4 rounded-lg"
+                    style={{
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}
+                  >
+                    {/* Lock Icon */}
                     <svg
-                      className="w-4 h-4 flex-shrink-0"
-                      style={{ color: "rgba(255,255,255,0.35)" }}
+                      className="w-4 h-4"
+                      style={{ color: "rgba(255,255,255,0.4)" }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -340,24 +354,31 @@ export default function LoginPage() {
                         rx="2"
                         strokeWidth="1.5"
                       />
-                      <path
-                        d="M7 11V7a5 5 0 0 1 10 0v4"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                      />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" strokeWidth="1.5" />
                     </svg>
+
+                    {/* Input */}
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder={t("passwordPlaceholder")}
-                      className="flex-1 bg-transparent text-white text-sm focus:outline-none"
-                      style={{
-                        color: "white",
-                        fontSize: "14px",
-                      }}
+                      className="flex-1 bg-transparent text-white text-sm focus:outline-none pr-8"
                       required
                     />
+
+                    {/* Eye Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -398,58 +419,71 @@ export default function LoginPage() {
           {/* Magic Link tab */}
           {activeTab === "magic" && (
             <form onSubmit={handleMagicLink} className="space-y-4">
+              {/* OUTER CONTAINER */}
               <div
-                className="rounded-xl px-4 py-4"
+                className="rounded-xl px-4 py-4 space-y-4"
                 style={{
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.1)",
                 }}
               >
-                <label
-                  className="block text-sm font-medium mb-3"
-                  style={{ color: "rgba(255,255,255,0.8)" }}
+                {/* EMAIL BOX (INNER CARD 1) */}
+                <div
+                  className="rounded-xl px-4 py-4"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                  }}
                 >
-                  {t("magicLinkEmail")}
-                </label>
-                <div className="flex items-center gap-3">
-                  <svg
-                    className="w-4 h-4 flex-shrink-0"
-                    style={{ color: "rgba(255,255,255,0.4)" }}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                  <label
+                    className="block text-sm font-medium mb-3"
+                    style={{ color: "rgba(255,255,255,0.8)" }}
                   >
-                    <path
-                      d="M3 8l9 6 9-6M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
+                    {t("magicLinkEmail")}
+                  </label>
+
+                  <div className="flex items-center gap-3">
+                    <svg
+                      className="w-4 h-4 flex-shrink-0"
+                      style={{ color: "rgba(255,255,255,0.4)" }}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M3 8l9 6 9-6M5 6h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder={t("emailPlaceholder")}
+                      className="flex-1 bg-transparent text-white text-sm focus:outline-none"
+                      style={{ caretColor: "#00C9A7" }}
+                      required
                     />
-                  </svg>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t("emailPlaceholder")}
-                    className="flex-1 bg-transparent text-white text-sm focus:outline-none"
-                    style={{ caretColor: "#00C9A7" }}
-                    required
-                  />
+                  </div>
+                </div>
+
+                {/* MAGIC LINK INFO BOX (INNER CARD 2) */}
+                <div
+                  className="rounded-xl px-4 py-3 text-sm"
+                  style={{
+                    background: "rgba(0,201,167,0.08)",
+                    border: "1px solid rgba(0,201,167,0.2)",
+                    color: "rgba(255,255,255,0.7)",
+                  }}
+                >
+                  💡 {t("magicLinkInfo")}
                 </div>
               </div>
 
-              {/* Info box */}
-              <div
-                className="rounded-xl px-4 py-3 text-sm"
-                style={{
-                  background: "rgba(0,201,167,0.08)",
-                  border: "1px solid rgba(0,201,167,0.2)",
-                  color: "rgba(255,255,255,0.7)",
-                }}
-              >
-                💡 {t("magicLinkInfo")}
-              </div>
-
+              {/* STATUS TEXT */}
               {magicLinkSent && (
                 <p className="text-sm text-center" style={{ color: "#00C9A7" }}>
                   ✓ {t("magicLinkSent")}
@@ -462,13 +496,14 @@ export default function LoginPage() {
                 </p>
               )}
 
+              {/* BUTTON */}
               <button
                 type="submit"
                 disabled={magicLoading || magicLinkSent}
-                className="w-full font-semibold text-white text-sm transition-opacity disabled:opacity-35 disabled:cursor-not-allowed"
+                className="w-full text-white text-sm font-semibold transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
                   background: "linear-gradient(to right, #00BFA5, #26C6DA)",
-                  borderRadius: "10px",
+                  borderRadius: "8px",
                   padding: "14px 28px",
                   fontWeight: 600,
                   fontSize: "15px",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -19,10 +19,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
 
   const sessionId = searchParams.get("sid");
-
-  useEffect(() => {
-    if (!sessionId) router.replace("/onboarding");
-  }, [sessionId, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

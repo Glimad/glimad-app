@@ -220,22 +220,43 @@ export async function runPolicyEngine(
   }
 
   // ── Core Flow Gate (F0 users) ──────────────────────────────────────────
+  // Website-only users (have website.url, no platforms.focus) get the
+  // WEBSITE_FOCO_CONFIRM_V1 variant in place of PLATFORM_STRATEGY_PICKER_V1.
+  // Either completion satisfies the platform-picker slot in Core Flow.
+  const websiteUrl = facts["website.url"] as string | null | undefined;
+  const focusFact = facts["platforms.focus"] as { platform?: string } | null | undefined;
+  const hasFocus = !!focusFact?.platform;
+  const useWebsiteConfirm = !!websiteUrl && !hasFocus;
+  const pickerCompleted =
+    completedMap.has("PLATFORM_STRATEGY_PICKER_V1") ||
+    completedMap.has("WEBSITE_FOCO_CONFIRM_V1");
+
   const isF0 = phaseResult.phase === "F0";
   if (isF0) {
     for (const templateCode of CORE_FLOW) {
-      if (!completedMap.has(templateCode)) {
-        const isActive = activeCodes.has(templateCode);
+      const effectiveCode =
+        templateCode === "PLATFORM_STRATEGY_PICKER_V1" && useWebsiteConfirm
+          ? "WEBSITE_FOCO_CONFIRM_V1"
+          : templateCode;
+
+      const slotSatisfied =
+        templateCode === "PLATFORM_STRATEGY_PICKER_V1"
+          ? pickerCompleted
+          : completedMap.has(templateCode);
+
+      if (!slotSatisfied) {
+        const isActive = activeCodes.has(effectiveCode);
         return {
-          topMission: templateCode,
+          topMission: effectiveCode,
           missionQueue: [
             {
-              templateCode,
+              templateCode: effectiveCode,
               priorityScore: 100,
               reason: "Core Flow mission required for F0",
             },
           ],
           activeMode,
-          rationale: `F0 Core Flow: next required mission is ${templateCode}${isActive ? " (already active)" : ""}`,
+          rationale: `F0 Core Flow: next required mission is ${effectiveCode}${isActive ? " (already active)" : ""}`,
         };
       }
     }
@@ -267,8 +288,11 @@ export async function runPolicyEngine(
   for (const template of allTemplates ?? []) {
     const code = template.template_code;
 
-    // Skip Core Flow missions (already handled above)
+    // Skip Core Flow missions (already handled above). WEBSITE_FOCO_CONFIRM_V1
+    // is the website-only variant of PLATFORM_STRATEGY_PICKER_V1 and is also
+    // gated exclusively through Core Flow.
     if (CORE_FLOW.includes(code)) continue;
+    if (code === "WEBSITE_FOCO_CONFIRM_V1") continue;
 
     // Skip if already active
     if (activeCodes.has(code)) continue;

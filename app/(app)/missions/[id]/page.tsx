@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import type { UIConfig, UIField } from "@/lib/missions/ui-catalog";
+import { WebsiteFocoConfirmReview } from "./WebsiteFocoConfirmReview";
 
 interface MissionStep {
   id: string;
@@ -105,6 +106,17 @@ export default function MissionPage() {
     setSubmitting(false);
   }
 
+  async function submitWithPayload(payload: Record<string, unknown>) {
+    setSubmitting(true);
+    await fetch(`/api/missions/${instanceId}/respond`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    await loadData();
+    setSubmitting(false);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -188,10 +200,23 @@ export default function MissionPage() {
           )}
         </div>
 
-        {/* Waiting — smart UI catalog render */}
+        {/* Waiting — smart UI catalog render, with special case for website-foco */}
         {isWaiting && (
           <div className="space-y-6">
-            {uiConfig ? (
+            {instance.template_code === "WEBSITE_FOCO_CONFIRM_V1" ? (
+              <WebsiteFocoConfirmReview
+                brainRead={(
+                  steps.find(
+                    (s) => s.step_type === "brain_read" && s.status === "completed",
+                  )?.output ?? {}
+                ) as Record<string, unknown>}
+                onSubmit={(payload) => {
+                  setUserInputs(payload);
+                  void submitWithPayload(payload);
+                }}
+                submitting={submitting}
+              />
+            ) : uiConfig ? (
               <SmartMissionReview
                 uiConfig={uiConfig}
                 autofillPayload={autofillPayload}
