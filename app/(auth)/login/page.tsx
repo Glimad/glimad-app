@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Sparkles } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
@@ -196,18 +196,12 @@ export default function LoginPage() {
       </nav>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8 pt-0 relative z-10">
+      <div className="flex-1 flex flex-col items-center px-4 pt-12 pb-8 relative z-10">
         <div className="w-full max-w-[440px] space-y-6">
           {/* Icon (Figma style) */}
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 via-emerald-400 to-pink-500 flex items-center justify-center mx-auto animate-pulse">
-              <svg
-                className="w-8 h-8 text-white"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-              >
-                <path d="M12 2l2.5 6.5L21 11l-6.5 2.5L12 20l-2.5-6.5L3 11l6.5-2.5L12 2z" />
-              </svg>
+          <div className="text-center">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 via-emerald-400 to-pink-500 flex items-center justify-center mx-auto mb-6 animate-pulse">
+              <Sparkles className="h-8 w-8 text-white" />
             </div>
           </div>
 
@@ -274,21 +268,18 @@ export default function LoginPage() {
           {activeTab === "password" && (
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email label */}
-              <label
+              {/* <label
                 className="block text-sm font-medium"
                 style={{ color: "rgba(255,255,255,0.7)" }}
               >
                 {t("email")}
-              </label>
+              </label> */}
 
               <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
                 {/* Email */}
                 <div>
-                  <label
-                    className="block text-sm mb-2"
-                    style={{ color: "rgba(255,255,255,0.8)" }}
-                  >
-                    {t("email")}
+                  <label className="block text-sm font-medium text-white/90 mb-2">
+                    {t("magicLinkEmail")}
                   </label>
 
                   <div
@@ -324,10 +315,7 @@ export default function LoginPage() {
 
                 {/* Password */}
                 <div>
-                  <label
-                    className="block text-sm mb-2"
-                    style={{ color: "rgba(255,255,255,0.8)" }}
-                  >
+                  <label className="block text-sm font-medium text-white/90 mb-2">
                     {t("password")}
                   </label>
 
@@ -392,14 +380,14 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full font-semibold text-white text-sm transition-opacity disabled:opacity-35 disabled:cursor-not-allowed"
-                style={{
-                  background: "linear-gradient(to right, #00BFA5, #26C6DA)",
-                  borderRadius: "10px",
-                  padding: "14px 28px",
-                  fontWeight: 600,
-                  fontSize: "15px",
-                }}
+                className="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 hover:from-cyan-600 hover:to-emerald-600 text-white h-12 rounded-lg font-semibold text-sm transition disabled:opacity-35 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                // style={{
+                //   background: "linear-gradient(to right, #00BFA5, #26C6DA)",
+                //   borderRadius: "10px",
+                //   padding: "14px 28px",
+                //   fontWeight: 600,
+                //   fontSize: "15px",
+                // }}
               >
                 {loading ? t("loading") : `${t("submit")} →`}
               </button>
@@ -435,10 +423,7 @@ export default function LoginPage() {
                     border: "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
-                  <label
-                    className="block text-sm font-medium mb-3"
-                    style={{ color: "rgba(255,255,255,0.8)" }}
-                  >
+                  <label className="block text-sm font-medium text-white/90 mb-2">
                     {t("magicLinkEmail")}
                   </label>
 

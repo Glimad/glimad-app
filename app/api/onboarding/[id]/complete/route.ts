@@ -45,15 +45,19 @@ export async function POST(
 
   const mergedResponses = { ...session.responses_json, ...final_responses }
 
-  // Determine experiment_variant by platform presence (source-of-truth for funnel split)
+  // Determine experiment_variant by SOCIAL platform presence.
+  // Website is a conversion channel, not a measurable social audience — exclude it
+  // so website-only users are not classified as 'has_presence'.
   const selectedPlatforms = mergedResponses['selected_platforms']
   const noPresence = Boolean(mergedResponses['no_presence'])
-  const hasPresence = Array.isArray(selectedPlatforms) ? selectedPlatforms.length > 0 : false
-
-  const journeyStage = mergedResponses['journey_stage'] as string | undefined
-  const experimentVariant = (hasPresence && !noPresence) || journeyStage === 'existing'
-    ? 'B_has_presence'
-    : 'A_zero_start'
+  const socialPlatforms = Array.isArray(selectedPlatforms)
+    ? (selectedPlatforms as unknown[]).filter((p) => {
+        const s = String(p ?? '').toLowerCase().trim()
+        return s && !s.includes('website') && !s.includes('sitio web')
+      })
+    : []
+  const hasSocialPresence = socialPlatforms.length > 0 && !noPresence
+  const experimentVariant = hasSocialPresence ? 'B_has_presence' : 'A_zero_start'
 
   await admin
     .from('onboarding_sessions')
