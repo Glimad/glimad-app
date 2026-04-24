@@ -7,9 +7,10 @@ import { useT } from '@/lib/i18n'
 
 type Props = {
   user: { email: string } | null
+  hasActiveSubscription?: boolean
 }
 
-export default function AuthMenu({ user }: Props) {
+export default function AuthMenu({ user, hasActiveSubscription = false }: Props) {
   const t = useT('common.header')
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -68,28 +69,32 @@ export default function AuthMenu({ user }: Props) {
 
       {open && (
         <div className="absolute right-0 mt-1 w-44 rounded-lg bg-zinc-900 border border-zinc-700 shadow-xl py-1 z-50">
-          <a
-            href="/dashboard"
-            className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
-            onClick={() => setOpen(false)}
-          >
-            {t('dashboard')}
-          </a>
-          <a
-            href="/studio"
-            className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
-            onClick={() => setOpen(false)}
-          >
-            {t('studio')}
-          </a>
-          <a
-            href="/calendar"
-            className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
-            onClick={() => setOpen(false)}
-          >
-            {t('calendar')}
-          </a>
-          <div className="my-1 border-t border-zinc-800" />
+          {hasActiveSubscription && (
+            <>
+              <a
+                href="/dashboard"
+                className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+                onClick={() => setOpen(false)}
+              >
+                {t('dashboard')}
+              </a>
+              <a
+                href="/studio"
+                className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+                onClick={() => setOpen(false)}
+              >
+                {t('studio')}
+              </a>
+              <a
+                href="/calendar"
+                className="block px-4 py-2 text-sm text-zinc-300 hover:text-white hover:bg-zinc-800 transition"
+                onClick={() => setOpen(false)}
+              >
+                {t('calendar')}
+              </a>
+              <div className="my-1 border-t border-zinc-800" />
+            </>
+          )}
           <button
             onClick={handleLogout}
             className="w-full text-left px-4 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-zinc-800 transition"

@@ -57,12 +57,8 @@ function getStepName(step: number, journeyStage: JourneyStage): StepName {
       "blockers",
       "platforms",
       "accompaniment",
-      "name",
-      "password",
-      "email",
-      "verify",
     ];
-    return flow[step - 3] ?? "verify";
+    return flow[step - 3] ?? "accompaniment";
   }
   const flow: StepName[] = [
     "goals",
@@ -70,12 +66,8 @@ function getStepName(step: number, journeyStage: JourneyStage): StepName {
     "platforms",
     "monetization",
     "accompaniment",
-    "name",
-    "password",
-    "email",
-    "verify",
   ];
-  return flow[step - 3] ?? "verify";
+  return flow[step - 3] ?? "accompaniment";
 }
 
 // Platform config with brand colors and icons (SVG paths)
@@ -308,49 +300,54 @@ export default function OnboardingPage() {
   });
 
   const stepName = getStepName(step, formData.journeyStage);
-  const totalSteps = 12;
+  const totalSteps = 8;
   const stepProgressMap: Record<number, number> = {
-    0: 8,
-    1: 15,
-    2: formData.journeyStage ? 25 : 23,
-    3: 33,
-    4: 42,
-    5: 50,
-    6: 58,
-    7: 67,
-    8: 75,
-    9: 83,
-    10: 92,
-    11: 100,
+    0: 10,
+    1: 22,
+    2: formData.journeyStage ? 35 : 31,
+    3: 47,
+    4: 60,
+    5: 72,
+    6: 85,
+    7: 95,
   };
-  const progress = stepProgressMap[step] ?? Math.round(((step + 1) / 12) * 100);
+  // Progress maxes at 95% on the last step — it only hits 100% once the user
+  // submits and /complete succeeds. If they close the tab on step 8, the
+  // session stays 'in_progress' and they'll restart from step 1 next visit.
+  const progress =
+    stepProgressMap[step] ?? Math.round(((step + 1) / totalSteps) * 100);
 
   useEffect(() => {
     const visitorId =
       localStorage.getItem("glimad_visitor_id") ?? crypto.randomUUID();
     localStorage.setItem("glimad_visitor_id", visitorId);
 
-    const existingSid = document.cookie
-      .split("; ")
-      .find((r) => r.startsWith("glimad_onboarding_sid="))
-      ?.split("=")[1];
-    if (existingSid) {
-      setSessionId(existingSid);
-      return;
-    }
+    // Drop any stale cookie left from the legacy anonymous flow.
+    document.cookie = "glimad_onboarding_sid=; path=/; max-age=0";
 
     fetch("/api/onboarding/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visitor_id: visitorId }),
     })
-      .then((r) => r.json())
+      .then(async (r) => {
+        if (r.status === 401) {
+          router.replace("/login");
+          return null;
+        }
+        if (r.status === 409) {
+          // Already completed — middleware should have redirected, defensive fallback.
+          router.replace("/subscribe");
+          return null;
+        }
+        return r.json();
+      })
       .then((data) => {
-        const sid = data.onboarding_session_id;
-        setSessionId(sid);
-        document.cookie = `glimad_onboarding_sid=${sid}; path=/; max-age=86400; SameSite=Lax`;
+        if (data?.onboarding_session_id) {
+          setSessionId(data.onboarding_session_id);
+        }
       });
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -461,53 +458,32 @@ export default function OnboardingPage() {
     setLoading(true);
     setSignupError("");
 
-    if (stepName !== "welcome" && stepName !== "verify") {
+    if (stepName !== "welcome") {
       const responses = getStepResponses();
       if (Object.keys(responses).length > 0) {
         await patchStep(responses);
       }
     }
 
-    if (stepName === "email") {
+    // accompaniment is the terminal step in the web flow — sign-up already happened
+    // before onboarding, so we just finalize and hand off to /subscribe.
+    if (stepName === "accompaniment") {
       const meta = {
         locale: navigator.language.slice(0, 2),
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       };
-      await fetch(`/api/onboarding/${sessionId}/complete`, {
+      const res = await fetch(`/api/onboarding/${sessionId}/complete`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ final_responses: meta }),
       });
-
-      const { data: signUpData, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: formData.name,
-            onboarding_session_id: sessionId,
-          },
-        },
-      });
-
-      if (error) {
-        setSignupError(error.message);
+      if (!res.ok) {
+        setSignupError("Could not complete onboarding. Please try again.");
         setLoading(false);
         return;
       }
-
-      // Explicitly link user to onboarding session (do not rely on DB triggers)
-      if (signUpData?.user?.id) {
-        await fetch(`/api/onboarding/${sessionId}/link-user`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: signUpData.user.id }),
-        });
-      }
-
-      // Clear cookie after link-user so ownership check passes
-      document.cookie = "glimad_onboarding_sid=; path=/; max-age=0";
+      router.push("/subscribe");
+      return;
     }
 
     setStep((s) => s + 1);
@@ -2236,10 +2212,15 @@ export default function OnboardingPage() {
               </svg>
             </button>
 
-            {/* Exit Assessment button */}
+            {/* Exit Assessment button — also signs out so re-entry requires
+                re-login, matching what users intuit from the wording. */}
             {stepName !== "verify" && (
               <button
-                onClick={() => router.push("/login")}
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  router.replace("/login");
+                  router.refresh();
+                }}
                 className="text-sm font-bold px-5 py-2.5 rounded-md transition-all hover:opacity-90"
                 style={{
                   background: "#FFFFFF",

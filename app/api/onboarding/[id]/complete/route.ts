@@ -1,15 +1,14 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 import { sanitizeText, sanitizeHandle } from '@/lib/security/sanitize'
+import { getAuthUser } from '@/lib/supabase/extract-token'
 
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const cookie = request.headers.get('cookie') ?? ''
-  const sidMatch = cookie.match(/(?:^|;\s*)glimad_onboarding_sid=([^;]+)/)
-  const cookieSid = sidMatch?.[1]
-  if (!cookieSid || cookieSid !== params.id) {
+  const user = await getAuthUser(request)
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -31,12 +30,16 @@ export async function POST(
 
   const { data: session } = await admin
     .from('onboarding_sessions')
-    .select('started_at, responses_json')
+    .select('started_at, responses_json, converted_to_user_id')
     .eq('id', params.id)
     .single()
 
   if (!session) {
     return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+  }
+
+  if (session.converted_to_user_id !== user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const completedAt = new Date()

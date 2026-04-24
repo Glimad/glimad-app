@@ -517,14 +517,14 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Assessment link */}
+          {/* Sign-up link (web flow: signup → onboarding → subscribe) */}
           <p
             className="text-center text-sm"
             style={{ color: "rgba(255,255,255,0.5)" }}
           >
             {t("signup_link")}{" "}
             <Link
-              href="/onboarding"
+              href="/signup"
               className="font-medium transition-colors"
               style={{ color: "#00C9A7" }}
             >

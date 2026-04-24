@@ -27,20 +27,20 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const sessionId = searchParams.get("sid");
+  // Reserved for future deep-link support; not currently used in the web flow.
+  void searchParams;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           full_name: fullName,
-          onboarding_session_id: sessionId ?? null,
         },
       },
     });
@@ -49,7 +49,32 @@ export default function SignupPage() {
       setLoading(false);
       return;
     }
+    // Supabase returns success even when the email already exists (anti-
+    // enumeration). The tell is `identities` being empty on the returned user.
+    if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+      setError(
+        "This email is already registered. Please log in instead.",
+      );
+      setLoading(false);
+      return;
+    }
     router.push("/verify");
+  }
+
+  async function handleOAuth(provider: "google" | "facebook" | "twitter") {
+    setError("");
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    }
+    // On success, the browser is redirected to the provider — no client cleanup needed.
   }
 
   return (
@@ -256,7 +281,8 @@ export default function SignupPage() {
             {/* Google */}
             <button
               type="button"
-              onClick={() => {}}
+              onClick={() => handleOAuth("google")}
+              disabled={loading}
               className="w-full py-3 text-sm font-medium text-white flex items-center justify-center gap-3 transition-colors"
               style={{
                 background: "rgba(255,255,255,0.04)",
@@ -291,7 +317,8 @@ export default function SignupPage() {
             {/* Facebook */}
             <button
               type="button"
-              onClick={() => {}}
+              onClick={() => handleOAuth("facebook")}
+              disabled={loading}
               className="w-full py-3 text-sm font-medium text-white flex items-center justify-center gap-3 transition-colors"
               style={{
                 background: "rgba(255,255,255,0.04)",
@@ -311,7 +338,8 @@ export default function SignupPage() {
             {/* Twitter/X */}
             <button
               type="button"
-              onClick={() => {}}
+              onClick={() => handleOAuth("twitter")}
+              disabled={loading}
               className="w-full py-3 text-sm font-medium text-white flex items-center justify-center gap-3 transition-colors"
               style={{
                 background: "rgba(255,255,255,0.04)",

@@ -10,6 +10,7 @@ export default async function Header() {
   ).hostname.split(".")[0];
   const authCookie = cookieStore.get(`sb-${supabaseRef}-auth-token`);
   let user = null;
+  let hasActiveSubscription = false;
   if (authCookie?.value?.startsWith("base64-")) {
     try {
       const session = JSON.parse(
@@ -19,6 +20,25 @@ export default async function Header() {
         const admin = createAdminClient();
         const { data } = await admin.auth.getUser(session.access_token);
         user = data.user;
+        if (user) {
+          // Dashboard/Studio/Calendar are only useful post-payment. Hide them
+          // pre-subscription so the menu doesn't lead to redirect loops.
+          const { data: project } = await admin
+            .from("projects")
+            .select("id")
+            .eq("user_id", user.id)
+            .neq("status", "archived")
+            .maybeSingle();
+          if (project) {
+            const { data: subs } = await admin
+              .from("core_subscriptions")
+              .select("id")
+              .eq("project_id", project.id)
+              .eq("status", "active")
+              .limit(1);
+            hasActiveSubscription = (subs?.length ?? 0) > 0;
+          }
+        }
       }
     } catch {
       user = null;
@@ -29,7 +49,7 @@ export default async function Header() {
     <header className="fixed top-0 left-0 right-0 z-40 bg-black/80 backdrop-blur-md border-b border-zinc-800">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <a
-          href={user ? "/dashboard" : "/onboarding"}
+          href={user ? "/dashboard" : "/signup"}
           className="flex items-center"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -43,7 +63,10 @@ export default async function Header() {
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
           <div className="w-px h-5 bg-zinc-700 mx-1" />
-          <AuthMenu user={user ? { email: user.email! } : null} />
+          <AuthMenu
+            user={user ? { email: user.email! } : null}
+            hasActiveSubscription={hasActiveSubscription}
+          />
         </div>
       </div>
     </header>
