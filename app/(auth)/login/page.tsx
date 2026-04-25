@@ -499,38 +499,6 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div
-              className="flex-1 h-px"
-              style={{ background: "rgba(255,255,255,0.1)" }}
-            />
-            <span
-              className="text-sm"
-              style={{ color: "rgba(255,255,255,0.4)" }}
-            >
-              {t("orDivider")}
-            </span>
-            <div
-              className="flex-1 h-px"
-              style={{ background: "rgba(255,255,255,0.1)" }}
-            />
-          </div>
-
-          {/* Sign-up link (web flow: signup → onboarding → subscribe) */}
-          <p
-            className="text-center text-sm"
-            style={{ color: "rgba(255,255,255,0.5)" }}
-          >
-            {t("signup_link")}{" "}
-            <Link
-              href="/signup"
-              className="font-medium transition-colors"
-              style={{ color: "#00C9A7" }}
-            >
-              {t("signup_cta")}
-            </Link>
-          </p>
         </div>
       </div>
 
