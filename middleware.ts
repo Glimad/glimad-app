@@ -11,17 +11,16 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/api/")) return NextResponse.next();
   if (pathname.includes("/auth/callback")) return NextResponse.next();
 
-  // Public, pre-auth paths. /onboarding is NOT public anymore — it requires
-  // an authenticated user (web flow: signup → onboarding → subscribe).
-  const publicPaths = [
-    "/login",
-    "/signup",
-    "/verify",
-    "/terms",
-    "/privacy",
-  ];
-  if (publicPaths.some((p) => pathname.startsWith(p)))
+  // Always-reachable static legal pages.
+  if (pathname.startsWith("/terms") || pathname.startsWith("/privacy"))
     return NextResponse.next();
+
+  // Auth pages reachable to unauthenticated visitors only. Signed-in users
+  // hitting these are forwarded to their proper funnel slot (handled below
+  // after the user fetch) so they never see a dead-end form or an empty
+  // "check your email" screen.
+  const authPaths = ["/login", "/signup", "/verify"];
+  const isAuthPath = authPaths.some((p) => pathname.startsWith(p));
 
   let supabaseResponse = NextResponse.next({ request });
 
@@ -50,7 +49,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return NextResponse.redirect(new URL("/login", request.url));
+  if (!user) {
+    if (isAuthPath) return supabaseResponse;
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
 
   const admin = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -85,6 +87,18 @@ export async function middleware(request: NextRequest) {
       .eq("status", "active")
       .limit(1);
     hasActiveSubscription = (subs?.length ?? 0) > 0;
+  }
+
+  // Forward signed-in users away from /login, /signup, /verify so they
+  // land on their proper funnel slot instead of a dead-end form.
+  if (isAuthPath) {
+    if (!hasCompletedOnboarding) {
+      return NextResponse.redirect(new URL("/onboarding", request.url));
+    }
+    if (!hasActiveSubscription) {
+      return NextResponse.redirect(new URL("/subscribe", request.url));
+    }
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // State-based routing. Each gate sends users forward, never backward.
